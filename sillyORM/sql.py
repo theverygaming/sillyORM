@@ -43,12 +43,12 @@ class SQL():
     def _as_raw_sql(cls, code):
         code = str(code)
         ret = cls("")
-        ret._code = "%(v)s"
+        ret._code = "{v}"
         ret._args["v"] = code
         return ret
 
     def code(self):
-        return self._code % self._args
+        return self._code.format(**self._args)
 
     def __repr__(self):
         return f"SQL({self.code()})"
@@ -102,7 +102,7 @@ class Cursor():
 
     def table_exists(self, name):
         res = self.execute(SQL(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name=%(name)s;",
+            "SELECT name FROM sqlite_master WHERE type='table' AND name={name};",
             name=SQL.escape(name),
         )).fetchone()
         return res == (name,)
@@ -111,7 +111,7 @@ class Cursor():
         ColumnInfo = namedtuple("ColumnInfo", ["name", "type", "primary_key"])
         # [(name: str, type: str, primary_key: bool)]
         res = self.execute(SQL(
-            "SELECT %(i1)s, %(i2)s, %(i3)s FROM PRAGMA_TABLE_INFO(%(table)s);",
+            "SELECT {i1}, {i2}, {i3} FROM PRAGMA_TABLE_INFO({table});",
             i1=SQL.identifier("name"),
             i2=SQL.identifier("type"),
             i3=SQL.identifier("pk"),
@@ -132,12 +132,12 @@ def create_table_from_fields(cr, name, fields):
     column_sql = []
     for field in fields:
         column_sql.append(SQL(
-            f"%(field)s %(type)s{' PRIMARY KEY' if field._primary_key else ''}",
+            f"{{field}} {{type}}{' PRIMARY KEY' if field._primary_key else ''}",
             field=SQL.identifier(field._name),
             type=SQL.type(field._sql_type)
         ))
     cr.execute(SQL(
-        "CREATE TABLE %(name)s %(columns)s;",
+        "CREATE TABLE {name} {columns};",
         name=SQL.identifier(name),
         columns=SQL.set(column_sql),
     ))
@@ -164,14 +164,14 @@ def update_table_from_fields(cr, name, fields):
     # remove fields
     for field in removed_fields:
         cr.execute(SQL(
-            "ALTER TABLE %(table)s DROP COLUMN %(field)s;",
+            "ALTER TABLE {table} DROP COLUMN {field};",
             table=SQL.identifier(name),
             field=SQL.identifier(field.name),
         ))
     # add fields
     for field in added_fields:
         cr.execute(SQL(
-            f"ALTER TABLE %(table)s ADD %(field)s %(type)s{' PRIMARY KEY' if field._primary_key else ''};",
+            f"ALTER TABLE {{table}} ADD {{field}} {{type}}{' PRIMARY KEY' if field._primary_key else ''};",
             table=SQL.identifier(name),
             field=SQL.identifier(field._name),
             type=SQL.type(field._sql_type)

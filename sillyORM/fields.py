@@ -2,6 +2,7 @@ from . import sql
 from .sql import SQL
 
 class Field():
+
     # __must__ be set by all fields
     _sql_type = None
 
@@ -13,7 +14,7 @@ class Field():
 
     def __set__(self, record, value):
         record.cr.execute(SQL(
-            "UPDATE %(table)s SET %(field)s = %(value)s WHERE %(id)s IN %(ids)s;",
+            "UPDATE {table} SET {field} = {value} WHERE {id} IN {ids};",
             table=SQL.identifier(record._name),
             field=SQL.identifier(self._name),
             value=SQL.escape(value),
@@ -39,7 +40,7 @@ class String(Field):
 
     def __get__(self, record, objtype=None):
         record.cr.execute(SQL(
-            "SELECT %(field)s FROM %(table)s WHERE %(id)s IN %(ids)s;",
+            "SELECT {field} FROM {table} WHERE {id} IN {ids};",
             field=SQL.identifier(self._name),
             table=SQL.identifier(record._name),
             id=SQL.identifier("id"),

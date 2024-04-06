@@ -69,7 +69,7 @@ class Model(metaclass=MetaModel):
         if not isinstance(ids, list):
             ids = [ids]
         res = cr.execute(SQL(
-            "SELECT %(id)s FROM %(name)s WHERE %(id)s IN %(ids)s;",
+            "SELECT {id} FROM {name} WHERE {id} IN {ids};",
             id=SQL.identifier("id"),
             name=SQL.identifier(self._name),
             ids=SQL.set(ids)
@@ -81,7 +81,7 @@ class Model(metaclass=MetaModel):
     @classmethod
     def create(self, cr, vals):
         top_id = cr.execute(SQL(
-            "SELECT MAX(%(id)s) FROM %(table)s;",
+            "SELECT MAX({id}) FROM {table};",
             id=SQL.identifier("id"),
             table=SQL.identifier(self._name),
         )).fetchone()[0]
@@ -90,7 +90,7 @@ class Model(metaclass=MetaModel):
         vals["id"] = top_id+1
         keys, values = zip(*vals.items())
         cr.execute(SQL(
-            "INSERT INTO %(table)s %(keys)s VALUES %(values)s;",
+            "INSERT INTO {table} {keys} VALUES {values};",
             table=SQL.identifier(self._name),
             keys=SQL.set(keys),
             values=SQL.set(values)
