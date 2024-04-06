@@ -1,30 +1,41 @@
 import sillyORM
+from sillyORM import sql
+
 
 class Machine(sillyORM.model.Model):
     _name = "machine"
 
     test = sillyORM.fields.String("test")
 
-    def print(self):
+    def print(self, x):
         for record in self:
+            print(record.test)
+            record.test += x
             print(record.test)
         print(self.test)
 
 class Person(sillyORM.model.Model):
     _name = "person"
 
+    hello = sillyORM.fields.String("some")
+
     def test(self):
         print(self)
 
 
-models = [Machine(ids=[1,2,3,4,5]), Person()]
+models = [Machine(), Person()]
 for model in models:
     model._table_init()
 
-sillyORM.model.browse("person", 1)
-sillyORM.model.browse("person", [1, 2])
+print(Machine.browse(sql.get_cursor(), [1, 2]))
 
-models[1].test()
-print(models[1])
-print(models[0])
-models[0].print()
+m1 = Machine.create(sql.get_cursor(), {"test": "machine 1"})
+print(m1)
+
+m2 = Machine.create(sql.get_cursor(), {"test": "hello world from new machine record"})
+print(m2)
+
+m = Machine.browse(sql.get_cursor(), [1, 2])
+print(m)
+print(m.test)
+m.ensure_one() # causes exception

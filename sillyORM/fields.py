@@ -19,6 +19,8 @@ class Id(Field):
         record.ensure_one()
         return record._ids[0]
 
+    def __set__(self, record, value):
+        raise Exception("cannot set id")
 
 class String(Field):
     _sql_type = "VARCHAR"
@@ -27,7 +29,14 @@ class String(Field):
         self._name = name
 
     def __get__(self, record, objtype=None):
-        result = sql.sql_get_table_field_values(record._name, record._ids, self._name)
+        record.cr.execute(f'SELECT "{self._name}" FROM "{record._name}" WHERE "id" IN ({",".join([str(id) for id in record._ids])});')
+        result = [x[0] for x in record.cr.fetchall()]
         if len(result) == 1:
             return result[0]
         return result
+    
+    def __set__(self, record, value):
+        if not isinstance(value, str):
+            raise Exception("must be string")
+        record.cr.execute(f'UPDATE "{record._name}" SET "{self._name}" = \'{value}\' WHERE "id" IN ({",".join([str(id) for id in record._ids])});')
+        record.cr.commit()

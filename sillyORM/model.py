@@ -1,16 +1,12 @@
 from . import sql, fields
 
 class MetaModel(type):
-    models = []
-
     def __new__(meta, name, bases, attrs):
         #print(f"meta args:\n    -> meta: {meta}\n    -> name: {name}\n    -> bases: {bases}\n    -> attrs: {attrs}")
         return type.__new__(meta, name, bases, attrs)
 
     def __init__(self, name, bases, attrs):
-        if "_name" in attrs:
-            if attrs["_name"] not in self.models:
-                self.models.append(attrs["_name"])
+        pass
 
 
 class Model(metaclass=MetaModel):
@@ -19,13 +15,14 @@ class Model(metaclass=MetaModel):
     def __init__(self, ids=None):
         if "_name" not in self.__class__.__dict__:
             raise Exception("_name must be set")
-
+        
         if ids is None:
             ids = []
         if not isinstance(ids, list):
             ids = [ids]
         self._ids = ids
-        #print(f"hi i am {self} and my attrs are {self.__class__.__dict__}")
+
+        self.cr = sql.get_cursor()
 
     def __repr__(self):
         ids = self._ids #[record.id for record in self]
@@ -47,18 +44,38 @@ class Model(metaclass=MetaModel):
                     all_fields.append(attr)
             return all_fields
 
-        print(f"_table_init: {self}")
         attrs = vars(self.__class__)
-        if not sql.sql_table_exists(attrs["_name"]):
-            sql.sql_table_create(attrs["_name"], get_all_fields())
-        #else:
-        #    sql.sql_table_update(attrs["_name"], [c.get_sql_table_type() for c in columns])
+        if not self.cr.table_exists(attrs["_name"]):
+            sql.create_table_from_fields(self.cr, attrs["_name"], get_all_fields())
+        else:
+            sql.update_table_from_fields(self.cr, attrs["_name"], get_all_fields())
+
     def ensure_one(self):
         if len(self._ids) != 1:
             raise Exception(f"ensure_one found {len(self._ids)} id's")
         return self
 
-
-def browse(name, ids):
-    if name not in MetaModel.models:
-        raise Exception(f"invalid model name {name}")
+    @classmethod
+    def browse(self, cr, ids):
+        if not isinstance(ids, list):
+            ids = [ids]
+        res = cr.execute(f'SELECT "id" FROM "{self._name}" WHERE "id" IN ({",".join([str(id) for id in ids])});').fetchall()
+        if len(res) == 0:
+            return None
+        return self(ids=[id[0] for id in res])
+    
+    @classmethod
+    def create(self, cr, vals):
+        top_id = cr.execute(f'SELECT MAX("id") FROM "{self._name}";').fetchone()[0]
+        if top_id is None:
+            top_id = 0
+        vals["id"] = top_id+1
+        keys, values = zip(*vals.items())
+        stmt = f'INSERT INTO "{self._name}" ('
+        stmt += ",".join([f"'{key}'" for key in keys])
+        stmt += ") VALUES ("
+        stmt += ",".join([f"'{value}'" for value in values])
+        stmt += ");"
+        cr.execute(stmt)
+        cr.commit()
+        return self(ids=vals["id"])
