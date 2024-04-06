@@ -1,17 +1,29 @@
 from . import sql
+from .sql import SQL
 
 class Field():
     # __must__ be set by all fields
-    _name = None
     _sql_type = None
+
+    # set by models
+    _name = None
 
     # default values
     _primary_key = False
 
+    def __set__(self, record, value):
+        record.cr.execute(SQL(
+            "UPDATE %(table)s SET %(field)s = %(value)s WHERE %(id)s IN %(ids)s;",
+            table=SQL.identifier(record._name),
+            field=SQL.identifier(self._name),
+            value=SQL.escape(value),
+            id=SQL.identifier("id"),
+            ids=SQL.set(record._ids),
+        ))
+        record.cr.commit()
 
 class Id(Field):
-    _name = "id"
-    _sql_type = "INTEGER"
+    _sql_type = sql.SqlType.INTEGER
 
     _primary_key = True
 
@@ -23,13 +35,16 @@ class Id(Field):
         raise Exception("cannot set id")
 
 class String(Field):
-    _sql_type = "VARCHAR"
-
-    def __init__(self, name):
-        self._name = name
+    _sql_type = sql.SqlType.VARCHAR
 
     def __get__(self, record, objtype=None):
-        record.cr.execute(f'SELECT "{self._name}" FROM "{record._name}" WHERE "id" IN ({",".join([str(id) for id in record._ids])});')
+        record.cr.execute(SQL(
+            "SELECT %(field)s FROM %(table)s WHERE %(id)s IN %(ids)s;",
+            field=SQL.identifier(self._name),
+            table=SQL.identifier(record._name),
+            id=SQL.identifier("id"),
+            ids=SQL.set(record._ids),
+        ))
         result = [x[0] for x in record.cr.fetchall()]
         if len(result) == 1:
             return result[0]
@@ -38,5 +53,4 @@ class String(Field):
     def __set__(self, record, value):
         if not isinstance(value, str):
             raise Exception("must be string")
-        record.cr.execute(f'UPDATE "{record._name}" SET "{self._name}" = \'{value}\' WHERE "id" IN ({",".join([str(id) for id in record._ids])});')
-        record.cr.commit()
+        super().__set__(record, value)
