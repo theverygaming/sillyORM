@@ -1,4 +1,4 @@
-from . import sql, fields
+from . import sql, SQLite, fields
 from .sql import SQL
 
 class MetaModel(type):
@@ -32,7 +32,7 @@ class Model(metaclass=MetaModel):
                     continue
                 attr._name = str(key)
 
-        self.cr = sql.get_cursor()
+        self.cr = SQLite.get_cursor()
 
     def __repr__(self):
         ids = self._ids #[record.id for record in self]
@@ -77,7 +77,7 @@ class Model(metaclass=MetaModel):
         if len(res) == 0:
             return None
         return self(ids=[id[0] for id in res])
-    
+
     @classmethod
     def create(self, cr, vals):
         top_id = cr.execute(SQL(

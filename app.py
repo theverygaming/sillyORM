@@ -1,5 +1,5 @@
 import sillyORM
-from sillyORM import sql
+from sillyORM import sql, SQLite
 
 
 class Machine(sillyORM.model.Model):
@@ -27,16 +27,16 @@ models = [Machine(), Person()]
 for model in models:
     model._table_init()
 
-print(Machine.browse(sql.get_cursor(), [1, 2]))
+print(Machine.browse(SQLite.get_cursor(), [1, 2]))
 
-m1 = Machine.create(sql.get_cursor(), {"test": "machine 1"})
+m1 = Machine.create(SQLite.get_cursor(), {"test": "machine 1"})
 print(m1)
 
-m2 = Machine.create(sql.get_cursor(), {"test": "hello world from new machine record"})
+m2 = Machine.create(SQLite.get_cursor(), {"test": "hello world from new machine record"})
 print(m2)
 m2.print(" test")
 
-m = Machine.browse(sql.get_cursor(), [1, 2])
+m = Machine.browse(SQLite.get_cursor(), [1, 2])
 print(m)
 print(m.test)
 m.print(" hello")

@@ -1,14 +1,15 @@
+from typing import Self, Any
 import re
-import sqlite3
 from enum import Enum
-from collections import namedtuple
 
 class SqlType(Enum):
     INTEGER = "INTEGER"
     VARCHAR = "VARCHAR"
+    DATE = "DATE" # warning, some DBMS include a timestamp for DATE
+    TIMESTAMP = "TIMESTAMP"
 
 class SQL():
-    # WARNING: the code parameter may ABSOLUTELY not contain any user-provided input
+    # WARNING: the code parameter may ABSOLUTELY not contain ANY user-provided input
     def __init__(self, code, **kwargs):
         self._code = code
         self._args = {}
@@ -76,57 +77,31 @@ class SQL():
 
 # database abstractions
 class Cursor():
-    def __init__(self, cr):
-        self._cr = cr
+    def commit(self) -> None:
+        raise NotImplementedError()
 
-    def commit(self):
-        self._cr.connection.commit()
+    def execute(self, sql: SQL) -> Self:
+        raise NotImplementedError()
 
-    def execute(self, sql):
-        if not isinstance(sql, SQL):
-            raise Exception("SQL code must be enclosed in the SQL class")
-        sql = sql.code()
-        print(f"    execute -> {sql}")
-        self._cr.execute(sql)
-        return self
+    def fetchall(self) -> list[tuple[Any, ...]]:
+        raise NotImplementedError()
 
-    def fetchall(self):
-        res = self._cr.fetchall()
-        print(f"    fetchall -> {res}")
-        return res
+    def fetchone(self) -> tuple[Any, ...]:
+        raise NotImplementedError()
 
-    def fetchone(self):
-        res = self._cr.fetchone()
-        print(f"    fetchone -> {res}")
-        return res
+    def table_exists(self, name: str) -> bool:
+        raise NotImplementedError()
 
-    def table_exists(self, name):
-        res = self.execute(SQL(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name={name};",
-            name=SQL.escape(name),
-        )).fetchone()
-        return res == (name,)
-
-    def get_table_column_info(self, name):
-        ColumnInfo = namedtuple("ColumnInfo", ["name", "type", "primary_key"])
-        # [(name: str, type: str, primary_key: bool)]
-        res = self.execute(SQL(
-            "SELECT {i1}, {i2}, {i3} FROM PRAGMA_TABLE_INFO({table});",
-            i1=SQL.identifier("name"),
-            i2=SQL.identifier("type"),
-            i3=SQL.identifier("pk"),
-            table=SQL.identifier(name)
-        )).fetchall()
-        return [ColumnInfo(n, t, bool(pk)) for n, t, pk in res]
+    def get_table_column_info(self, name: str) -> list[tuple[str, str, bool]]: # [(name, type, primary_key)]
+        raise NotImplementedError()
 
 
-def get_cursor():
-    conn = sqlite3.connect("test.db")
-    #conn.autocommit = False
-    return Cursor(conn.cursor())
+class Connection():
+    def cursor() -> Cursor:
+        raise NotImplementedError()
 
 # convenience functions
-def create_table_from_fields(cr, name, fields):
+def create_table_from_fields(cr: Cursor, name: str, fields):
     if not len(fields):
         raise Exception("cannot create table without columns")
     column_sql = []
@@ -160,7 +135,7 @@ def update_table_from_fields(cr, name, fields):
         if next(filter(lambda x: field.name == x._name and field.type == x._sql_type.value and field.primary_key == x._primary_key, fields), None) is not None:
             continue
         removed_fields.append(field)
-    
+
     # remove fields
     for field in removed_fields:
         cr.execute(SQL(
