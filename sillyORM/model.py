@@ -2,19 +2,20 @@ from . import sql, SQLite, fields
 from .sql import SQL
 
 class MetaModel(type):
-    def __new__(meta, name, bases, attrs):
+    def __new__(mcs, name, bases, attrs):
         #print(f"meta args:\n    -> meta: {meta}\n    -> name: {name}\n    -> bases: {bases}\n    -> attrs: {attrs}")
-        return type.__new__(meta, name, bases, attrs)
+        return type.__new__(mcs, name, bases, attrs)
 
-    def __init__(self, name, bases, attrs):
+    def __init__(cls, name, bases, attrs):
         pass
 
 
 class Model(metaclass=MetaModel):
+    _name = None
     id = fields.Id()
 
     def __init__(self, ids=None):
-        if "_name" not in vars(self.__class__):
+        if not isinstance(self._name, str):
             raise Exception("_name must be set")
 
         if ids is None:
@@ -65,25 +66,25 @@ class Model(metaclass=MetaModel):
         return self
 
     @classmethod
-    def browse(self, cr, ids):
+    def browse(cls, cr, ids):
         if not isinstance(ids, list):
             ids = [ids]
         res = cr.execute(SQL(
             "SELECT {id} FROM {name} WHERE {id} IN {ids};",
             id=SQL.identifier("id"),
-            name=SQL.identifier(self._name),
+            name=SQL.identifier(cls._name),
             ids=SQL.set(ids)
         )).fetchall()
         if len(res) == 0:
             return None
-        return self(ids=[id[0] for id in res])
+        return cls(ids=[id[0] for id in res])
 
     @classmethod
-    def create(self, cr, vals):
+    def create(cls, cr, vals):
         top_id = cr.execute(SQL(
             "SELECT MAX({id}) FROM {table};",
             id=SQL.identifier("id"),
-            table=SQL.identifier(self._name),
+            table=SQL.identifier(cls._name),
         )).fetchone()[0]
         if top_id is None:
             top_id = 0
@@ -91,9 +92,9 @@ class Model(metaclass=MetaModel):
         keys, values = zip(*vals.items())
         cr.execute(SQL(
             "INSERT INTO {table} {keys} VALUES {values};",
-            table=SQL.identifier(self._name),
+            table=SQL.identifier(cls._name),
             keys=SQL.set(keys),
             values=SQL.set(values)
         ))
         cr.commit()
-        return self(ids=vals["id"])
+        return cls(ids=vals["id"])
