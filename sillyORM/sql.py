@@ -10,7 +10,7 @@ class SqlType(Enum):
 
 class SQL():
     # WARNING: the code parameter may ABSOLUTELY not contain ANY user-provided input
-    def __init__(self, code, **kwargs):
+    def __init__(self, code: str, **kwargs: str) -> None:
         self._code = code
         self._args = {}
         for k, v in kwargs.items():
@@ -18,7 +18,7 @@ class SQL():
         self.code()
 
     @classmethod
-    def escape(cls, value):
+    def escape(cls, value: str) -> Self:
         # escape strings
         if isinstance(value, str):
             # escape all single quotes
@@ -34,34 +34,34 @@ class SQL():
         return cls._as_raw_sql(str(value))
 
     @classmethod
-    def __as_safe_sql_value(cls, value):
+    def __as_safe_sql_value(cls, value: str) -> str:
         if isinstance(value, cls):
             return value.code()
 
         return cls.escape(value).code()
 
     @classmethod
-    def _as_raw_sql(cls, code):
+    def _as_raw_sql(cls, code: str) -> Self:
         code = str(code)
         ret = cls("")
         ret._code = "{v}"
         ret._args["v"] = code
         return ret
 
-    def code(self):
+    def code(self) -> str:
         return self._code.format(**self._args)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"SQL({self.code()})"
 
     @classmethod
-    def identifier(cls, name):
+    def identifier(cls, name: str) -> Self:
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_@#]*$", name):
             raise Exception("invalid SQL identifier")
         return cls._as_raw_sql(f'"{name}"')
 
     @classmethod
-    def set(cls, values):
+    def set(cls, values: list[Any]) -> Self:
         if isinstance(values, tuple):
             values = list(values)
         if not isinstance(values, list):
@@ -69,7 +69,7 @@ class SQL():
         return cls._as_raw_sql(f"({','.join([str(cls.__as_safe_sql_value(x)) for x in values])})")
 
     @classmethod
-    def type(cls, t):
+    def type(cls, t: SqlType) -> Self:
         if not isinstance(t, SqlType):
             raise Exception("invalid SQL type")
         return cls._as_raw_sql(t.value)
@@ -97,7 +97,7 @@ class Cursor():
 
 
 class Connection():
-    def cursor() -> Cursor:
+    def cursor(self) -> Cursor:
         raise NotImplementedError()
 
 # convenience functions
