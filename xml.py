@@ -75,6 +75,18 @@ def _render_html(element, render_ctx, render_self=False):
                 render_ctx["0"] = (element.text if element.text is not None else "") + f_render_children()
                 output += _render_html(templates[v], render_ctx)
                 continue
+            # t-strip
+            if k.startswith("t-strip-"):
+                del element.attrib[k]
+                st = k.removeprefix("t-strip-")
+                match st:
+                    case "text":
+                        element.text = element.text.lstrip(v)
+                    case "tail":
+                        element.tail = element.tail.rstrip(v)
+                    case _:
+                        raise Exception(f'invalid {k}="{v}"')
+                continue
         return output, render_tag, render_tail, render_text, render_children
     if not isinstance(element.tag, str):
         raise Exception(f"unknown tag {element.tag}")
