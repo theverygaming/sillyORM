@@ -33,7 +33,7 @@ class Model(metaclass=MetaModel):
                     continue
                 attr._name = str(key)
 
-        self.cr = SQLite.get_cursor()
+        self.cr: sql.Cursor = SQLite.get_cursor()
 
     def __repr__(self):
         ids = self._ids #[record.id for record in self]
@@ -56,9 +56,50 @@ class Model(metaclass=MetaModel):
             return all_fields
 
         if not self.cr.table_exists(self._name):
-            sql.create_table_from_fields(self.cr, self._name, get_all_fields())
+            column_sql = []
+            for field in get_all_fields():
+                column_sql.append(SQL(
+                    f"{{field}} {{type}}{' PRIMARY KEY' if field._primary_key else ''}",
+                    field=SQL.identifier(field._name),
+                    type=SQL.type(field._sql_type)
+                ))
+            self.cr.execute(SQL(
+                "CREATE TABLE {name} {columns};",
+                name=SQL.identifier(self._name),
+                columns=SQL.set(column_sql),
+            ))
+            if not self.cr.table_exists(self._name): # needed??
+                raise Exception("could not create SQL table")
         else:
-            sql.update_table_from_fields(self.cr, self._name, get_all_fields())
+            current_fields = self.cr.get_table_column_info(self._name)
+            added_fields = []
+            removed_fields = []
+            for field in get_all_fields():
+                # field alrady exists
+                if next(filter(lambda x: x.name == field._name and x.type == field._sql_type.value and x.primary_key == field._primary_key, current_fields), None) is not None:
+                    continue
+                added_fields.append(field)
+            for field in current_fields:
+                # field alrady exists
+                if next(filter(lambda x: field.name == x._name and field.type == x._sql_type.value and field.primary_key == x._primary_key, get_all_fields()), None) is not None:
+                    continue
+                removed_fields.append(field)
+
+            # remove fields
+            for field in removed_fields:
+                self.cr.execute(SQL(
+                    "ALTER TABLE {table} DROP COLUMN {field};",
+                    table=SQL.identifier(self._name),
+                    field=SQL.identifier(field.name),
+                ))
+            # add fields
+            for field in added_fields:
+                self.cr.execute(SQL(
+                    f"ALTER TABLE {{table}} ADD {{field}} {{type}}{' PRIMARY KEY' if field._primary_key else ''};",
+                    table=SQL.identifier(self._name),
+                    field=SQL.identifier(field._name),
+                    type=SQL.type(field._sql_type)
+                ))
 
     def ensure_one(self):
         if len(self._ids) != 1:

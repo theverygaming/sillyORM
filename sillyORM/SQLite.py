@@ -1,4 +1,4 @@
-from typing import Self, Any
+from typing import Self, Any, cast
 from collections import namedtuple
 import sqlite3
 from . import sql
@@ -6,7 +6,7 @@ from .sql import SQL
 
 
 class SQLiteCursor(sql.Cursor):
-    def __init__(self, cr):
+    def __init__(self, cr: sqlite3.Cursor):
         self._cr = cr
 
     def commit(self) -> None:
@@ -15,9 +15,9 @@ class SQLiteCursor(sql.Cursor):
     def execute(self, sql: sql.SQL) -> Self:
         if not isinstance(sql, SQL):
             raise Exception("SQL code must be enclosed in the SQL class")
-        sql = sql.code()
-        print(f"    execute -> {sql}")
-        self._cr.execute(sql)
+        code = sql.code()
+        print(f"    execute -> {code}")
+        self._cr.execute(code)
         return self
 
     def fetchall(self) -> list[tuple[Any, ...]]:
@@ -28,7 +28,7 @@ class SQLiteCursor(sql.Cursor):
     def fetchone(self) -> tuple[Any, ...]:
         res = self._cr.fetchone()
         print(f"    fetchone -> {res}")
-        return res
+        return cast(tuple[Any, ...], res)
 
     def table_exists(self, name: str) -> bool:
         res = self.execute(SQL(
@@ -57,5 +57,5 @@ class SQLiteConnection(sql.Connection):
     def cursor(self) -> SQLiteCursor:
         return SQLiteCursor(self._conn.cursor())
 
-def get_cursor():
+def get_cursor() -> SQLiteCursor:
     return SQLiteConnection("test.db").cursor()

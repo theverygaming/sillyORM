@@ -1,5 +1,11 @@
+from __future__ import annotations
 from . import sql
 from .sql import SQL
+
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from .model import Model
 
 class Field():
 
@@ -12,11 +18,11 @@ class Field():
     # default values
     _primary_key = False
 
-    def __set__(self, record, value):
+    def __set__(self, record: Model, value: str | int | float) -> None:
         record.cr.execute(SQL(
             "UPDATE {table} SET {field} = {value} WHERE {id} IN {ids};",
-            table=SQL.identifier(record._name),
-            field=SQL.identifier(self._name),
+            table=SQL.identifier(cast(str, record._name)),
+            field=SQL.identifier(cast(str, self._name)),
             value=SQL.escape(value),
             id=SQL.identifier("id"),
             ids=SQL.set(record._ids),

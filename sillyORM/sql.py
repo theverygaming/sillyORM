@@ -1,4 +1,4 @@
-from typing import Self, Any
+from typing import Self, Any, cast
 import re
 from enum import Enum
 
@@ -10,7 +10,7 @@ class SqlType(Enum):
 
 class SQL():
     # WARNING: the code parameter may ABSOLUTELY not contain ANY user-provided input
-    def __init__(self, code: str, **kwargs: str) -> None:
+    def __init__(self, code: str, **kwargs: Self | str | int | float) -> None:
         self._code = code
         self._args = {}
         for k, v in kwargs.items():
@@ -18,7 +18,7 @@ class SQL():
         self.code()
 
     @classmethod
-    def escape(cls, value: str) -> Self:
+    def escape(cls, value: str | int | float) -> Self:
         # escape strings
         if isinstance(value, str):
             # escape all single quotes
@@ -34,11 +34,11 @@ class SQL():
         return cls._as_raw_sql(str(value))
 
     @classmethod
-    def __as_safe_sql_value(cls, value: str) -> str:
+    def __as_safe_sql_value(cls, value: Self | str | int | float) -> str:
         if isinstance(value, cls):
             return value.code()
 
-        return cls.escape(value).code()
+        return cls.escape(cast(str | int | float, value)).code()
 
     @classmethod
     def _as_raw_sql(cls, code: str) -> Self:
@@ -99,55 +99,3 @@ class Cursor():
 class Connection():
     def cursor(self) -> Cursor:
         raise NotImplementedError()
-
-# convenience functions
-def create_table_from_fields(cr: Cursor, name: str, fields):
-    if not len(fields):
-        raise Exception("cannot create table without columns")
-    column_sql = []
-    for field in fields:
-        column_sql.append(SQL(
-            f"{{field}} {{type}}{' PRIMARY KEY' if field._primary_key else ''}",
-            field=SQL.identifier(field._name),
-            type=SQL.type(field._sql_type)
-        ))
-    cr.execute(SQL(
-        "CREATE TABLE {name} {columns};",
-        name=SQL.identifier(name),
-        columns=SQL.set(column_sql),
-    ))
-    if not cr.table_exists(name): # needed??
-        raise Exception("could not create SQL table")
-
-def update_table_from_fields(cr, name, fields):
-    if not len(fields):
-        raise Exception("cannot create table without columns")
-    current_fields = cr.get_table_column_info(name)
-    added_fields = []
-    removed_fields = []
-    for field in fields:
-        # field alrady exists
-        if next(filter(lambda x: x.name == field._name and x.type == field._sql_type.value and x.primary_key == field._primary_key, current_fields), None) is not None:
-            continue
-        added_fields.append(field)
-    for field in current_fields:
-        # field alrady exists
-        if next(filter(lambda x: field.name == x._name and field.type == x._sql_type.value and field.primary_key == x._primary_key, fields), None) is not None:
-            continue
-        removed_fields.append(field)
-
-    # remove fields
-    for field in removed_fields:
-        cr.execute(SQL(
-            "ALTER TABLE {table} DROP COLUMN {field};",
-            table=SQL.identifier(name),
-            field=SQL.identifier(field.name),
-        ))
-    # add fields
-    for field in added_fields:
-        cr.execute(SQL(
-            f"ALTER TABLE {{table}} ADD {{field}} {{type}}{' PRIMARY KEY' if field._primary_key else ''};",
-            table=SQL.identifier(name),
-            field=SQL.identifier(field._name),
-            type=SQL.type(field._sql_type)
-        ))
