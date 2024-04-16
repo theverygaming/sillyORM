@@ -2,32 +2,33 @@ from __future__ import annotations
 from . import sql
 from .sql import SQL
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, cast, Any
 
 if TYPE_CHECKING:
     from .model import Model
 
 class Field():
-
     # __must__ be set by all fields
     _sql_type = None
-
-    # set by models
-    _name = None
 
     # default values
     _primary_key = False
 
-    def __set__(self, record: Model, value: str | int | float) -> None:
-        record.cr.execute(SQL(
-            "UPDATE {table} SET {field} = {value} WHERE {id} IN {ids};",
-            table=SQL.identifier(cast(str, record._name)),
-            field=SQL.identifier(cast(str, self._name)),
-            value=SQL.escape(value),
-            id=SQL.identifier("id"),
-            ids=SQL.set(record._ids),
-        ))
-        record.cr.commit()
+    def __set_name__(self, record, name):
+        self._name = name
+
+    def _check_type(self, value):
+        raise NotImplementedError("__check_type not implemented")
+
+    def __get__(self, record, objtype=None):
+        result = record.read([self._name])
+        if len(result) == 1:
+            return result[0][self._name]
+        return [x[self._name] for x in result]
+
+    def __set__(self, record: Model, value: Any) -> None:
+        self._check_type(value)
+        record.write({self._name: value})
 
 class Id(Field):
     _sql_type = sql.SqlType.INTEGER
@@ -44,20 +45,6 @@ class Id(Field):
 class String(Field):
     _sql_type = sql.SqlType.VARCHAR
 
-    def __get__(self, record, objtype=None):
-        record.cr.execute(SQL(
-            "SELECT {field} FROM {table} WHERE {id} IN {ids};",
-            field=SQL.identifier(self._name),
-            table=SQL.identifier(record._name),
-            id=SQL.identifier("id"),
-            ids=SQL.set(record._ids),
-        ))
-        result = [x[0] for x in record.cr.fetchall()]
-        if len(result) == 1:
-            return result[0]
-        return result
-    
-    def __set__(self, record, value):
+    def _check_type(self, value):
         if not isinstance(value, str):
-            raise Exception("must be string")
-        super().__set__(record, value)
+            raise Exception("String value be str")

@@ -2,6 +2,7 @@ from typing import Self, Any, cast
 import re
 from enum import Enum
 
+
 class SqlType(Enum):
     INTEGER = "INTEGER"
     VARCHAR = "VARCHAR"
@@ -61,12 +62,16 @@ class SQL():
         return cls._as_raw_sql(f'"{name}"')
 
     @classmethod
-    def set(cls, values: list[Any]) -> Self:
+    def commaseperated(cls, values: list[Any]) -> Self:
         if isinstance(values, tuple):
             values = list(values)
         if not isinstance(values, list):
             values = [values]
-        return cls._as_raw_sql(f"({','.join([str(cls.__as_safe_sql_value(x)) for x in values])})")
+        return cls._as_raw_sql(f"{','.join([str(cls.__as_safe_sql_value(x)) for x in values])}")
+
+    @classmethod
+    def set(cls, values: list[Any]) -> Self:
+        return cls._as_raw_sql(f"({cls.commaseperated(values).code()})")
 
     @classmethod
     def type(cls, t: SqlType) -> Self:

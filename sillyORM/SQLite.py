@@ -1,9 +1,12 @@
+import logging
 from typing import Self, Any, cast
 from collections import namedtuple
 import sqlite3
 from . import sql
 from .sql import SQL
 
+
+_logger = logging.getLogger(__name__)
 
 class SQLiteCursor(sql.Cursor):
     def __init__(self, cr: sqlite3.Cursor):
@@ -16,18 +19,18 @@ class SQLiteCursor(sql.Cursor):
         if not isinstance(sql, SQL):
             raise Exception("SQL code must be enclosed in the SQL class")
         code = sql.code()
-        print(f"    execute -> {code}")
+        _logger.debug(f"execute: {code}")
         self._cr.execute(code)
         return self
 
     def fetchall(self) -> list[tuple[Any, ...]]:
         res = self._cr.fetchall()
-        print(f"    fetchall -> {res}")
+        _logger.debug(f"fetchall: {res}")
         return res
 
     def fetchone(self) -> tuple[Any, ...]:
         res = self._cr.fetchone()
-        print(f"    fetchone -> {res}")
+        _logger.debug(f"fetchone: {res}")
         return cast(tuple[Any, ...], res)
 
     def table_exists(self, name: str) -> bool:

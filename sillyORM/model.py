@@ -1,9 +1,12 @@
+import logging
 from . import sql, SQLite, fields
 from .sql import SQL
 
+
+_logger = logging.getLogger(__name__)
+
 class MetaModel(type):
     def __new__(mcs, name, bases, attrs):
-        #print(f"meta args:\n    -> meta: {meta}\n    -> name: {name}\n    -> bases: {bases}\n    -> attrs: {attrs}")
         return type.__new__(mcs, name, bases, attrs)
 
     def __init__(cls, name, bases, attrs):
@@ -11,27 +14,14 @@ class MetaModel(type):
 
 
 class Model(metaclass=MetaModel):
-    _name = None
+    _name = ""
     id = fields.Id()
 
-    def __init__(self, ids=None):
-        if not isinstance(self._name, str):
+    def __init__(self, ids: list):
+        if not self._name:
             raise Exception("_name must be set")
 
-        if ids is None:
-            ids = []
-        if not isinstance(ids, list):
-            ids = [ids]
         self._ids = ids
-
-        # initialize field names
-        for cls in self.__class__.__mro__:
-            if not (Model in cls.__bases__ or cls == Model):
-                break
-            for key, attr in vars(cls).items():
-                if not isinstance(attr, fields.Field):
-                    continue
-                attr._name = str(key)
 
         self.cr: sql.Cursor = SQLite.get_cursor()
 
@@ -41,9 +31,10 @@ class Model(metaclass=MetaModel):
 
     def __iter__(self):
         for id in self._ids:
-            yield self.__class__(ids=id)
+            yield self.__class__(ids=[id])
 
     def _table_init(self):
+        _logger.info(f"initializing table for '{self._name}'")
         def get_all_fields():
             all_fields = []
             for cls in self.__class__.__mro__:
@@ -105,6 +96,32 @@ class Model(metaclass=MetaModel):
         if len(self._ids) != 1:
             raise Exception(f"ensure_one found {len(self._ids)} id's")
         return self
+    
+    def read(self, fields: list[str]):
+        ret = []
+        self.cr.execute(SQL(
+            "SELECT {fields} FROM {table} WHERE {id} IN {ids};",
+            fields=SQL.commaseperated([SQL.identifier(field) for field in fields]),
+            table=SQL.identifier(self._name),
+            id=SQL.identifier("id"),
+            ids=SQL.set(self._ids),
+        ))
+        for rec in self.cr.fetchall():
+            data = {}
+            for i, field in enumerate(fields):
+                data[field] = rec[i]
+            ret.append(data)
+        return ret
+
+    def write(self, vals: dict):
+        self.cr.execute(SQL(
+            "UPDATE {table} SET {data} WHERE {id} IN {ids};",
+            table=SQL.identifier(self._name),
+            data=SQL.commaseperated([SQL("{k} = {v}", k=k, v=v) for k, v in vals.items()]),
+            id=SQL.identifier("id"),
+            ids=SQL.set(self._ids),
+        ))
+        self.cr.commit()
 
     @classmethod
     def browse(cls, cr, ids):
@@ -138,4 +155,4 @@ class Model(metaclass=MetaModel):
             values=SQL.set(values)
         ))
         cr.commit()
-        return cls(ids=vals["id"])
+        return cls(ids=[vals["id"]])
