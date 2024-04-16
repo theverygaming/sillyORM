@@ -9,4 +9,4 @@ simple ORM library written in Python
 
 
 # things TODO (Templating Engine)
-- [ ] t-strip or similar to control stripping whitespace from start/end of tag
+- [X] t-strip or similar to control stripping whitespace from start/end of tag
