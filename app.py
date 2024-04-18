@@ -1,6 +1,8 @@
 import sillyORM
 import logging
 from sillyORM import sql, SQLite
+from sillyORM import SQLite
+#from sillyORM import postgresql
 
 
 class Machine(sillyORM.model.Model):
@@ -30,6 +32,8 @@ class Person(sillyORM.model.Model):
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', level=logging.DEBUG)
 
 env = sillyORM.Environment(SQLite.SQLiteConnection("test.db").cursor())
+#env = sillyORM.Environment(postgresql.PostgreSQLConnection("host=127.0.0.1 dbname=test user=postgres password=postgres").cursor())
+
 env.register_model(Machine)
 env.register_model(Person)
 

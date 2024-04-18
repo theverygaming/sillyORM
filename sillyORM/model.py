@@ -1,6 +1,6 @@
 import logging
 from typing import Any, Iterator, Self
-from . import sql, SQLite, fields
+from . import sql, fields
 from .sql import SQL
 from .environment import Environment
 
@@ -114,7 +114,7 @@ class Model(metaclass=MetaModel):
         self.env.cr.execute(SQL(
             "UPDATE {table} SET {data} WHERE {id} IN {ids};",
             table=SQL.identifier(self._name),
-            data=SQL.commaseperated([SQL("{k} = {v}", k=k, v=v) for k, v in vals.items()]),
+            data=SQL.commaseperated([SQL("{k} = {v}", k=SQL.identifier(k), v=v) for k, v in vals.items()]),
             id=SQL.identifier("id"),
             ids=SQL.set(self._ids),
         ))
@@ -146,7 +146,7 @@ class Model(metaclass=MetaModel):
         self.env.cr.execute(SQL(
             "INSERT INTO {table} {keys} VALUES {values};",
             table=SQL.identifier(self._name),
-            keys=SQL.set(keys),
+            keys=SQL.set([SQL.identifier(key) for key in keys]),
             values=SQL.set(values)
         ))
         self.env.cr.commit()
