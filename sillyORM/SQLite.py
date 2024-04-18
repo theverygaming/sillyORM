@@ -59,6 +59,6 @@ class SQLiteConnection(sql.Connection):
 
     def cursor(self) -> SQLiteCursor:
         return SQLiteCursor(self._conn.cursor())
-
-def get_cursor() -> SQLiteCursor:
-    return SQLiteConnection("test.db").cursor()
+    
+    def close(self) -> None:
+        self._conn.close()

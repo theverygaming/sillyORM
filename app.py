@@ -29,20 +29,21 @@ class Person(sillyORM.model.Model):
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', level=logging.DEBUG)
 
-models = [Machine([]), Person([])]
-for model in models:
-    model._table_init()
+env = sillyORM.Environment(SQLite.SQLiteConnection("test.db").cursor())
+env.register_model(Machine)
+env.register_model(Person)
 
-print(Machine.browse(SQLite.get_cursor(), [1, 2]))
 
-m1 = Machine.create(SQLite.get_cursor(), {"test": "machine 1"})
+print(env["machine"].browse([1, 2]))
+
+m1 = env["machine"].create({"test": "machine 1"})
 print(m1)
 
-m2 = Machine.create(SQLite.get_cursor(), {"test": "hello world from new machine record", "hello": "hello world!"})
+m2 = env["machine"].create({"test": "hello world from new machine record", "hello": "hello world!"})
 print(m2)
 m2.print(" test")
 
-m = Machine.browse(SQLite.get_cursor(), [1, 2])
+m = env["machine"].browse([1, 2])
 print(m)
 print(m.test)
 m.print(" hello")

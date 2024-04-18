@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from .model import Model
 
 class Field():
-    # __must__ be set by all fields
+    # __must__ be set by all fields # TODO: enforce
     _sql_type = None
 
     # default values

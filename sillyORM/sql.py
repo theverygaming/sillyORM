@@ -104,3 +104,6 @@ class Cursor():
 class Connection():
     def cursor(self) -> Cursor:
         raise NotImplementedError()
+    
+    def close(self) -> None:
+        raise NotImplementedError()

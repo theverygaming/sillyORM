@@ -1,0 +1,25 @@
+name: Python Test
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test dependencies
+        run: pip install pytest coverage
+      - name: run tests
+        run: coverage run --source sillyORM/ -m pytest -vv --tb=long tests/
+      - name: Report coverage
+        run: |
+          coverage report -m --omit="tests/*"
+          echo "# Coverage" >> $GITHUB_STEP_SUMMARY
+          coverage report -m --omit="tests/*" --format=markdown >> $GITHUB_STEP_SUMMARY

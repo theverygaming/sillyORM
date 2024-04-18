@@ -6,6 +6,8 @@ stdenv.mkDerivation {
     python311Packages.lxml
     python311Packages.pylint
     python311Packages.mypy
+    python311Packages.pytest
+    python311Packages.coverage
     # sqlitebrowser
   ];
 }
