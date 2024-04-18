@@ -1,4 +1,4 @@
-from typing import Self, Any, cast
+from typing import Self, Any, cast, NamedTuple
 import re
 from enum import Enum
 
@@ -62,7 +62,7 @@ class SQL():
         return cls._as_raw_sql(f'"{name}"')
 
     @classmethod
-    def commaseperated(cls, values: list[Any]) -> Self:
+    def commaseperated(cls, values: list[Any]|tuple[Any, ...]) -> Self:
         if isinstance(values, tuple):
             values = list(values)
         if not isinstance(values, list):
@@ -70,7 +70,7 @@ class SQL():
         return cls._as_raw_sql(f"{','.join([str(cls.__as_safe_sql_value(x)) for x in values])}")
 
     @classmethod
-    def set(cls, values: list[Any]) -> Self:
+    def set(cls, values: list[Any]|tuple[Any, ...]) -> Self:
         return cls._as_raw_sql(f"({cls.commaseperated(values).code()})")
 
     @classmethod
@@ -81,6 +81,12 @@ class SQL():
 
 
 # database abstractions
+class ColumnInfo(NamedTuple):
+    name: str
+    type: str
+    primary_key: bool
+
+
 class Cursor():
     def commit(self) -> None:
         raise NotImplementedError()
@@ -97,7 +103,7 @@ class Cursor():
     def table_exists(self, name: str) -> bool:
         raise NotImplementedError()
 
-    def get_table_column_info(self, name: str) -> list[tuple[str, str, bool]]: # [(name, type, primary_key)]
+    def get_table_column_info(self, name: str) -> list[ColumnInfo]:
         raise NotImplementedError()
 
 

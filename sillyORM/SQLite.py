@@ -40,9 +40,7 @@ class SQLiteCursor(sql.Cursor):
         )).fetchone()
         return res == (name,)
 
-    def get_table_column_info(self, name: str) -> list[tuple[str, str, bool]]: # [(name, type, primary_key)]
-        ColumnInfo = namedtuple("ColumnInfo", ["name", "type", "primary_key"])
-        # [(name: str, type: str, primary_key: bool)]
+    def get_table_column_info(self, name: str) -> list[sql.ColumnInfo]:
         res = self.execute(SQL(
             "SELECT {i1}, {i2}, {i3} FROM PRAGMA_TABLE_INFO({table});",
             i1=SQL.identifier("name"),
@@ -50,7 +48,7 @@ class SQLiteCursor(sql.Cursor):
             i3=SQL.identifier("pk"),
             table=SQL.identifier(name)
         )).fetchall()
-        return [ColumnInfo(n, t, bool(pk)) for n, t, pk in res]
+        return [sql.ColumnInfo(n, t, bool(pk)) for n, t, pk in res]
 
 
 class SQLiteConnection(sql.Connection):

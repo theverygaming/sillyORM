@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Iterator, Self
 from . import sql, SQLite, fields
 from .sql import SQL
 from .environment import Environment
@@ -7,34 +7,30 @@ from .environment import Environment
 _logger = logging.getLogger(__name__)
 
 class MetaModel(type):
-    def __new__(mcs, name, bases, attrs):
-        return type.__new__(mcs, name, bases, attrs)
-
-    def __init__(cls, name, bases, attrs):
-        pass
+    pass
 
 
 class Model(metaclass=MetaModel):
     _name = ""
     id = fields.Id()
 
-    def __init__(self, env: Environment, ids: list):
+    def __init__(self, env: Environment, ids: list[int]):
         if not self._name:
             raise Exception("_name must be set")
 
         self._ids = ids
         self.env = env
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         ids = self._ids #[record.id for record in self]
         return f"{self._name}{ids}"
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Self]:
         for id in self._ids:
             yield self.__class__(self.env, ids=[id])
 
     def _table_init(self) -> None:
-        def get_all_fields():
+        def get_all_fields() -> list[fields.Field]:
             all_fields = []
             for cls in self.__class__.__mro__:
                 if not (Model in cls.__bases__ or cls == Model):
@@ -71,18 +67,18 @@ class Model(metaclass=MetaModel):
                 if next(filter(lambda x: x.name == field._name and x.type == field._sql_type.value and x.primary_key == field._primary_key, current_fields), None) is not None:
                     continue
                 added_fields.append(field)
-            for field in current_fields:
+            for field_info in current_fields:
                 # field alrady exists
-                if next(filter(lambda x: field.name == x._name and field.type == x._sql_type.value and field.primary_key == x._primary_key, get_all_fields()), None) is not None:
+                if next(filter(lambda x: field_info.name == x._name and field_info.type == x._sql_type.value and field_info.primary_key == x._primary_key, get_all_fields()), None) is not None:
                     continue
-                removed_fields.append(field)
+                removed_fields.append(field_info)
 
             # remove fields
-            for field in removed_fields:
+            for field_info in removed_fields:
                 self.env.cr.execute(SQL(
                     "ALTER TABLE {table} DROP COLUMN {field};",
                     table=SQL.identifier(self._name),
-                    field=SQL.identifier(field.name),
+                    field=SQL.identifier(field_info.name),
                 ))
             # add fields
             for field in added_fields:
@@ -93,12 +89,12 @@ class Model(metaclass=MetaModel):
                     type=SQL.type(field._sql_type)
                 ))
 
-    def ensure_one(self):
+    def ensure_one(self) -> Self:
         if len(self._ids) != 1:
             raise Exception(f"ensure_one found {len(self._ids)} id's")
         return self
-    
-    def read(self, fields: list[str]):
+
+    def read(self, fields: list[str]) -> list[dict[str, Any]]:
         ret = []
         self.env.cr.execute(SQL(
             "SELECT {fields} FROM {table} WHERE {id} IN {ids};",
@@ -114,7 +110,7 @@ class Model(metaclass=MetaModel):
             ret.append(data)
         return ret
 
-    def write(self, vals: dict):
+    def write(self, vals: dict[str, Any]) -> None:
         self.env.cr.execute(SQL(
             "UPDATE {table} SET {data} WHERE {id} IN {ids};",
             table=SQL.identifier(self._name),
@@ -124,7 +120,7 @@ class Model(metaclass=MetaModel):
         ))
         self.env.cr.commit()
 
-    def browse(self, ids):
+    def browse(self, ids: list[int]|int) -> None|Self:
         if not isinstance(ids, list):
             ids = [ids]
         res = self.env.cr.execute(SQL(
@@ -137,7 +133,7 @@ class Model(metaclass=MetaModel):
             return None
         return self.__class__(self.env, ids=[id[0] for id in res])
 
-    def create(self, vals: dict[str, Any]):
+    def create(self, vals: dict[str, Any]) -> Self:
         top_id = self.env.cr.execute(SQL(
             "SELECT MAX({id}) FROM {table};",
             id=SQL.identifier("id"),

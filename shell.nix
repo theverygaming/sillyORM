@@ -8,6 +8,7 @@ stdenv.mkDerivation {
     python311Packages.mypy
     python311Packages.pytest
     python311Packages.coverage
+    sphinx
     # sqlitebrowser
   ];
 }
