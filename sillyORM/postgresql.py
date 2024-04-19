@@ -70,8 +70,8 @@ class PostgreSQLCursor(sql.Cursor):
 
 
 class PostgreSQLConnection(sql.Connection):
-    def __init__(self, filename: str):
-        self._conn = psycopg2.connect(filename)
+    def __init__(self, connstr: str, lock_timeout: int = 5000):
+        self._conn = psycopg2.connect(connstr, options=f"-c lock_timeout={lock_timeout}")
 
     def cursor(self) -> PostgreSQLCursor:
         return PostgreSQLCursor(self._conn.cursor())

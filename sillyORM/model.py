@@ -55,6 +55,7 @@ class Model(metaclass=MetaModel):
                 name=SQL.identifier(self._name),
                 columns=SQL.set(column_sql),
             ))
+            self.env.cr.commit()
             if not self.env.cr.table_exists(self._name): # needed??
                 raise Exception("could not create SQL table")
         else:
@@ -88,6 +89,7 @@ class Model(metaclass=MetaModel):
                     field=SQL.identifier(field._name),
                     type=SQL.type(field._sql_type)
                 ))
+            self.env.cr.commit()
 
     def ensure_one(self) -> Self:
         if len(self._ids) != 1:

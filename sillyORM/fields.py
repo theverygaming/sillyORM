@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from .model import Model
 
 class Field():
-    # __must__ be set by all fields # TODO: enforce
+    # __must__ be set by all fields
     _sql_type: sql.SqlType = cast(sql.SqlType, None)
 
     # default values

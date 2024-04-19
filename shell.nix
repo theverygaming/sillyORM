@@ -1,4 +1,4 @@
-with import <nixpkgs> { };
+with import (fetchTarball https://github.com/NixOS/nixpkgs/archive/66adc1e47f8784803f2deb6cacd5e07264ec2d5c.tar.gz) { };
 stdenv.mkDerivation {
   name = "sillyORM";
   buildInputs = [
