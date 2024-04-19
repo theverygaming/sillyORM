@@ -245,5 +245,5 @@ def test_write(tmp_path, db_conn_fn):
     assert r13.test3 == ["test3 field has been overwritten", "test3 field has been overwritten"]
     r3.test3 = "hello word r3"
     assert r13.test3 == ["test3 field has been overwritten", "hello word r3"]
-    
+
     assert r2_read_prev == r2.read(["test", "test2", "test3"])
