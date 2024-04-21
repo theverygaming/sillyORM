@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Self, Any, cast
 from collections import namedtuple
 import psycopg2
@@ -33,13 +34,6 @@ class PostgreSQLCursor(sql.Cursor):
         _logger.debug(f"fetchone: {res}")
         return cast(tuple[Any, ...], res)
 
-    def table_exists(self, name: str) -> bool:
-        res = self.execute(SQL(
-            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = {name};",
-            name=SQL.escape(name),
-        )).fetchone()
-        return res == (name,)
-
     def get_table_column_info(self, name: str) -> list[sql.ColumnInfo]:
         res = self.execute(SQL(
             "SELECT {i1}, {i2} FROM information_schema.columns WHERE table_schema = 'public' AND table_name = {table};",
@@ -47,26 +41,42 @@ class PostgreSQLCursor(sql.Cursor):
             i2=SQL.identifier("data_type"),
             table=SQL.escape(name)
         )).fetchall()
-        info = [sql.ColumnInfo(n, t, False) for n, t in res]
-        for i, column in enumerate(info):
+        info = []
+        for cname, ctype in res:
             res = self.execute(SQL(
                 ( "SELECT tc.constraint_type FROM information_schema.table_constraints AS "
                 + "tc JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name WHERE "
                 + "tc.table_schema = 'public' AND tc.table_name = {table} AND ccu.column_name = {column};"),
-                column=SQL.escape(column.name),
+                column=SQL.escape(cname),
                 table=SQL.escape(name)
             )).fetchall()
             pk = res == [("PRIMARY KEY",)]
-            t = column.type
-            match t:
-                case "character varying":
-                    t = "VARCHAR"
-                case "integer":
-                    t = "INTEGER"
-                case _:
-                    raise Exception(f"unknown pg type '{t}'")
-            info[i] = sql.ColumnInfo(column.name, t, pk)
+            info.append(sql.ColumnInfo(cname, self._str_type_to_sql_type(ctype), [sql.SqlConstraint.PRIMARY_KEY] if pk else []))
         return info
+
+    def _table_exists(self, name: str) -> bool:
+        res = self.execute(SQL(
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = {name};",
+            name=SQL.escape(name),
+        )).fetchone()
+        return res == (name,)
+
+    def _alter_table_add_constraint(self, table: str, column: str, constraint: sql.SqlConstraint):
+        self.execute(SQL(
+            "ALTER TABLE {table} ADD CONSTRAINT {name} {constraint};",
+            table=SQL.identifier(table),
+            name=SQL.identifier(f"constraint_{column}_{re.sub(r'[^a-zA-Z0-9_@#]', '', constraint.name)}"),
+            constraint=self._constraint_to_sql(column, constraint)
+        ))
+
+    def _str_type_to_sql_type(self, t: str) -> sql.SqlType:
+        match t:
+            case "character varying":
+                return sql.SqlType.VARCHAR
+            case "integer":
+                return sql.SqlType.INTEGER
+            case _:
+                raise Exception(f"unknown pg type '{t}'")
 
 
 class PostgreSQLConnection(sql.Connection):

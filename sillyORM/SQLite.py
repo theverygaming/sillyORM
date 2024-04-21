@@ -33,13 +33,6 @@ class SQLiteCursor(sql.Cursor):
         _logger.debug(f"fetchone: {res}")
         return cast(tuple[Any, ...], res)
 
-    def table_exists(self, name: str) -> bool:
-        res = self.execute(SQL(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name={name};",
-            name=SQL.escape(name),
-        )).fetchone()
-        return res == (name,)
-
     def get_table_column_info(self, name: str) -> list[sql.ColumnInfo]:
         res = self.execute(SQL(
             "SELECT {i1}, {i2}, {i3} FROM PRAGMA_TABLE_INFO({table});",
@@ -48,7 +41,17 @@ class SQLiteCursor(sql.Cursor):
             i3=SQL.identifier("pk"),
             table=SQL.identifier(name)
         )).fetchall()
-        return [sql.ColumnInfo(n, t, bool(pk)) for n, t, pk in res]
+        return [sql.ColumnInfo(n, self._str_type_to_sql_type(t), [sql.SqlConstraint.PRIMARY_KEY] if pk else []) for n, t, pk in res]
+
+    def _table_exists(self, name: str) -> bool:
+        res = self.execute(SQL(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name={name};",
+            name=SQL.escape(name),
+        )).fetchone()
+        return res == (name,)
+
+    def _alter_table_add_constraint(self, table: str, column: str, constraint: sql.SqlConstraint):
+        pass # SQLite does not support this...
 
 
 class SQLiteConnection(sql.Connection):

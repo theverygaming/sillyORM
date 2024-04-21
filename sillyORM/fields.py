@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING, Any, cast
 if TYPE_CHECKING:
     from .model import Model
 
+
 class Field():
     # __must__ be set by all fields
     _sql_type: sql.SqlType = cast(sql.SqlType, None)
 
-    # default values
-    _primary_key = False
+    _constraints: sql.SqlConstraint = []
 
     def __init__(self) -> None:
         if self._sql_type is None:
@@ -33,10 +33,11 @@ class Field():
         self._check_type(value)
         record.write({self._name: value})
 
+
 class Id(Field):
     _sql_type = sql.SqlType.INTEGER
 
-    _primary_key = True
+    _constraints = [sql.SqlConstraint.PRIMARY_KEY]
 
     def __get__(self, record: Model, objtype: Any = None) -> int:
         record.ensure_one()
@@ -44,6 +45,7 @@ class Id(Field):
 
     def __set__(self, record: Model, value: Any) -> None:
         raise Exception("cannot set id")
+
 
 class String(Field):
     _sql_type = sql.SqlType.VARCHAR

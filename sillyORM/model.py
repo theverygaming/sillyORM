@@ -41,55 +41,10 @@ class Model(metaclass=MetaModel):
                     all_fields.append(attr)
             return all_fields
 
-        if not self.env.cr.table_exists(self._name):
-            _logger.debug(f"initializing table for '{self._name}'")
-            column_sql = []
-            for field in get_all_fields():
-                column_sql.append(SQL(
-                    f"{{field}} {{type}}{' PRIMARY KEY' if field._primary_key else ''}",
-                    field=SQL.identifier(field._name),
-                    type=SQL.type(field._sql_type)
-                ))
-            self.env.cr.execute(SQL(
-                "CREATE TABLE {name} {columns};",
-                name=SQL.identifier(self._name),
-                columns=SQL.set(column_sql),
-            ))
-            self.env.cr.commit()
-            if not self.env.cr.table_exists(self._name): # needed??
-                raise Exception("could not create SQL table")
-        else:
-            _logger.debug(f"updating table for '{self._name}'")
-            current_fields = self.env.cr.get_table_column_info(self._name)
-            added_fields = []
-            removed_fields = []
-            for field in get_all_fields():
-                # field alrady exists
-                if next(filter(lambda x: x.name == field._name and x.type == field._sql_type.value and x.primary_key == field._primary_key, current_fields), None) is not None:
-                    continue
-                added_fields.append(field)
-            for field_info in current_fields:
-                # field alrady exists
-                if next(filter(lambda x: field_info.name == x._name and field_info.type == x._sql_type.value and field_info.primary_key == x._primary_key, get_all_fields()), None) is not None:
-                    continue
-                removed_fields.append(field_info)
-
-            # remove fields
-            for field_info in removed_fields:
-                self.env.cr.execute(SQL(
-                    "ALTER TABLE {table} DROP COLUMN {field};",
-                    table=SQL.identifier(self._name),
-                    field=SQL.identifier(field_info.name),
-                ))
-            # add fields
-            for field in added_fields:
-                self.env.cr.execute(SQL(
-                    f"ALTER TABLE {{table}} ADD {{field}} {{type}}{' PRIMARY KEY' if field._primary_key else ''};",
-                    table=SQL.identifier(self._name),
-                    field=SQL.identifier(field._name),
-                    type=SQL.type(field._sql_type)
-                ))
-            self.env.cr.commit()
+        self.env.cr.ensure_table(
+            self._name,
+            [sql.ColumnInfo(field._name, field._sql_type, field._constraints) for field in get_all_fields()]
+        )
 
     def ensure_one(self) -> Self:
         if len(self._ids) != 1:

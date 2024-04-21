@@ -9,6 +9,14 @@ class SqlType(Enum):
     DATE = "DATE" # warning, some DBMS include a timestamp for DATE
     TIMESTAMP = "TIMESTAMP"
 
+
+class SqlConstraint(Enum):
+    NOT_NULL = 1
+    UNIQUE = 2
+    PRIMARY_KEY = 3
+    FOREIGN_KEY = 4
+
+
 class SQL():
     # WARNING: the code parameter may ABSOLUTELY not contain ANY user-provided input
     def __init__(self, code: str, **kwargs: Self | str | int | float) -> None:
@@ -67,7 +75,7 @@ class SQL():
             values = list(values)
         if not isinstance(values, list):
             values = [values]
-        return cls._as_raw_sql(f"{','.join([str(cls.__as_safe_sql_value(x)) for x in values])}")
+        return cls._as_raw_sql(f"{', '.join([str(cls.__as_safe_sql_value(x)) for x in values])}")
 
     @classmethod
     def set(cls, values: list[Any]|tuple[Any, ...]) -> Self:
@@ -83,8 +91,8 @@ class SQL():
 # database abstractions
 class ColumnInfo(NamedTuple):
     name: str
-    type: str
-    primary_key: bool
+    type: SqlType
+    constraints: list[SqlConstraint]
 
 
 class Cursor():
@@ -100,11 +108,86 @@ class Cursor():
     def fetchone(self) -> tuple[Any, ...]:
         raise NotImplementedError()
 
-    def table_exists(self, name: str) -> bool:
-        raise NotImplementedError()
+    def ensure_table(self, name: str, columns: ColumnInfo) -> None:
+        if not self._table_exists(name):
+            column_sql = [
+                *[SQL("{name} {type}", name=SQL.identifier(column.name), type=SQL.type(column.type)) for column in columns]
+            ]
+            for column in columns:
+                column_sql += [self._constraint_to_sql(column.name, constraint) for constraint in column.constraints]
+            self.execute(SQL(
+                "CREATE TABLE {name} {columns};",
+                name=SQL.identifier(name),
+                columns=SQL.set(column_sql),
+            ))
+            self.commit()
+        else:
+            current_columns = self.get_table_column_info(name)
+            add_columns = []
+            remove_columns = []
+
+            for column in columns:
+                if next(filter(
+                    lambda x: (
+                        x.name == column.name
+                        and x.type == column.type
+                    ), current_columns
+                ), None) is not None:
+                    continue
+                print(f"add: {column}")
+                add_columns.append(column)
+
+            for column_info in current_columns:
+                if next(filter(
+                    lambda x: (
+                        column_info.name == x.name
+                        and column_info.type == x.type
+                    ), columns
+                ), None) is not None:
+                    continue
+                print(f"rm: {column_info}")
+                remove_columns.append(column_info)
+
+            for column_info in remove_columns:
+                self.execute(SQL(
+                    "ALTER TABLE {table} DROP COLUMN {field};",
+                    table=SQL.identifier(name),
+                    field=SQL.identifier(column_info.name),
+                ))
+
+            for column in add_columns:
+                self.execute(SQL(
+                    "ALTER TABLE {table} ADD {field} {type};",
+                    table=SQL.identifier(name),
+                    field=SQL.identifier(column.name),
+                    type=SQL.type(column.type)
+                ))
+                for constraint in column.constraints:
+                    self._alter_table_add_constraint(name, column.name, constraint)
+
+            self.commit()
 
     def get_table_column_info(self, name: str) -> list[ColumnInfo]:
         raise NotImplementedError()
+    
+    def _table_exists(self, name: str) -> bool:
+        raise NotImplementedError()
+
+    def _constraint_to_sql(self, column: str, constraint: SqlConstraint) -> None:
+        match constraint:
+            case SqlConstraint.PRIMARY_KEY:
+                return SQL("PRIMARY KEY ({name})", name=SQL.identifier(column))
+            case _:
+                raise Exception(f"unknown SQL constraint {constraint}")
+
+    def _alter_table_add_constraint(self, table: str, column: str, constraint: SqlConstraint):
+        raise NotImplementedError()
+
+    def _str_type_to_sql_type(self, t: str) -> SqlType:
+        return SqlType(t)
+
+    def _sql_type_to_str_type(t: SqlType) -> str:
+        return t.value
 
 
 class Connection():

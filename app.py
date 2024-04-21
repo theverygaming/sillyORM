@@ -1,8 +1,7 @@
 import sillyORM
 import logging
 from sillyORM import sql, SQLite
-from sillyORM import SQLite
-#from sillyORM import postgresql
+from sillyORM import SQLite, postgresql
 
 
 class Machine(sillyORM.model.Model):
