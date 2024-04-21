@@ -11,7 +11,7 @@ class Field():
     # __must__ be set by all fields
     _sql_type: sql.SqlType = cast(sql.SqlType, None)
 
-    _constraints: sql.SqlConstraint = []
+    _constraints: list[tuple[sql.SqlConstraint, dict[str, Any]]] = []
 
     def __init__(self) -> None:
         if self._sql_type is None:
@@ -34,10 +34,18 @@ class Field():
         record.write({self._name: value})
 
 
-class Id(Field):
+class Integer(Field):
     _sql_type = sql.SqlType.INTEGER
 
-    _constraints = [sql.SqlConstraint.PRIMARY_KEY]
+    _constraints = []
+
+    def _check_type(self, value: Any) -> None:
+        if not isinstance(value, int):
+            raise Exception("Integer value must be int")
+
+
+class Id(Integer):
+    _constraints = [(sql.SqlConstraint.PRIMARY_KEY, {})]
 
     def __get__(self, record: Model, objtype: Any = None) -> int:
         record.ensure_one()
@@ -52,4 +60,8 @@ class String(Field):
 
     def _check_type(self, value: Any) -> None:
         if not isinstance(value, str):
-            raise Exception("String value be str")
+            raise Exception("String value must be str")
+
+
+class Many2one(Integer):
+    _constraints = [(sql.SqlConstraint.FOREIGN_KEY, {})]

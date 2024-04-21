@@ -173,12 +173,12 @@ class Cursor():
     def _table_exists(self, name: str) -> bool:
         raise NotImplementedError()
 
-    def _constraint_to_sql(self, column: str, constraint: SqlConstraint) -> None:
-        match constraint:
+    def _constraint_to_sql(self, column: str, constraint: tuple[SqlConstraint, dict[str, Any]]) -> None:
+        match constraint[0]:
             case SqlConstraint.PRIMARY_KEY:
                 return SQL("PRIMARY KEY ({name})", name=SQL.identifier(column))
             case _:
-                raise Exception(f"unknown SQL constraint {constraint}")
+                raise Exception(f"unknown SQL constraint {constraint[0]}")
 
     def _alter_table_add_constraint(self, table: str, column: str, constraint: SqlConstraint):
         raise NotImplementedError()

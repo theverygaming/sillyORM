@@ -10,6 +10,8 @@ class Machine(sillyORM.model.Model):
     test = sillyORM.fields.String()
     hello = sillyORM.fields.String()
 
+    x = sillyORM.fields.Many2one()
+
     def print(self, x):
         print(self.read(["test", "hello"]))
         for record in self:
