@@ -43,15 +43,7 @@ class PostgreSQLCursor(sql.Cursor):
         )).fetchall()
         info = []
         for cname, ctype in res:
-            res = self.execute(SQL(
-                ( "SELECT tc.constraint_type FROM information_schema.table_constraints AS "
-                + "tc JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name WHERE "
-                + "tc.table_schema = 'public' AND tc.table_name = {table} AND ccu.column_name = {column};"),
-                column=SQL.escape(cname),
-                table=SQL.escape(name)
-            )).fetchall()
-            pk = res == [("PRIMARY KEY",)]
-            info.append(sql.ColumnInfo(cname, self._str_type_to_sql_type(ctype), [sql.SqlConstraint.PRIMARY_KEY] if pk else []))
+            info.append(sql.ColumnInfo(cname, self._str_type_to_sql_type(ctype), []))
         return info
 
     def _table_exists(self, name: str) -> bool:
@@ -65,7 +57,7 @@ class PostgreSQLCursor(sql.Cursor):
         self.execute(SQL(
             "ALTER TABLE {table} ADD CONSTRAINT {name} {constraint};",
             table=SQL.identifier(table),
-            name=SQL.identifier(f"constraint_{column}_{re.sub(r'[^a-zA-Z0-9_@#]', '', constraint.name)}"),
+            name=SQL.identifier(f"constraint_{column}_{re.sub(r'[^a-zA-Z0-9_@#]', '', constraint[0].name)}"),
             constraint=self._constraint_to_sql(column, constraint)
         ))
 

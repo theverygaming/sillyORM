@@ -62,6 +62,9 @@ class SQL():
 
     def __repr__(self) -> str:
         return f"SQL({self.code()})"
+    
+    def __add__(self, sql: Self):
+        return self._as_raw_sql(self.code() + sql.code())
 
     @classmethod
     def identifier(cls, name: str) -> Self:
@@ -177,6 +180,8 @@ class Cursor():
         match constraint[0]:
             case SqlConstraint.PRIMARY_KEY:
                 return SQL("PRIMARY KEY ({name})", name=SQL.identifier(column))
+            case SqlConstraint.FOREIGN_KEY:
+                return SQL("FOREIGN KEY ({name}) REFERENCES {ftable}({fname})", name=SQL.identifier(column), ftable=SQL.identifier(constraint[1]["table"]), fname=SQL.identifier(constraint[1]["column"]))
             case _:
                 raise Exception(f"unknown SQL constraint {constraint[0]}")
 

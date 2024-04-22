@@ -43,7 +43,7 @@ class Model(metaclass=MetaModel):
 
         self.env.cr.ensure_table(
             self._name,
-            [sql.ColumnInfo(field._name, field._sql_type, field._constraints) for field in get_all_fields()]
+            [sql.ColumnInfo(field._name, field._sql_type, field._constraints) for field in get_all_fields() if field._materialize]
         )
 
     def ensure_one(self) -> Self:
@@ -108,3 +108,42 @@ class Model(metaclass=MetaModel):
         ))
         self.env.cr.commit()
         return self.__class__(self.env, ids=[vals["id"]])
+
+    def search(self, domain: list[str|tuple[str, str, Any]]) -> Self:
+        def parse_cmp_op(op: str):
+            ops = {
+                "=": "=",
+                "!=": "<>",
+                ">": ">",
+                "<": "<",
+                ">=": ">=",
+                "<=": "<=",
+            }
+            return SQL(ops[op])
+
+        def parse_criteria(op: tuple[str, str, Any]):
+            return SQL(" {field} {op} {val} ", field=SQL.identifier(op[0]), op=parse_cmp_op(op[1]), val=op[2])
+
+        search_sql = SQL("")
+        for elem in domain:
+            if isinstance(elem, tuple):
+                search_sql += parse_criteria(elem)
+            else:
+                ops = {
+                    "&": "AND",
+                    "|": "OR",
+                    "!": "NOT",
+                    "(": "(",
+                    ")": ")",
+                }
+                search_sql += SQL(f" {ops[elem]} ")
+
+        res = self.env.cr.execute(SQL(
+            "SELECT {id} FROM {table} WHERE {condition};",
+            id=SQL.identifier("id"),
+            table=SQL.identifier(self._name),
+            condition=search_sql
+        )).fetchall()
+        if len(res) == 0:
+            return None
+        return self.__class__(self.env, ids=[id[0] for id in res])

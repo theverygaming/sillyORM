@@ -10,6 +10,9 @@ if TYPE_CHECKING:
 class Field():
     # __must__ be set by all fields
     _sql_type: sql.SqlType = cast(sql.SqlType, None)
+    
+    # default values
+    _materialize = True  # if the field should actually exist in tables
 
     _constraints: list[tuple[sql.SqlConstraint, dict[str, Any]]] = []
 
@@ -64,4 +67,40 @@ class String(Field):
 
 
 class Many2one(Integer):
-    _constraints = [(sql.SqlConstraint.FOREIGN_KEY, {})]
+    _constraints = []
+
+    def __init__(self, foreign_model: str):
+        self._foreign_model = foreign_model
+        self._constraints = [(
+            sql.SqlConstraint.FOREIGN_KEY,
+            {"table": foreign_model, "column": "id"}
+        )]
+    
+    def __get__(self, record: Model, objtype: Any = None) -> None|Model:
+        ids = super().__get__(record, objtype)
+        if ids is None:
+            return None
+        if isinstance(ids, list):
+            ids = list(filter(lambda x: x is not None, ids))
+            if len(ids) == 0:
+                return None
+        return record.env[self._foreign_model].browse(ids)
+
+    def __set__(self, record: Model, value: Model) -> None:
+        value.ensure_one()
+        super().__set__(record, value.id)
+
+
+class One2many(Field):
+    _materialize = False
+
+    def __init__(self, foreign_model: str, foreign_field: str):
+        self._foreign_model = foreign_model
+        self._foreign_field = foreign_field
+
+    def __get__(self, record: Model, objtype: Any = None) -> None|Model:
+        record.ensure_one()
+        return record.env[self._foreign_model].search([(self._foreign_field, "=", record.id)])
+
+    def __set__(self, record: Model, value: Model) -> None:
+        raise NotImplementedError()

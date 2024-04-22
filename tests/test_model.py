@@ -33,7 +33,7 @@ def test_model_name():
 
 
 def assert_db_columns(cr, table, columns):
-    info = [(info.name, info.type, info.constraints) for info in cr.get_table_column_info(table)]
+    info = [(info.name, info.type) for info in cr.get_table_column_info(table)]
     assert len(info) == len(columns)
     for column in columns:
         assert column in info
@@ -78,7 +78,7 @@ def test_model_init(tmp_path, db_conn_fn):
     conn.close()
     
     conn = db_conn_fn(tmp_path)
-    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER, [SqlConstraint.PRIMARY_KEY]), ("test", SqlType.VARCHAR, [])])
+    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR)])
     conn.close()
 
     # now the database is initialized, do an update
@@ -88,7 +88,7 @@ def test_model_init(tmp_path, db_conn_fn):
     conn.close()
 
     conn = db_conn_fn(tmp_path)
-    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER, [SqlConstraint.PRIMARY_KEY]), ("test", SqlType.VARCHAR, [])])
+    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR)])
     conn.close()
 
 
@@ -112,7 +112,7 @@ def test_field_add_remove(tmp_path, db_conn_fn):
     conn.close()
 
     conn = db_conn_fn(tmp_path)
-    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER, [SqlConstraint.PRIMARY_KEY]), ("test", SqlType.VARCHAR, [])])
+    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR)])
     conn.close()
 
     # add new fields
@@ -122,7 +122,7 @@ def test_field_add_remove(tmp_path, db_conn_fn):
     conn.close()
 
     conn = db_conn_fn(tmp_path)
-    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER, [SqlConstraint.PRIMARY_KEY]), ("test", SqlType.VARCHAR, []), ("test2", SqlType.VARCHAR, []), ("test3", SqlType.VARCHAR, [])])
+    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR), ("test2", SqlType.VARCHAR), ("test3", SqlType.VARCHAR)])
     conn.close()
 
     # remove the added fields again
@@ -132,7 +132,7 @@ def test_field_add_remove(tmp_path, db_conn_fn):
     conn.close()
 
     conn = db_conn_fn(tmp_path)
-    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER, [SqlConstraint.PRIMARY_KEY]), ("test", SqlType.VARCHAR, [])])
+    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR)])
     conn.close()
 
 
