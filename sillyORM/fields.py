@@ -3,7 +3,7 @@ from . import sql
 
 from typing import TYPE_CHECKING, Any, cast
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from .model import Model
 
 
@@ -24,7 +24,7 @@ class Field():
         self._name = name
 
     def _check_type(self, value: Any) -> None:
-        raise NotImplementedError("__check_type not implemented")
+        raise NotImplementedError("__check_type not implemented")  # pragma: no cover
 
     def __get__(self, record: Model, objtype: Any = None) -> Any|list[Any]:
         result = record.read([self._name])

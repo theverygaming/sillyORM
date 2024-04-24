@@ -2,7 +2,8 @@ import re
 import pytest
 import psycopg2
 import sillyORM
-from sillyORM import SQLite, postgresql
+from sillyORM.dbms import SQLite
+from sillyORM.dbms import postgresql
 from sillyORM.sql import SqlType, SqlConstraint
 
 def pg_conn(tmp_path):
@@ -247,3 +248,41 @@ def test_write(tmp_path, db_conn_fn):
     assert r13.test3 == ["test3 field has been overwritten", "hello word r3"]
 
     assert r2_read_prev == r2.read(["test", "test2", "test3"])
+
+@pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
+def test_search(tmp_path, db_conn_fn):
+    class TestModel(sillyORM.model.Model):
+        _name = "test_model"
+
+        test = sillyORM.fields.String()
+        test2 = sillyORM.fields.String()
+        test3 = sillyORM.fields.String()
+
+    def new_env():
+        env = sillyORM.Environment(db_conn_fn(tmp_path).cursor())
+        env.register_model(TestModel)
+        return env
+
+    env = new_env()
+    r1 = env['test_model'].create({"test": "hello world!", "test2": "test2", "test3": "Hii!!"})
+    r2 = env['test_model'].create({"test": "2 hello world!", "test2": "2 test2", "test3": "2 Hii!!"})
+    r3 = env['test_model'].create({"test": "3 hello world!", "test2": "3 test2", "test3": "3 Hii!!"})
+    assert r1.id == 1
+    assert r2.id == 2
+    assert r3.id == 3
+
+    env = new_env()
+
+    r13 = env['test_model'].search([("test2", "=", "test2"), "|", ("test3", "=", "3 Hii!!")])
+    assert sorted(r13._ids) == [1, 3]
+
+    env = new_env()
+
+    r2 = env['test_model'].search(["(", ("test2", "=", "test2"), "&", ("test", "=", "hello world!"), ")", "|", ("test2", "=", "2 Hii!!")])
+    assert r2._ids == [1]
+
+    env = new_env()
+
+    assert env['test_model'].search([
+        "(", ("test2", "=", "test2"), "&", ("test", "=", "hello world!"), ")", "&", ("test2", "=", "2 Hii!!")
+    ]) is None

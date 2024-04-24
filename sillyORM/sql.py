@@ -63,7 +63,7 @@ class SQL():
     def __repr__(self) -> str:
         return f"SQL({self.code()})"
     
-    def __add__(self, sql: Self):
+    def __add__(self, sql: Self) -> Self:
         return self._as_raw_sql(self.code() + sql.code())
 
     @classmethod
@@ -95,23 +95,26 @@ class SQL():
 class ColumnInfo(NamedTuple):
     name: str
     type: SqlType
-    constraints: list[SqlConstraint]
+    constraints: list[tuple[SqlConstraint, dict[str, Any]]]
 
 
 class Cursor():
     def commit(self) -> None:
-        raise NotImplementedError()
+        raise NotImplementedError()  # pragma: no cover
+
+    def rollback(self) -> None:
+        raise NotImplementedError()  # pragma: no cover
 
     def execute(self, sql: SQL) -> Self:
-        raise NotImplementedError()
+        raise NotImplementedError()  # pragma: no cover
 
     def fetchall(self) -> list[tuple[Any, ...]]:
-        raise NotImplementedError()
+        raise NotImplementedError()  # pragma: no cover
 
     def fetchone(self) -> tuple[Any, ...]:
-        raise NotImplementedError()
+        raise NotImplementedError()  # pragma: no cover
 
-    def ensure_table(self, name: str, columns: ColumnInfo) -> None:
+    def ensure_table(self, name: str, columns: list[ColumnInfo]) -> None:
         if not self._table_exists(name):
             column_sql = [
                 *[SQL("{name} {type}", name=SQL.identifier(column.name), type=SQL.type(column.type)) for column in columns]
@@ -137,7 +140,6 @@ class Cursor():
                     ), current_columns
                 ), None) is not None:
                     continue
-                print(f"add: {column}")
                 add_columns.append(column)
 
             for column_info in current_columns:
@@ -148,7 +150,6 @@ class Cursor():
                     ), columns
                 ), None) is not None:
                     continue
-                print(f"rm: {column_info}")
                 remove_columns.append(column_info)
 
             for column_info in remove_columns:
@@ -171,12 +172,12 @@ class Cursor():
             self.commit()
 
     def get_table_column_info(self, name: str) -> list[ColumnInfo]:
-        raise NotImplementedError()
+        raise NotImplementedError()  # pragma: no cover
     
     def _table_exists(self, name: str) -> bool:
-        raise NotImplementedError()
+        raise NotImplementedError()  # pragma: no cover
 
-    def _constraint_to_sql(self, column: str, constraint: tuple[SqlConstraint, dict[str, Any]]) -> None:
+    def _constraint_to_sql(self, column: str, constraint: tuple[SqlConstraint, dict[str, Any]]) -> SQL:
         match constraint[0]:
             case SqlConstraint.PRIMARY_KEY:
                 return SQL("PRIMARY KEY ({name})", name=SQL.identifier(column))
@@ -185,19 +186,20 @@ class Cursor():
             case _:
                 raise Exception(f"unknown SQL constraint {constraint[0]}")
 
-    def _alter_table_add_constraint(self, table: str, column: str, constraint: SqlConstraint):
-        raise NotImplementedError()
+    def _alter_table_add_constraint(self, table: str, column: str, constraint: tuple[SqlConstraint, dict[str, Any]]) -> None:
+        raise NotImplementedError()  # pragma: no cover
 
     def _str_type_to_sql_type(self, t: str) -> SqlType:
         return SqlType(t)
 
-    def _sql_type_to_str_type(t: SqlType) -> str:
-        return t.value
+    # commented out because it's currently unused
+    #  def _sql_type_to_str_type(t: SqlType) -> str:
+    #      return t.value
 
 
 class Connection():
     def cursor(self) -> Cursor:
-        raise NotImplementedError()
+        raise NotImplementedError()  # pragma: no cover
     
     def close(self) -> None:
-        raise NotImplementedError()
+        raise NotImplementedError()  # pragma: no cover

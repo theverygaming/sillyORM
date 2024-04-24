@@ -40,7 +40,7 @@ class Model(metaclass=MetaModel):
                         continue
                     all_fields.append(attr)
             return all_fields
-
+        _logger.debug(f"initializing table for model: '{self._name}'")
         self.env.cr.ensure_table(
             self._name,
             [sql.ColumnInfo(field._name, field._sql_type, field._constraints) for field in get_all_fields() if field._materialize]
@@ -75,7 +75,8 @@ class Model(metaclass=MetaModel):
             id=SQL.identifier("id"),
             ids=SQL.set(self._ids),
         ))
-        self.env.cr.commit()
+        if self.env.do_commit:
+            self.env.cr.commit()
 
     def browse(self, ids: list[int]|int) -> None|Self:
         if not isinstance(ids, list):
@@ -106,11 +107,12 @@ class Model(metaclass=MetaModel):
             keys=SQL.set([SQL.identifier(key) for key in keys]),
             values=SQL.set(values)
         ))
-        self.env.cr.commit()
+        if self.env.do_commit:
+            self.env.cr.commit()
         return self.__class__(self.env, ids=[vals["id"]])
 
-    def search(self, domain: list[str|tuple[str, str, Any]]) -> Self:
-        def parse_cmp_op(op: str):
+    def search(self, domain: list[str|tuple[str, str, Any]]) -> Self|None:
+        def parse_cmp_op(op: str) -> SQL:
             ops = {
                 "=": "=",
                 "!=": "<>",
@@ -121,7 +123,7 @@ class Model(metaclass=MetaModel):
             }
             return SQL(ops[op])
 
-        def parse_criteria(op: tuple[str, str, Any]):
+        def parse_criteria(op: tuple[str, str, Any]) -> SQL:
             return SQL(" {field} {op} {val} ", field=SQL.identifier(op[0]), op=parse_cmp_op(op[1]), val=op[2])
 
         search_sql = SQL("")

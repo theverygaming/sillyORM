@@ -3,14 +3,15 @@ import logging
 from typing import TYPE_CHECKING
 from . import sql
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from .model import Model
 
 _logger = logging.getLogger(__name__)
 
 class Environment():
-    def __init__(self, cursor: sql.Cursor):
+    def __init__(self, cursor: sql.Cursor, do_commit: bool = True):
         self.cr = cursor
+        self.do_commit = do_commit
         self._models: dict[str, type[Model]] = {}
 
     def register_model(self, model: type[Model]) -> None:

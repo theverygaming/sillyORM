@@ -3,8 +3,8 @@ import re
 from typing import Self, Any, cast
 from collections import namedtuple
 import psycopg2
-from . import sql
-from .sql import SQL
+from .. import sql
+from ..sql import SQL
 
 
 _logger = logging.getLogger(__name__)
@@ -15,6 +15,9 @@ class PostgreSQLCursor(sql.Cursor):
 
     def commit(self) -> None:
         self._cr.connection.commit()
+
+    def rollback(self) -> None:
+        self._cr.connection.rollback()
 
     def execute(self, sql: sql.SQL) -> Self:
         if not isinstance(sql, SQL):
@@ -53,7 +56,7 @@ class PostgreSQLCursor(sql.Cursor):
         )).fetchone()
         return res == (name,)
 
-    def _alter_table_add_constraint(self, table: str, column: str, constraint: sql.SqlConstraint):
+    def _alter_table_add_constraint(self, table: str, column: str, constraint: tuple[sql.SqlConstraint, dict[str, Any]]) -> None:
         self.execute(SQL(
             "ALTER TABLE {table} ADD CONSTRAINT {name} {constraint};",
             table=SQL.identifier(table),

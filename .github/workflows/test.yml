@@ -3,7 +3,7 @@ name: Python Test
 on: [push]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     services:
       postgres:

@@ -2,8 +2,8 @@ import logging
 from typing import Self, Any, cast
 from collections import namedtuple
 import sqlite3
-from . import sql
-from .sql import SQL
+from .. import sql
+from ..sql import SQL
 
 
 _logger = logging.getLogger(__name__)
@@ -14,6 +14,9 @@ class SQLiteCursor(sql.Cursor):
 
     def commit(self) -> None:
         self._cr.connection.commit()
+
+    def rollback(self) -> None:
+        self._cr.connection.rollback()
 
     def execute(self, sql: sql.SQL) -> Self:
         if not isinstance(sql, SQL):
@@ -41,7 +44,7 @@ class SQLiteCursor(sql.Cursor):
             i3=SQL.identifier("pk"),
             table=SQL.identifier(name)
         )).fetchall()
-        return [sql.ColumnInfo(n, self._str_type_to_sql_type(t), [sql.SqlConstraint.PRIMARY_KEY] if pk else []) for n, t, pk in res]
+        return [sql.ColumnInfo(n, self._str_type_to_sql_type(t), [(sql.SqlConstraint.PRIMARY_KEY, {})] if pk else []) for n, t, pk in res]
 
     def _table_exists(self, name: str) -> bool:
         res = self.execute(SQL(
@@ -50,7 +53,7 @@ class SQLiteCursor(sql.Cursor):
         )).fetchone()
         return res == (name,)
 
-    def _alter_table_add_constraint(self, table: str, column: str, constraint: sql.SqlConstraint):
+    def _alter_table_add_constraint(self, table: str, column: str, constraint: tuple[sql.SqlConstraint, dict[str, Any]]) -> None:
         pass # SQLite does not support this...
 
 
