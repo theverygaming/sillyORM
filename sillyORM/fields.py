@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 from . import sql
 
 from typing import TYPE_CHECKING, Any, cast
@@ -6,6 +7,7 @@ from typing import TYPE_CHECKING, Any, cast
 if TYPE_CHECKING:  # pragma: no cover
     from .model import Model
 
+_logger = logging.getLogger(__name__)
 
 class Field():
     # __must__ be set by all fields
@@ -19,6 +21,9 @@ class Field():
     def __init__(self) -> None:
         if self._sql_type is None:
             raise Exception("_sql_type must be set")
+
+    def _model_post_init(self, record: Model) -> None:
+        pass
 
     def __set_name__(self, record: Model, name: str) -> None:
         self._name = name
@@ -101,6 +106,51 @@ class One2many(Field):
     def __get__(self, record: Model, objtype: Any = None) -> None|Model:
         record.ensure_one()
         return record.env[self._foreign_model].search([(self._foreign_field, "=", record.id)])
+
+    def __set__(self, record: Model, value: Model) -> None:
+        raise NotImplementedError()
+
+class Many2many(Field):
+    _materialize = False
+
+    def __init__(self, foreign_model: str):
+        self._foreign_model = foreign_model
+
+    def _model_post_init(self, record: Model) -> None:
+        self._joint_table_name = f"_joint_{record._name}_{self._name}_{self._foreign_model}"
+        self._joint_table_self_name = f"{record._name}_id"
+        self._joint_table_foreign_name = f"{self._foreign_model}_id"
+        _logger.debug(f"initializing many2many joint table: '{record._name}.{self._name}' -> '{self._foreign_model}' named '{self._joint_table_name}'")
+        record.env.cr.ensure_table(
+            self._joint_table_name,
+            [
+                sql.ColumnInfo(
+                    self._joint_table_self_name,
+                    sql.SqlType.INTEGER,
+                    [(sql.SqlConstraint.FOREIGN_KEY, {"table": record._name, "column": "id"})],
+                ),
+                sql.ColumnInfo(
+                    self._joint_table_foreign_name,
+                    sql.SqlType.INTEGER,
+                    [(sql.SqlConstraint.FOREIGN_KEY, {"table": self._foreign_model, "column": "id"})],
+                )
+            ],
+        )
+
+    def __get__(self, record: Model, objtype: Any = None) -> None|Model:
+        record.ensure_one()
+        # TODO: we need a generic SQL search helper
+        # TODO: we need a generic SQL table manager class
+        res = record.env.cr.execute(sql.SQL(
+            "SELECT {column_1} FROM {table} WHERE {column_2} = {value};",
+            column_1=sql.SQL.identifier(self._joint_table_foreign_name),
+            table=sql.SQL.identifier(self._joint_table_name),
+            column_2=sql.SQL.identifier(self._joint_table_self_name),
+            value=record.id,
+        )).fetchall()
+        if len(res) == 0:
+            return None
+        return record.env[self._foreign_model].__class__(record.env, ids=[id[0] for id in res])
 
     def __set__(self, record: Model, value: Model) -> None:
         raise NotImplementedError()

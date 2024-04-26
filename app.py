@@ -5,6 +5,11 @@ from sillyORM.dbms import SQLite
 from sillyORM.dbms import SQLite, postgresql
 
 
+class Thing(sillyORM.model.Model):
+    _name = "thing"
+    name = sillyORM.fields.String()
+
+
 class Machine(sillyORM.model.Model):
     _name = "machine"
 
@@ -26,12 +31,14 @@ class Machine(sillyORM.model.Model):
             print(record.test)
         print(self.test)
 
+
 class Person(sillyORM.model.Model):
     _name = "person"
 
     hello = sillyORM.fields.String()
 
     machine_ids = sillyORM.fields.One2many("machine", "person_id")
+    thing_ids = sillyORM.fields.Many2many("thing")
 
     def test(self):
         print(self)
@@ -42,6 +49,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', le
 env = sillyORM.Environment(SQLite.SQLiteConnection("test.db").cursor())
 #env = sillyORM.Environment(postgresql.PostgreSQLConnection("host=127.0.0.1 dbname=test user=postgres password=postgres").cursor())
 
+env.register_model(Thing)
 env.register_model(Person)
 env.register_model(Machine)
 

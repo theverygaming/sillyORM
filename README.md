@@ -4,7 +4,7 @@ simple ORM library written in Python
 # things TODO (ORM)
 - [ ] pylint
 - [X] typing (mypy)
-- [ ] env class with access to db to attach to all models etc.
+- [X] env class with access to db to attach to all models etc.
 - [ ] tests, ideally with 100% coverage
 
 

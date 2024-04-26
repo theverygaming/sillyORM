@@ -41,10 +41,13 @@ class Model(metaclass=MetaModel):
                     all_fields.append(attr)
             return all_fields
         _logger.debug(f"initializing table for model: '{self._name}'")
+        all_fields = get_all_fields()
         self.env.cr.ensure_table(
             self._name,
-            [sql.ColumnInfo(field._name, field._sql_type, field._constraints) for field in get_all_fields() if field._materialize]
+            [sql.ColumnInfo(field._name, field._sql_type, field._constraints) for field in all_fields if field._materialize]
         )
+        for field in all_fields:
+            field._model_post_init(self)
 
     def ensure_one(self) -> Self:
         if len(self._ids) != 1:

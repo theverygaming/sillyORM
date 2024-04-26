@@ -54,3 +54,30 @@ def test_field_many2one_one2many(env):
 
     with pytest.raises(NotImplementedError):
         env["sale_order"].browse(so_1_id).line_ids = 1
+
+
+@with_test_env
+def test_field_many2many(env):
+    class Tax(sillyORM.model.Model):
+        _name = "tax"
+
+        name = sillyORM.fields.String()
+
+    class Product(sillyORM.model.Model):
+        _name = "product"
+
+        tax_ids = sillyORM.fields.Many2many("tax")
+
+    env.register_model(Tax)
+    env.register_model(Product)
+    assert_db_columns(env.cr, "tax", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR)])
+    assert_db_columns(env.cr, "product", [("id", SqlType.INTEGER)])
+    assert_db_columns(env.cr, "_joint_product_tax_ids_tax", [("product_id", SqlType.INTEGER), ("tax_id", SqlType.INTEGER)])
+
+    tax_1_id = env["tax"].create({"name": "tax 1"})
+    tax_2_id = env["tax"].create({"name": "tax 2"})
+
+    product_1_id = env["product"].create({})
+
+    assert product_1_id.tax_ids is None
+    #assert repr(product_1_id.tax_ids) == "tax[]"
