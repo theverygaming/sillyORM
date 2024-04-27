@@ -44,7 +44,7 @@ class Model(metaclass=MetaModel):
                     all_fields.append(attr)
             return all_fields
 
-        _logger.debug(f"initializing table for model: '{self._name}'")
+        _logger.debug("initializing table for model: '%s'", self._name)
         all_fields = get_all_fields()
         self._tblmngr.table_init(
             self.env.cr,
@@ -70,7 +70,11 @@ class Model(metaclass=MetaModel):
         )
 
     def write(self, vals: dict[str, Any]) -> None:
-        self._tblmngr.update_records(self.env.cr, vals, SQL("WHERE {id} IN {ids}", id=SQL.identifier("id"), ids=SQL.set(self._ids)))
+        self._tblmngr.update_records(
+            self.env.cr,
+            vals,
+            SQL("WHERE {id} IN {ids}", id=SQL.identifier("id"), ids=SQL.set(self._ids)),
+        )
         if self.env.do_commit:
             self.env.cr.commit()
 

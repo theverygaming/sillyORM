@@ -1,13 +1,13 @@
 import logging
 from typing import Self, Any, cast
-from collections import namedtuple
 import sqlite3
 from .. import sql
 from ..sql import SQL
-from sillyORM.exceptions import SillyORMException
+from ..exceptions import SillyORMException
 
 
 _logger = logging.getLogger(__name__)
+
 
 class SQLiteCursor(sql.Cursor):
     def __init__(self, cr: sqlite3.Cursor):
@@ -23,39 +23,55 @@ class SQLiteCursor(sql.Cursor):
         if not isinstance(sql, SQL):
             raise SillyORMException("SQL code must be enclosed in the SQL class")
         code = sql.code()
-        _logger.debug(f"execute: {code}")
+        _logger.debug("execute: %s", str(code))
         self._cr.execute(code)
         return self
 
     def fetchall(self) -> list[tuple[Any, ...]]:
         res = self._cr.fetchall()
-        _logger.debug(f"fetchall: {res}")
+        _logger.debug("fetchall: %s", str(res))
         return res
 
     def fetchone(self) -> tuple[Any, ...]:
         res = self._cr.fetchone()
-        _logger.debug(f"fetchone: {res}")
+        _logger.debug("fetchone: %s", str(res))
         return cast(tuple[Any, ...], res)
 
     def get_table_column_info(self, name: str) -> list[sql.ColumnInfo]:
-        res = self.execute(SQL(
-            "SELECT {i1}, {i2}, {i3} FROM PRAGMA_TABLE_INFO({table});",
-            i1=SQL.identifier("name"),
-            i2=SQL.identifier("type"),
-            i3=SQL.identifier("pk"),
-            table=SQL.identifier(name)
-        )).fetchall()
-        return [sql.ColumnInfo(n, self._str_type_to_sql_type(t), [(sql.SqlConstraint.PRIMARY_KEY, {})] if pk else []) for n, t, pk in res]
+        res = self.execute(
+            SQL(
+                "SELECT {i1}, {i2}, {i3} FROM PRAGMA_TABLE_INFO({table});",
+                i1=SQL.identifier("name"),
+                i2=SQL.identifier("type"),
+                i3=SQL.identifier("pk"),
+                table=SQL.identifier(name),
+            )
+        ).fetchall()
+        return [
+            sql.ColumnInfo(
+                n,
+                self._str_type_to_sql_type(t),
+                [(sql.SqlConstraint.PRIMARY_KEY, {})] if pk else [],
+            )
+            for n, t, pk in res
+        ]
 
     def _table_exists(self, name: str) -> bool:
-        res = self.execute(SQL(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name={name};",
-            name=SQL.escape(name),
-        )).fetchone()
+        res = self.execute(
+            SQL(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name={name};",
+                name=SQL.escape(name),
+            )
+        ).fetchone()
         return res == (name,)
 
-    def _alter_table_add_constraint(self, table: str, column: str, constraint: tuple[sql.SqlConstraint, dict[str, Any]]) -> None:
-        pass # SQLite does not support this...
+    def _alter_table_add_constraint(
+        self,
+        table: str,
+        column: str,
+        constraint: tuple[sql.SqlConstraint, dict[str, Any]],
+    ) -> None:
+        pass  # SQLite does not support this...
 
 
 class SQLiteConnection(sql.Connection):
@@ -64,6 +80,6 @@ class SQLiteConnection(sql.Connection):
 
     def cursor(self) -> SQLiteCursor:
         return SQLiteCursor(self._conn.cursor())
-    
+
     def close(self) -> None:
         self._conn.close()

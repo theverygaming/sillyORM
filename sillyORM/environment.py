@@ -9,7 +9,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 _logger = logging.getLogger(__name__)
 
-class Environment():
+
+class Environment:
     def __init__(self, cursor: sql.Cursor, do_commit: bool = True):
         self.cr = cursor
         self.do_commit = do_commit
@@ -19,7 +20,7 @@ class Environment():
         name = model._name
         if name in self._models:
             raise SillyORMException(f"cannot register model '{name}' twice")
-        _logger.info(f"registering model '{name}'")
+        _logger.info("registering model '%s'", name)
         self._models[name] = model
         model(self, [])._table_init()
 

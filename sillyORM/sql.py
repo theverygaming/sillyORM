@@ -6,8 +6,8 @@ from .exceptions import SillyORMException
 
 class SqlType(Enum):
     INTEGER = "INTEGER"
-    VARCHAR = "VARCHAR" # TODO: either VARCHAR_INFINITE or attach maximum length
-    DATE = "DATE" # warning, some DBMS include a timestamp for DATE
+    VARCHAR = "VARCHAR"  # TODO: either VARCHAR_INFINITE or attach maximum length
+    DATE = "DATE"  # warning, some DBMS include a timestamp for DATE
     TIMESTAMP = "TIMESTAMP"
 
 
@@ -18,7 +18,7 @@ class SqlConstraint(Enum):
     FOREIGN_KEY = 4
 
 
-class SQL():
+class SQL:
     # WARNING: the code parameter may ABSOLUTELY not contain ANY user-provided input
     def __init__(self, code: str, **kwargs: Self | str | int | float) -> None:
         self._code = code
@@ -36,10 +36,7 @@ class SQL():
             return cls._as_raw_sql(f"'{value}'")
 
         # anything that doesn't need to be escaped
-        if not (
-            isinstance(value, int)
-            or isinstance(value, float)
-        ):
+        if not (isinstance(value, (int, float))):
             raise SillyORMException(f"invalid type {type(value)}")
         return cls._as_raw_sql(str(value))
 
@@ -63,7 +60,7 @@ class SQL():
 
     def __repr__(self) -> str:
         return f"SQL({self.code()})"
-    
+
     def __add__(self, sql: Self) -> Self:
         return self._as_raw_sql(self.code() + sql.code())
 
@@ -74,7 +71,7 @@ class SQL():
         return cls._as_raw_sql(f'"{name}"')
 
     @classmethod
-    def commaseperated(cls, values: list[Any]|tuple[Any, ...]) -> Self:
+    def commaseperated(cls, values: list[Any] | tuple[Any, ...]) -> Self:
         if isinstance(values, tuple):
             values = list(values)
         if not isinstance(values, list):
@@ -82,7 +79,7 @@ class SQL():
         return cls._as_raw_sql(f"{', '.join([str(cls.__as_safe_sql_value(x)) for x in values])}")
 
     @classmethod
-    def set(cls, values: list[Any]|tuple[Any, ...]) -> Self:
+    def set(cls, values: list[Any] | tuple[Any, ...]) -> Self:
         return cls._as_raw_sql(f"({cls.commaseperated(values).code()})")
 
     @classmethod
@@ -99,7 +96,7 @@ class ColumnInfo(NamedTuple):
     constraints: list[tuple[SqlConstraint, dict[str, Any]]]
 
 
-class Cursor():
+class Cursor:
     def commit(self) -> None:
         raise NotImplementedError()  # pragma: no cover
 
@@ -118,15 +115,27 @@ class Cursor():
     def ensure_table(self, name: str, columns: list[ColumnInfo]) -> None:
         if not self._table_exists(name):
             column_sql = [
-                *[SQL("{name} {type}", name=SQL.identifier(column.name), type=SQL.type(column.type)) for column in columns]
+                *[
+                    SQL(
+                        "{name} {type}",
+                        name=SQL.identifier(column.name),
+                        type=SQL.type(column.type),
+                    )
+                    for column in columns
+                ]
             ]
             for column in columns:
-                column_sql += [self._constraint_to_sql(column.name, constraint) for constraint in column.constraints]
-            self.execute(SQL(
-                "CREATE TABLE {name} {columns};",
-                name=SQL.identifier(name),
-                columns=SQL.set(column_sql),
-            ))
+                column_sql += [
+                    self._constraint_to_sql(column.name, constraint)
+                    for constraint in column.constraints
+                ]
+            self.execute(
+                SQL(
+                    "CREATE TABLE {name} {columns};",
+                    name=SQL.identifier(name),
+                    columns=SQL.set(column_sql),
+                )
+            )
             self.commit()
         else:
             current_columns = self.get_table_column_info(name)
@@ -134,39 +143,51 @@ class Cursor():
             remove_columns = []
 
             for column in columns:
-                if next(filter(
-                    lambda x: (
-                        x.name == column.name
-                        and x.type == column.type
-                    ), current_columns
-                ), None) is not None:
+                if (
+                    next(
+                        filter(
+                            lambda x: x.name == column.name and x.type == column.type,
+                            current_columns,
+                        ),
+                        None,
+                    )
+                    is not None
+                ):
                     continue
                 add_columns.append(column)
 
             for column_info in current_columns:
-                if next(filter(
-                    lambda x: (
-                        column_info.name == x.name
-                        and column_info.type == x.type
-                    ), columns
-                ), None) is not None:
+                if (
+                    next(
+                        filter(
+                            lambda x: (column_info.name == x.name and column_info.type == x.type),
+                            columns,
+                        ),
+                        None,
+                    )
+                    is not None
+                ):
                     continue
                 remove_columns.append(column_info)
 
             for column_info in remove_columns:
-                self.execute(SQL(
-                    "ALTER TABLE {table} DROP COLUMN {field};",
-                    table=SQL.identifier(name),
-                    field=SQL.identifier(column_info.name),
-                ))
+                self.execute(
+                    SQL(
+                        "ALTER TABLE {table} DROP COLUMN {field};",
+                        table=SQL.identifier(name),
+                        field=SQL.identifier(column_info.name),
+                    )
+                )
 
             for column in add_columns:
-                self.execute(SQL(
-                    "ALTER TABLE {table} ADD {field} {type};",
-                    table=SQL.identifier(name),
-                    field=SQL.identifier(column.name),
-                    type=SQL.type(column.type)
-                ))
+                self.execute(
+                    SQL(
+                        "ALTER TABLE {table} ADD {field} {type};",
+                        table=SQL.identifier(name),
+                        field=SQL.identifier(column.name),
+                        type=SQL.type(column.type),
+                    )
+                )
                 for constraint in column.constraints:
                     self._alter_table_add_constraint(name, column.name, constraint)
 
@@ -174,22 +195,31 @@ class Cursor():
 
     def get_table_column_info(self, name: str) -> list[ColumnInfo]:
         raise NotImplementedError()  # pragma: no cover
-    
+
     def _table_exists(self, name: str) -> bool:
         raise NotImplementedError()  # pragma: no cover
 
-    def _constraint_to_sql(self, column: str, constraint: tuple[SqlConstraint, dict[str, Any]]) -> SQL:
+    def _constraint_to_sql(
+        self, column: str, constraint: tuple[SqlConstraint, dict[str, Any]]
+    ) -> SQL:
         match constraint[0]:
             case SqlConstraint.PRIMARY_KEY:
                 return SQL("PRIMARY KEY ({name})", name=SQL.identifier(column))
             case SqlConstraint.FOREIGN_KEY:
-                return SQL("FOREIGN KEY ({name}) REFERENCES {ftable}({fname})", name=SQL.identifier(column), ftable=SQL.identifier(constraint[1]["table"]), fname=SQL.identifier(constraint[1]["column"]))
+                return SQL(
+                    "FOREIGN KEY ({name}) REFERENCES {ftable}({fname})",
+                    name=SQL.identifier(column),
+                    ftable=SQL.identifier(constraint[1]["table"]),
+                    fname=SQL.identifier(constraint[1]["column"]),
+                )
             case SqlConstraint.UNIQUE:
                 return SQL("UNIQUE ({name})", name=SQL.identifier(column))
             case _:
                 raise SillyORMException(f"unknown SQL constraint {constraint[0]}")
 
-    def _alter_table_add_constraint(self, table: str, column: str, constraint: tuple[SqlConstraint, dict[str, Any]]) -> None:
+    def _alter_table_add_constraint(
+        self, table: str, column: str, constraint: tuple[SqlConstraint, dict[str, Any]]
+    ) -> None:
         raise NotImplementedError()  # pragma: no cover
 
     def _str_type_to_sql_type(self, t: str) -> SqlType:
@@ -200,23 +230,20 @@ class Cursor():
     #      return t.value
 
 
-class Connection():
+class Connection:
     def cursor(self) -> Cursor:
         raise NotImplementedError()  # pragma: no cover
-    
+
     def close(self) -> None:
         raise NotImplementedError()  # pragma: no cover
 
 
-class TableManager():
+class TableManager:
     def __init__(self, table_name: str):
         self.table_name = table_name
 
     def table_init(self, cr: Cursor, columns: list[ColumnInfo]) -> None:
-        cr.ensure_table(
-            self.table_name,
-            columns
-        )
+        cr.ensure_table(self.table_name, columns)
 
     def read_records(self, cr: Cursor, columns: list[str], extra_sql: SQL) -> list[dict[str, Any]]:
         ret = []
@@ -225,7 +252,7 @@ class TableManager():
                 "SELECT {columns} FROM {table} {extra_sql};",
                 columns=SQL.commaseperated([SQL.identifier(column) for column in columns]),
                 table=SQL.identifier(self.table_name),
-                extra_sql=extra_sql
+                extra_sql=extra_sql,
             )
         )
         for rec in cr.fetchall():
@@ -234,7 +261,7 @@ class TableManager():
                 data[field] = rec[i]
             ret.append(data)
         return ret
-    
+
     def insert_record(self, cr: Cursor, vals: dict[str, Any]) -> None:
         keys, values = zip(*vals.items())
         cr.execute(
@@ -252,16 +279,15 @@ class TableManager():
                 "UPDATE {table} SET {data} {extra_sql};",
                 table=SQL.identifier(self.table_name),
                 data=SQL.commaseperated(
-                    [
-                        SQL("{k} = {v}", k=SQL.identifier(k), v=v)
-                        for k, v in column_vals.items()
-                    ]
+                    [SQL("{k} = {v}", k=SQL.identifier(k), v=v) for k, v in column_vals.items()]
                 ),
-                extra_sql=extra_sql
+                extra_sql=extra_sql,
             )
         )
 
-    def search_records(self, cr: Cursor, columns: list[str], domain: list[str | tuple[str, str, Any]]) -> list[Any]:
+    def search_records(
+        self, cr: Cursor, columns: list[str], domain: list[str | tuple[str, str, Any]]
+    ) -> list[Any]:
         def parse_cmp_op(op: str) -> SQL:
             ops = {
                 "=": "=",

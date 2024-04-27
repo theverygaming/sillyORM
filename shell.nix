@@ -10,6 +10,7 @@ stdenv.mkDerivation {
     python311Packages.coverage
     python311Packages.psycopg2
     python311Packages.types-psycopg2
+    python311Packages.black
     postgresql_16
     sphinx
     # sqlitebrowser

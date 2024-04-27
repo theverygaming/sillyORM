@@ -11,7 +11,7 @@ from ..sql import Cursor, SqlType
 
 
 def _pg_conn(tmp_path: Path) -> postgresql.PostgreSQLConnection:
-    dbname = re.sub('[^a-zA-Z0-9]', '', str(tmp_path))
+    dbname = re.sub("[^a-zA-Z0-9]", "", str(tmp_path))
     connstr = "host=127.0.0.1 user=postgres password=postgres"
 
     conn = psycopg2.connect(connstr + " dbname=postgres")
@@ -37,7 +37,10 @@ def with_test_env(fn: Callable[[Environment], None]) -> Any:
             raise e
         finally:
             env.cr.rollback()
-    return pytest.mark.parametrize("db_conn_fn", [(_sqlite_conn), (_pg_conn)], ids=["SQLite", "PostgreSQL"])(wrapper)
+
+    return pytest.mark.parametrize(
+        "db_conn_fn", [(_sqlite_conn), (_pg_conn)], ids=["SQLite", "PostgreSQL"]
+    )(wrapper)
 
 
 def assert_db_columns(cr: Cursor, table: str, columns: list[tuple[str, SqlType]]) -> None:
