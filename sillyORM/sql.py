@@ -5,7 +5,7 @@ from enum import Enum
 
 class SqlType(Enum):
     INTEGER = "INTEGER"
-    VARCHAR = "VARCHAR"
+    VARCHAR = "VARCHAR" # TODO: either VARCHAR_INFINITE or attach maximum length
     DATE = "DATE" # warning, some DBMS include a timestamp for DATE
     TIMESTAMP = "TIMESTAMP"
 
@@ -183,6 +183,8 @@ class Cursor():
                 return SQL("PRIMARY KEY ({name})", name=SQL.identifier(column))
             case SqlConstraint.FOREIGN_KEY:
                 return SQL("FOREIGN KEY ({name}) REFERENCES {ftable}({fname})", name=SQL.identifier(column), ftable=SQL.identifier(constraint[1]["table"]), fname=SQL.identifier(constraint[1]["column"]))
+            case SqlConstraint.UNIQUE:
+                return SQL("UNIQUE ({name})", name=SQL.identifier(column))
             case _:
                 raise Exception(f"unknown SQL constraint {constraint[0]}")
 
@@ -203,3 +205,100 @@ class Connection():
     
     def close(self) -> None:
         raise NotImplementedError()  # pragma: no cover
+
+
+class TableManager():
+    def __init__(self, table_name: str):
+        self.table_name = table_name
+
+    def table_init(self, cr: Cursor, columns: list[ColumnInfo]) -> None:
+        cr.ensure_table(
+            self.table_name,
+            columns
+        )
+
+    def read_records(self, cr: Cursor, columns: list[str], extra_sql: SQL) -> list[dict[str, Any]]:
+        ret = []
+        cr.execute(
+            SQL(
+                "SELECT {columns} FROM {table} {extra_sql};",
+                columns=SQL.commaseperated([SQL.identifier(column) for column in columns]),
+                table=SQL.identifier(self.table_name),
+                extra_sql=extra_sql
+            )
+        )
+        for rec in cr.fetchall():
+            data = {}
+            for i, field in enumerate(columns):
+                data[field] = rec[i]
+            ret.append(data)
+        return ret
+    
+    def insert_record(self, cr: Cursor, vals: dict[str, Any]) -> None:
+        keys, values = zip(*vals.items())
+        cr.execute(
+            SQL(
+                "INSERT INTO {table} {keys} VALUES {values};",
+                table=SQL.identifier(self.table_name),
+                keys=SQL.set([SQL.identifier(key) for key in keys]),
+                values=SQL.set(values),
+            )
+        )
+
+    def update_records(self, cr: Cursor, column_vals: dict[str, Any], extra_sql: SQL) -> None:
+        cr.execute(
+            SQL(
+                "UPDATE {table} SET {data} {extra_sql};",
+                table=SQL.identifier(self.table_name),
+                data=SQL.commaseperated(
+                    [
+                        SQL("{k} = {v}", k=SQL.identifier(k), v=v)
+                        for k, v in column_vals.items()
+                    ]
+                ),
+                extra_sql=extra_sql
+            )
+        )
+
+    def search_records(self, cr: Cursor, columns: list[str], domain: list[str | tuple[str, str, Any]]) -> list[Any]:
+        def parse_cmp_op(op: str) -> SQL:
+            ops = {
+                "=": "=",
+                "!=": "<>",
+                ">": ">",
+                "<": "<",
+                ">=": ">=",
+                "<=": "<=",
+            }
+            return SQL(ops[op])
+
+        def parse_criteria(op: tuple[str, str, Any]) -> SQL:
+            return SQL(
+                " {field} {op} {val} ",
+                field=SQL.identifier(op[0]),
+                op=parse_cmp_op(op[1]),
+                val=op[2],
+            )
+
+        search_sql = SQL("")
+        for elem in domain:
+            if isinstance(elem, tuple):
+                search_sql += parse_criteria(elem)
+            else:
+                ops = {
+                    "&": "AND",
+                    "|": "OR",
+                    "!": "NOT",
+                    "(": "(",
+                    ")": ")",
+                }
+                search_sql += SQL(f" {ops[elem]} ")
+
+        return cr.execute(
+            SQL(
+                "SELECT {columns} FROM {table} WHERE {condition};",
+                columns=SQL.commaseperated([SQL.identifier(column) for column in columns]),
+                table=SQL.identifier(self.table_name),
+                condition=search_sql,
+            )
+        ).fetchall()

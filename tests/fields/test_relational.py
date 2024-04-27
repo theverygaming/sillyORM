@@ -74,10 +74,33 @@ def test_field_many2many(env):
     assert_db_columns(env.cr, "product", [("id", SqlType.INTEGER)])
     assert_db_columns(env.cr, "_joint_product_tax_ids_tax", [("product_id", SqlType.INTEGER), ("tax_id", SqlType.INTEGER)])
 
-    tax_1_id = env["tax"].create({"name": "tax 1"})
-    tax_2_id = env["tax"].create({"name": "tax 2"})
+    tax_1 = env["tax"].create({"name": "tax 1"})
+    tax_2 = env["tax"].create({"name": "tax 2"})
 
-    product_1_id = env["product"].create({})
+    product_1 = env["product"].create({})
+    product_2 = env["product"].create({})
 
-    assert product_1_id.tax_ids is None
-    #assert repr(product_1_id.tax_ids) == "tax[]"
+    with pytest.raises(Exception) as e_info:
+        product_2.tax_ids = (2, None)
+    assert str(e_info.value) == "unknown many2many command"
+
+
+    assert product_1.tax_ids is None
+    assert product_2.tax_ids is None
+
+    product_1.tax_ids = (1, tax_1)
+    assert repr(product_1.tax_ids) == "tax[1]"
+    assert product_2.tax_ids is None
+
+    product_1.tax_ids = (1, tax_2)
+    product_2.tax_ids = (1, tax_2)
+    assert repr(product_1.tax_ids) == "tax[1, 2]"
+    assert repr(product_2.tax_ids) == "tax[2]"
+
+    with pytest.raises(Exception) as e_info:
+        product_1.tax_ids = (1, tax_1)
+    assert str(e_info.value) == "attempted to insert a record twice into many2many"
+
+    with pytest.raises(Exception) as e_info:
+        product_2.tax_ids = (1, tax_2)
+    assert str(e_info.value) == "attempted to insert a record twice into many2many"

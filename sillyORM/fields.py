@@ -120,9 +120,10 @@ class Many2many(Field):
         self._joint_table_name = f"_joint_{record._name}_{self._name}_{self._foreign_model}"
         self._joint_table_self_name = f"{record._name}_id"
         self._joint_table_foreign_name = f"{self._foreign_model}_id"
+        self._tblmngr = sql.TableManager(self._joint_table_name)
         _logger.debug(f"initializing many2many joint table: '{record._name}.{self._name}' -> '{self._foreign_model}' named '{self._joint_table_name}'")
-        record.env.cr.ensure_table(
-            self._joint_table_name,
+        self._tblmngr.table_init(
+            record.env.cr,
             [
                 sql.ColumnInfo(
                     self._joint_table_self_name,
@@ -139,18 +140,31 @@ class Many2many(Field):
 
     def __get__(self, record: Model, objtype: Any = None) -> None|Model:
         record.ensure_one()
-        # TODO: we need a generic SQL search helper
-        # TODO: we need a generic SQL table manager class
-        res = record.env.cr.execute(sql.SQL(
-            "SELECT {column_1} FROM {table} WHERE {column_2} = {value};",
-            column_1=sql.SQL.identifier(self._joint_table_foreign_name),
-            table=sql.SQL.identifier(self._joint_table_name),
-            column_2=sql.SQL.identifier(self._joint_table_self_name),
-            value=record.id,
-        )).fetchall()
+        res = self._tblmngr.search_records(record.env.cr, [self._joint_table_foreign_name], [(self._joint_table_self_name, "=", record.id)])
         if len(res) == 0:
             return None
         return record.env[self._foreign_model].__class__(record.env, ids=[id[0] for id in res])
 
-    def __set__(self, record: Model, value: Model) -> None:
-        raise NotImplementedError()
+    def __set__(self, record: Model, value: tuple[int, Model]) -> None:
+        record.ensure_one()
+        cmd = value[0]
+        records_f = value[1]
+        match cmd:
+            case 1:
+                for record_f in records_f:
+                    res = self._tblmngr.search_records(
+                        record.env.cr,
+                        [self._joint_table_foreign_name],
+                        [(self._joint_table_self_name, "=", record.id), "&" ,(self._joint_table_foreign_name, "=", record_f.id)]
+                    )
+                    if len(res) > 0:
+                        raise Exception("attempted to insert a record twice into many2many")
+                    self._tblmngr.insert_record(
+                        record.env.cr,
+                        {
+                            self._joint_table_self_name: record.id,
+                            self._joint_table_foreign_name: record_f.id
+                        },
+                    )
+            case _:
+                raise Exception("unknown many2many command")
