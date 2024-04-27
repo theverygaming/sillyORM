@@ -1,6 +1,7 @@
 from typing import Self, Any, cast, NamedTuple
 import re
 from enum import Enum
+from .exceptions import SillyORMException
 
 
 class SqlType(Enum):
@@ -39,7 +40,7 @@ class SQL():
             isinstance(value, int)
             or isinstance(value, float)
         ):
-            raise Exception(f"invalid type {type(value)}")
+            raise SillyORMException(f"invalid type {type(value)}")
         return cls._as_raw_sql(str(value))
 
     @classmethod
@@ -69,7 +70,7 @@ class SQL():
     @classmethod
     def identifier(cls, name: str) -> Self:
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_@#]*$", name):
-            raise Exception("invalid SQL identifier")
+            raise SillyORMException("invalid SQL identifier")
         return cls._as_raw_sql(f'"{name}"')
 
     @classmethod
@@ -87,7 +88,7 @@ class SQL():
     @classmethod
     def type(cls, t: SqlType) -> Self:
         if not isinstance(t, SqlType):
-            raise Exception("invalid SQL type")
+            raise SillyORMException("invalid SQL type")
         return cls._as_raw_sql(t.value)
 
 
@@ -186,7 +187,7 @@ class Cursor():
             case SqlConstraint.UNIQUE:
                 return SQL("UNIQUE ({name})", name=SQL.identifier(column))
             case _:
-                raise Exception(f"unknown SQL constraint {constraint[0]}")
+                raise SillyORMException(f"unknown SQL constraint {constraint[0]}")
 
     def _alter_table_add_constraint(self, table: str, column: str, constraint: tuple[SqlConstraint, dict[str, Any]]) -> None:
         raise NotImplementedError()  # pragma: no cover

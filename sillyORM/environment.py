@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 from . import sql
+from .exceptions import SillyORMException
 
 if TYPE_CHECKING:  # pragma: no cover
     from .model import Model
@@ -17,7 +18,7 @@ class Environment():
     def register_model(self, model: type[Model]) -> None:
         name = model._name
         if name in self._models:
-            raise RuntimeError(f"cannot register model '{name}' twice")
+            raise SillyORMException(f"cannot register model '{name}' twice")
         _logger.info(f"registering model '{name}'")
         self._models[name] = model
         model(self, [])._table_init()

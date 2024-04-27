@@ -5,6 +5,8 @@ import sillyORM
 from sillyORM.dbms import SQLite
 from sillyORM.dbms import postgresql
 from sillyORM.sql import SqlType, SqlConstraint
+from sillyORM.exceptions import SillyORMException
+
 
 def pg_conn(tmp_path):
     dbname = re.sub('[^a-zA-Z0-9]', '', str(tmp_path))
@@ -28,7 +30,7 @@ def test_model_name():
     class TestModel(sillyORM.model.Model):
         test = sillyORM.fields.String()
     
-    with pytest.raises(Exception) as e_info:
+    with pytest.raises(SillyORMException) as e_info:
         TestModel(None, [])
     assert str(e_info.value) == "_name must be set"
 
@@ -48,7 +50,7 @@ def test_model_ids():
     
     model = TestModel(None, [])
     assert repr(model) == "test_model[]"
-    with pytest.raises(Exception) as e_info:
+    with pytest.raises(SillyORMException) as e_info:
         model.id
     assert str(e_info.value) == "ensure_one found 0 id's"
     assert [m.id for m in list(model)] == []
@@ -60,7 +62,7 @@ def test_model_ids():
 
     model = TestModel(None, [1, 2, 3])
     assert repr(model) == "test_model[1, 2, 3]"
-    with pytest.raises(Exception) as e_info:
+    with pytest.raises(SillyORMException) as e_info:
         model.id
     assert str(e_info.value) == "ensure_one found 3 id's"
     assert [m.id for m in list(model)] == [1, 2, 3]

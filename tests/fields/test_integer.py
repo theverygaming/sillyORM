@@ -2,6 +2,7 @@ import pytest
 import sillyORM
 from sillyORM.sql import SqlType
 from sillyORM.tests.internal import with_test_env, assert_db_columns
+from sillyORM.exceptions import SillyORMException
 
 
 @with_test_env
@@ -26,6 +27,6 @@ def test_field_id(env):
     so_1.line_count -= -1
     assert so_1.line_count == 6
 
-    with pytest.raises(Exception) as e_info:
+    with pytest.raises(SillyORMException) as e_info:
         so_1.line_count = "test"
     assert str(e_info.value) == "Integer value must be int"

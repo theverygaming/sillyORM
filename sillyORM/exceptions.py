@@ -1,0 +1,2 @@
+class SillyORMException(Exception):
+    pass

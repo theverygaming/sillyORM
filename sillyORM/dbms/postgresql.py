@@ -5,6 +5,7 @@ from collections import namedtuple
 import psycopg2
 from .. import sql
 from ..sql import SQL
+from sillyORM.exceptions import SillyORMException
 
 
 _logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ class PostgreSQLCursor(sql.Cursor):
 
     def execute(self, sql: sql.SQL) -> Self:
         if not isinstance(sql, SQL):
-            raise Exception("SQL code must be enclosed in the SQL class")
+            raise SillyORMException("SQL code must be enclosed in the SQL class")
         code = sql.code()
         _logger.debug(f"execute: {code}")
         self._cr.execute(code)
@@ -71,7 +72,7 @@ class PostgreSQLCursor(sql.Cursor):
             case "integer":
                 return sql.SqlType.INTEGER
             case _:
-                raise Exception(f"unknown pg type '{t}'")
+                raise SillyORMException(f"unknown pg type '{t}'")
 
 
 class PostgreSQLConnection(sql.Connection):

@@ -3,6 +3,7 @@ from typing import Any, Iterator, Self
 from . import sql, fields
 from .sql import SQL
 from .environment import Environment
+from .exceptions import SillyORMException
 
 _logger = logging.getLogger(__name__)
 
@@ -17,7 +18,7 @@ class Model(metaclass=MetaModel):
 
     def __init__(self, env: Environment, ids: list[int]):
         if not self._name:
-            raise Exception("_name must be set")
+            raise SillyORMException("_name must be set")
 
         self._ids = ids
         self.env = env
@@ -58,7 +59,7 @@ class Model(metaclass=MetaModel):
 
     def ensure_one(self) -> Self:
         if len(self._ids) != 1:
-            raise Exception(f"ensure_one found {len(self._ids)} id's")
+            raise SillyORMException(f"ensure_one found {len(self._ids)} id's")
         return self
 
     def read(self, fields: list[str]) -> list[dict[str, Any]]:

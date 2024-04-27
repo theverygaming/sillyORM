@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 from . import sql
+from .exceptions import SillyORMException
 
 from typing import TYPE_CHECKING, Any, cast
 
@@ -20,7 +21,7 @@ class Field():
 
     def __init__(self) -> None:
         if self._sql_type is None:
-            raise Exception("_sql_type must be set")
+            raise SillyORMException("_sql_type must be set")
 
     def _model_post_init(self, record: Model) -> None:
         pass
@@ -49,7 +50,7 @@ class Integer(Field):
 
     def _check_type(self, value: Any) -> None:
         if not isinstance(value, int):
-            raise Exception("Integer value must be int")
+            raise SillyORMException("Integer value must be int")
 
 
 class Id(Integer):
@@ -60,7 +61,7 @@ class Id(Integer):
         return record._ids[0]
 
     def __set__(self, record: Model, value: Any) -> None:
-        raise Exception("cannot set id")
+        raise SillyORMException("cannot set id")
 
 
 class String(Field):
@@ -68,7 +69,7 @@ class String(Field):
 
     def _check_type(self, value: Any) -> None:
         if not isinstance(value, str):
-            raise Exception("String value must be str")
+            raise SillyORMException("String value must be str")
 
 
 class Many2one(Integer):
@@ -158,7 +159,7 @@ class Many2many(Field):
                         [(self._joint_table_self_name, "=", record.id), "&" ,(self._joint_table_foreign_name, "=", record_f.id)]
                     )
                     if len(res) > 0:
-                        raise Exception("attempted to insert a record twice into many2many")
+                        raise SillyORMException("attempted to insert a record twice into many2many")
                     self._tblmngr.insert_record(
                         record.env.cr,
                         {
@@ -167,4 +168,4 @@ class Many2many(Field):
                         },
                     )
             case _:
-                raise Exception("unknown many2many command")
+                raise SillyORMException("unknown many2many command")
