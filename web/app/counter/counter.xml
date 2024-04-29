@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+   <t t-name="counter">
+      <div style="border:1px solid black;">
+        Counter: <t t-esc="state.count"/>
+        <button t-on-click="increment">+</button>
+        <button t-on-click="decrement">-</button>
+      </div>
+   </t>
+</templates>

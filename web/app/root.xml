@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates>
+  <t t-name="root">
+    <Counter callback.bind="addTotal"/>
+    <br/>
+    <Counter callback.bind="addTotal"/>
+    <br/>
+    Total: <t t-esc="state.total"/>
+  </t>
+</templates>

@@ -1,4 +1,4 @@
-from lxml import etree, objectify
+from lxml import etree
 
 
 _HTML_SELFCLOSING_TAGS = [
