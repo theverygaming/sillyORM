@@ -1,9 +1,10 @@
 import { Component, useState, App, loadFile, whenReady } from "@odoo/owl";
 import { Counter } from "@counter/counter";
+import { ErrorHandler } from "@tools/errorHandler"
 
 
 class Root extends Component {
-    static components = { Counter };
+    static components = { ErrorHandler, Counter };
     static template = "root"
 
     setup() {
@@ -27,3 +28,7 @@ for (const template of templates) {
 }
 
 await rootApp.mount(document.body);
+
+window.onerror = function(msg, url, line, col, error) {
+    console.log("error", msg, url, line, col, error);
+};
