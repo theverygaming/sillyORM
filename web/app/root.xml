@@ -7,6 +7,10 @@
       <Counter callback.bind="addTotal"/>
       <br/>
       Total: <t t-esc="state.total"/>
+      <br/>
+      <t t-foreach="state.errors" t-as="error" t-key="error_index">
+        error: <t t-esc="error"/><br/>
+      </t>
       <t t-set-slot="error_fallback">
         Error rendering templates
       </t>

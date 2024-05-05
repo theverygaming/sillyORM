@@ -1,4 +1,4 @@
-import { Component, useState, App, loadFile, whenReady } from "@odoo/owl";
+import { Component, useState, App, loadFile, whenReady, reactive } from "@odoo/owl";
 import { Counter } from "@counter/counter";
 import { ErrorHandler } from "@tools/errorHandler"
 
@@ -8,7 +8,7 @@ class Root extends Component {
     static template = "root"
 
     setup() {
-        this.state = useState({ total: 0 });
+        this.state = useState({ total: 0, errors: this.env.errors });
     }
 
     addTotal(amount) {
@@ -22,13 +22,24 @@ const templates = await Promise.all([
 
 await whenReady()
 
-const rootApp = new App(Root, { name: "Owl App" });
+const env = {
+    errors: reactive([]),
+};
+
+const rootApp = new App(Root, { name: "Owl App", env });
 for (const template of templates) {
     rootApp.addTemplates(template);
 }
 
 await rootApp.mount(document.body);
 
-window.onerror = function(msg, url, line, col, error) {
-    console.log("error", msg, url, line, col, error);
-};
+
+window.addEventListener("error", async function (ev) {
+    console.log(ev);
+    env.errors.push(`err event: ${ev}`);
+});
+
+window.addEventListener("unhandledrejection", async function (ev) {
+    console.log(ev);
+    // TODO
+});
