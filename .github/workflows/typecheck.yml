@@ -21,4 +21,4 @@ jobs:
       - name: Install typing dependencies
         run: pip install types-psycopg2
       - name: run mypy
-        run: mypy ./sillyORM --strict
+        run: mypy ./sillyorm --strict

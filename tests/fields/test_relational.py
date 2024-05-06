@@ -1,28 +1,28 @@
 import pytest
-import sillyORM
-from sillyORM.sql import SqlType
-from sillyORM.tests.internal import with_test_env, assert_db_columns
-from sillyORM.exceptions import SillyORMException
+import sillyorm
+from sillyorm.sql import SqlType
+from sillyorm.tests.internal import with_test_env, assert_db_columns
+from sillyorm.exceptions import SillyORMException
 
 
 @with_test_env
 def test_field_many2one_one2many(env):
-    class SaleOrder(sillyORM.model.Model):
+    class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"
 
-        name = sillyORM.fields.String()
-        line_ids = sillyORM.fields.One2many("sale_order_line", "sale_order_id")
+        name = sillyorm.fields.String()
+        line_ids = sillyorm.fields.One2many("sale_order_line", "sale_order_id")
 
-    class SaleOrderLine(sillyORM.model.Model):
+    class SaleOrderLine(sillyorm.model.Model):
         _name = "sale_order_line"
 
-        product = sillyORM.fields.String()
-        sale_order_id = sillyORM.fields.Many2one("sale_order")
+        product = sillyorm.fields.String()
+        sale_order_id = sillyorm.fields.Many2one("sale_order")
 
     env.register_model(SaleOrder)
     env.register_model(SaleOrderLine)
-    assert_db_columns(env.cr, "sale_order", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR)])
-    assert_db_columns(env.cr, "sale_order_line", [("id", SqlType.INTEGER), ("product", SqlType.VARCHAR), ("sale_order_id", SqlType.INTEGER)])
+    assert_db_columns(env.cr, "sale_order", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR_255)])
+    assert_db_columns(env.cr, "sale_order_line", [("id", SqlType.INTEGER), ("product", SqlType.VARCHAR_255), ("sale_order_id", SqlType.INTEGER)])
 
     so_1_id = env["sale_order"].create({"name": "order 1"}).id
     so_2_id = env["sale_order"].create({"name": "order 2"}).id
@@ -59,19 +59,19 @@ def test_field_many2one_one2many(env):
 
 @with_test_env
 def test_field_many2many(env):
-    class Tax(sillyORM.model.Model):
+    class Tax(sillyorm.model.Model):
         _name = "tax"
 
-        name = sillyORM.fields.String()
+        name = sillyorm.fields.String()
 
-    class Product(sillyORM.model.Model):
+    class Product(sillyorm.model.Model):
         _name = "product"
 
-        tax_ids = sillyORM.fields.Many2many("tax")
+        tax_ids = sillyorm.fields.Many2many("tax")
 
     env.register_model(Tax)
     env.register_model(Product)
-    assert_db_columns(env.cr, "tax", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR)])
+    assert_db_columns(env.cr, "tax", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR_255)])
     assert_db_columns(env.cr, "product", [("id", SqlType.INTEGER)])
     assert_db_columns(env.cr, "_joint_product_tax_ids_tax", [("product_id", SqlType.INTEGER), ("tax_id", SqlType.INTEGER)])
 

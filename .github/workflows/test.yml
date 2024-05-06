@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: pip install psycopg2
       - name: run tests
-        run: coverage run --source sillyORM/ -m pytest -vv --tb=long tests/
+        run: coverage run --source sillyorm/ -m pytest -vv --tb=long tests/
       - name: Report coverage
         run: |
           coverage report -m --omit="tests/*"

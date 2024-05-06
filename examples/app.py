@@ -1,22 +1,22 @@
-import sillyORM
+import sillyorm
 import logging
-from sillyORM import sql
-from sillyORM.dbms import SQLite
-from sillyORM.dbms import SQLite, postgresql
+from sillyorm import sql
+from sillyorm.dbms import SQLite
+from sillyorm.dbms import SQLite, postgresql
 
 
-class Thing(sillyORM.model.Model):
+class Thing(sillyorm.model.Model):
     _name = "thing"
-    name = sillyORM.fields.String()
+    name = sillyorm.fields.String()
 
 
-class Machine(sillyORM.model.Model):
+class Machine(sillyorm.model.Model):
     _name = "machine"
 
-    test = sillyORM.fields.String()
-    hello = sillyORM.fields.String()
+    test = sillyorm.fields.String()
+    hello = sillyorm.fields.String()
 
-    person_id = sillyORM.fields.Many2one("person")
+    person_id = sillyorm.fields.Many2one("person")
 
     def print(self, x):
         print(self.person_id)
@@ -32,13 +32,13 @@ class Machine(sillyORM.model.Model):
         print(self.test)
 
 
-class Person(sillyORM.model.Model):
+class Person(sillyorm.model.Model):
     _name = "person"
 
-    hello = sillyORM.fields.String()
+    hello = sillyorm.fields.String()
 
-    machine_ids = sillyORM.fields.One2many("machine", "person_id")
-    thing_ids = sillyORM.fields.Many2many("thing")
+    machine_ids = sillyorm.fields.One2many("machine", "person_id")
+    thing_ids = sillyorm.fields.Many2many("thing")
 
     def test(self):
         print(self)
@@ -46,8 +46,8 @@ class Person(sillyORM.model.Model):
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', level=logging.DEBUG)
 
-env = sillyORM.Environment(SQLite.SQLiteConnection("test.db").cursor())
-#env = sillyORM.Environment(postgresql.PostgreSQLConnection("host=127.0.0.1 dbname=test user=postgres password=postgres").cursor())
+env = sillyorm.Environment(SQLite.SQLiteConnection("test.db").cursor())
+#env = sillyorm.Environment(postgresql.PostgreSQLConnection("host=127.0.0.1 dbname=test user=postgres password=postgres").cursor())
 
 env.register_model(Thing)
 env.register_model(Person)

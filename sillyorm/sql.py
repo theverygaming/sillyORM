@@ -6,7 +6,7 @@ from .exceptions import SillyORMException
 
 class SqlType(Enum):
     INTEGER = "INTEGER"
-    VARCHAR = "VARCHAR"  # TODO: either VARCHAR_INFINITE or attach maximum length
+    VARCHAR_255 = "VARCHAR(255)"
     DATE = "DATE"  # warning, some DBMS include a timestamp for DATE
     TIMESTAMP = "TIMESTAMP"
 

@@ -1,11 +1,11 @@
 import re
 import pytest
 import psycopg2
-import sillyORM
-from sillyORM.dbms import SQLite
-from sillyORM.dbms import postgresql
-from sillyORM.sql import SqlType, SqlConstraint
-from sillyORM.exceptions import SillyORMException
+import sillyorm
+from sillyorm.dbms import SQLite
+from sillyorm.dbms import postgresql
+from sillyorm.sql import SqlType, SqlConstraint
+from sillyorm.exceptions import SillyORMException
 
 
 def pg_conn(tmp_path):
@@ -27,8 +27,8 @@ def sqlite_conn(tmp_path):
 
 
 def test_model_name():
-    class TestModel(sillyORM.model.Model):
-        test = sillyORM.fields.String()
+    class TestModel(sillyorm.model.Model):
+        test = sillyorm.fields.String()
     
     with pytest.raises(SillyORMException) as e_info:
         TestModel(None, [])
@@ -43,10 +43,10 @@ def assert_db_columns(cr, table, columns):
 
 
 def test_model_ids():
-    class TestModel(sillyORM.model.Model):
+    class TestModel(sillyorm.model.Model):
         _name = "test_model"
 
-        test = sillyORM.fields.String()
+        test = sillyorm.fields.String()
     
     model = TestModel(None, [])
     assert repr(model) == "test_model[]"
@@ -70,86 +70,86 @@ def test_model_ids():
 
 @pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
 def test_model_init(tmp_path, db_conn_fn):
-    class TestModel(sillyORM.model.Model):
+    class TestModel(sillyorm.model.Model):
         _name = "test_model"
 
-        test = sillyORM.fields.String()
+        test = sillyorm.fields.String()
 
     conn = db_conn_fn(tmp_path)
-    env = sillyORM.Environment(conn.cursor())
+    env = sillyorm.Environment(conn.cursor())
     env.register_model(TestModel)
     conn.close()
     
     conn = db_conn_fn(tmp_path)
-    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR)])
+    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR_255)])
     conn.close()
 
     # now the database is initialized, do an update
     conn = db_conn_fn(tmp_path)
-    env = sillyORM.Environment(conn.cursor())
+    env = sillyorm.Environment(conn.cursor())
     env.register_model(TestModel)
     conn.close()
 
     conn = db_conn_fn(tmp_path)
-    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR)])
+    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR_255)])
     conn.close()
 
 
 @pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
 def test_field_add_remove(tmp_path, db_conn_fn):
-    class TestModel(sillyORM.model.Model):
+    class TestModel(sillyorm.model.Model):
         _name = "test_model"
 
-        test = sillyORM.fields.String()
+        test = sillyorm.fields.String()
 
-    class TestModel_extrafields(sillyORM.model.Model):
+    class TestModel_extrafields(sillyorm.model.Model):
         _name = "test_model"
 
-        test = sillyORM.fields.String()
-        test2 = sillyORM.fields.String()
-        test3 = sillyORM.fields.String()
+        test = sillyorm.fields.String()
+        test2 = sillyorm.fields.String()
+        test3 = sillyorm.fields.String()
 
     conn = db_conn_fn(tmp_path)
-    env = sillyORM.Environment(conn.cursor())
+    env = sillyorm.Environment(conn.cursor())
     env.register_model(TestModel)
     conn.close()
 
     conn = db_conn_fn(tmp_path)
-    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR)])
+    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR_255)])
     conn.close()
 
     # add new fields
     conn = db_conn_fn(tmp_path)
-    env = sillyORM.Environment(conn.cursor())
+    env = sillyorm.Environment(conn.cursor())
     env.register_model(TestModel_extrafields)
     conn.close()
 
     conn = db_conn_fn(tmp_path)
-    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR), ("test2", SqlType.VARCHAR), ("test3", SqlType.VARCHAR)])
+    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR_255), ("test2", SqlType.VARCHAR_255), ("test3", SqlType.VARCHAR_255)])
     conn.close()
 
     # remove the added fields again
     conn = db_conn_fn(tmp_path)
-    env = sillyORM.Environment(conn.cursor())
+    env = sillyorm.Environment(conn.cursor())
     env.register_model(TestModel)
     conn.close()
 
     conn = db_conn_fn(tmp_path)
-    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR)])
+    assert_db_columns(conn.cursor(), "test_model", [("id", SqlType.INTEGER), ("test", SqlType.VARCHAR_255)])
     conn.close()
 
 
 @pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
 def test_create_browse(tmp_path, db_conn_fn):
-    class TestModel(sillyORM.model.Model):
+    class TestModel(sillyorm.model.Model):
         _name = "test_model"
 
-        test = sillyORM.fields.String()
-        test2 = sillyORM.fields.String()
-        test3 = sillyORM.fields.String()
+        test = sillyorm.fields.String()
+        test2 = sillyorm.fields.String()
+        test3 = sillyorm.fields.String()
 
     def new_env():
-        env = sillyORM.Environment(db_conn_fn(tmp_path).cursor())
+        env = sillyorm.Environment(db_conn_fn(tmp_path).cursor())
         env.register_model(TestModel)
         return env
 
@@ -183,15 +183,15 @@ def test_create_browse(tmp_path, db_conn_fn):
 
 @pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
 def test_read(tmp_path, db_conn_fn):
-    class TestModel(sillyORM.model.Model):
+    class TestModel(sillyorm.model.Model):
         _name = "test_model"
 
-        test = sillyORM.fields.String()
-        test2 = sillyORM.fields.String()
-        test3 = sillyORM.fields.String()
+        test = sillyorm.fields.String()
+        test2 = sillyorm.fields.String()
+        test3 = sillyorm.fields.String()
 
     def new_env():
-        env = sillyORM.Environment(db_conn_fn(tmp_path).cursor())
+        env = sillyorm.Environment(db_conn_fn(tmp_path).cursor())
         env.register_model(TestModel)
         return env
 
@@ -217,15 +217,15 @@ def test_read(tmp_path, db_conn_fn):
 
 @pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
 def test_write(tmp_path, db_conn_fn):
-    class TestModel(sillyORM.model.Model):
+    class TestModel(sillyorm.model.Model):
         _name = "test_model"
 
-        test = sillyORM.fields.String()
-        test2 = sillyORM.fields.String()
-        test3 = sillyORM.fields.String()
+        test = sillyorm.fields.String()
+        test2 = sillyorm.fields.String()
+        test3 = sillyorm.fields.String()
 
     def new_env():
-        env = sillyORM.Environment(db_conn_fn(tmp_path).cursor())
+        env = sillyorm.Environment(db_conn_fn(tmp_path).cursor())
         env.register_model(TestModel)
         return env
 
@@ -253,15 +253,15 @@ def test_write(tmp_path, db_conn_fn):
 
 @pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
 def test_search(tmp_path, db_conn_fn):
-    class TestModel(sillyORM.model.Model):
+    class TestModel(sillyorm.model.Model):
         _name = "test_model"
 
-        test = sillyORM.fields.String()
-        test2 = sillyORM.fields.String()
-        test3 = sillyORM.fields.String()
+        test = sillyorm.fields.String()
+        test2 = sillyorm.fields.String()
+        test3 = sillyorm.fields.String()
 
     def new_env():
-        env = sillyORM.Environment(db_conn_fn(tmp_path).cursor())
+        env = sillyorm.Environment(db_conn_fn(tmp_path).cursor())
         env.register_model(TestModel)
         return env
 

@@ -1,40 +1,40 @@
 import pytest
-import sillyORM
-from sillyORM.sql import SqlType
-from sillyORM.tests.internal import with_test_env, assert_db_columns
-from sillyORM.dbms.SQLite import SQLiteCursor
-from sillyORM.dbms.postgresql import PostgreSQLCursor
+import sillyorm
+from sillyorm.sql import SqlType
+from sillyorm.tests.internal import with_test_env, assert_db_columns
+from sillyorm.dbms.SQLite import SQLiteCursor
+from sillyorm.dbms.postgresql import PostgreSQLCursor
 
 
 @with_test_env
 def test_add_constraint(env):
-    class SaleOrder(sillyORM.model.Model):
+    class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"
 
-        name = sillyORM.fields.String()
+        name = sillyorm.fields.String()
 
-    class SaleOrderLine1(sillyORM.model.Model):
+    class SaleOrderLine1(sillyorm.model.Model):
         _name = "sale_order_line"
 
-        product = sillyORM.fields.String()
+        product = sillyorm.fields.String()
     
-    class SaleOrderLine2(sillyORM.model.Model):
+    class SaleOrderLine2(sillyorm.model.Model):
         _name = "sale_order_line"
 
-        product = sillyORM.fields.String()
-        sale_order_id = sillyORM.fields.Many2one("sale_order")
+        product = sillyorm.fields.String()
+        sale_order_id = sillyorm.fields.Many2one("sale_order")
 
     env.register_model(SaleOrder)
     env.register_model(SaleOrderLine1)
-    assert_db_columns(env.cr, "sale_order", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR)])
-    assert_db_columns(env.cr, "sale_order_line", [("id", SqlType.INTEGER), ("product", SqlType.VARCHAR)])
+    assert_db_columns(env.cr, "sale_order", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR_255)])
+    assert_db_columns(env.cr, "sale_order_line", [("id", SqlType.INTEGER), ("product", SqlType.VARCHAR_255)])
 
     del env._models["sale_order_line"]  # remove so we can register the SOL model again
 
     env.register_model(SaleOrderLine2)
 
-    assert_db_columns(env.cr, "sale_order", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR)])
-    assert_db_columns(env.cr, "sale_order_line", [("id", SqlType.INTEGER), ("product", SqlType.VARCHAR), ("sale_order_id", SqlType.INTEGER)])
+    assert_db_columns(env.cr, "sale_order", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR_255)])
+    assert_db_columns(env.cr, "sale_order_line", [("id", SqlType.INTEGER), ("product", SqlType.VARCHAR_255), ("sale_order_id", SqlType.INTEGER)])
     
     # test the FOREIGN KEY constraint
     so_1 = env["sale_order"].create({})

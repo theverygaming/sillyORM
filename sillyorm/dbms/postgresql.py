@@ -83,7 +83,7 @@ class PostgreSQLCursor(sql.Cursor):
     def _str_type_to_sql_type(self, t: str) -> sql.SqlType:
         match t:
             case "character varying":
-                return sql.SqlType.VARCHAR
+                return sql.SqlType.VARCHAR_255
             case "integer":
                 return sql.SqlType.INTEGER
             case _:

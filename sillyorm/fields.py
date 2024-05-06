@@ -68,7 +68,7 @@ class Id(Integer):
 
 
 class String(Field):
-    _sql_type = sql.SqlType.VARCHAR
+    _sql_type = sql.SqlType.VARCHAR_255
 
     def _check_type(self, value: Any) -> None:
         if not isinstance(value, str):

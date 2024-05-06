@@ -1,16 +1,16 @@
 import pytest
-import sillyORM
-from sillyORM.sql import SqlType
-from sillyORM.tests.internal import with_test_env, assert_db_columns
-from sillyORM.exceptions import SillyORMException
+import sillyorm
+from sillyorm.sql import SqlType
+from sillyorm.tests.internal import with_test_env, assert_db_columns
+from sillyorm.exceptions import SillyORMException
 
 
 @with_test_env
 def test_field_id(env):
-    class SaleOrder(sillyORM.model.Model):
+    class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"
 
-        line_count = sillyORM.fields.Integer()
+        line_count = sillyorm.fields.Integer()
 
     env.register_model(SaleOrder)
     assert_db_columns(env.cr, "sale_order", [("id", SqlType.INTEGER), ("line_count", SqlType.INTEGER)])
