@@ -86,6 +86,8 @@ class PostgreSQLCursor(sql.Cursor):
                 return sql.SqlType.VARCHAR_255
             case "integer":
                 return sql.SqlType.INTEGER
+            case "date":
+                return sql.SqlType.DATE
             case _:
                 raise SillyORMException(f"unknown pg type '{t}'")
 

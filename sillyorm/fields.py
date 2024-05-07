@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import datetime
 from . import sql
 from .exceptions import SillyORMException
 
@@ -35,15 +36,22 @@ class Field:
     def _check_type(self, value: Any) -> None:
         raise NotImplementedError("__check_type not implemented")  # pragma: no cover
 
+    def _convert_type_get(self, value: Any) -> Any:
+        return value
+
+    def _convert_type_set(self, value: Any) -> Any:
+        return value
+
     def __get__(self, record: Model, objtype: Any = None) -> Any | list[Any]:
-        result = record.read([self._name])
+        sql_result = record.read([self._name])
+        result = [self._convert_type_get(res[self._name]) for res in sql_result]
         if len(result) == 1:
-            return result[0][self._name]
-        return [x[self._name] for x in result]
+            return result[0]
+        return result
 
     def __set__(self, record: Model, value: Any) -> None:
         self._check_type(value)
-        record.write({self._name: value})
+        record.write({self._name: self._convert_type_set(value)})
 
 
 class Integer(Field):
@@ -68,11 +76,25 @@ class Id(Integer):
 
 
 class String(Field):
-    _sql_type = sql.SqlType.VARCHAR_255 # TODO: string length option
+    _sql_type = sql.SqlType.VARCHAR_255  # TODO: string length option
 
     def _check_type(self, value: Any) -> None:
         if not isinstance(value, str):
             raise SillyORMException("String value must be str")
+
+
+class Date(Field):
+    _sql_type = sql.SqlType.DATE
+
+    def _convert_type_get(self, value: Any) -> Any:
+        print(repr(value))
+        if isinstance(value, str):
+            return datetime.date.fromisoformat(value)
+        return value
+
+    def _check_type(self, value: Any) -> None:
+        if not isinstance(value, datetime.date) or isinstance(value, datetime.datetime):
+            raise SillyORMException("Date value must be date")
 
 
 class Many2one(Integer):
@@ -108,7 +130,9 @@ class One2many(Field):
 
     def __get__(self, record: Model, objtype: Any = None) -> None | Model:
         record.ensure_one()
-        return record.env[self._foreign_model].search([(self._foreign_field, "=", record.id)])
+        return record.env[self._foreign_model].search(
+            [(self._foreign_field, "=", record.id)]
+        )
 
     def __set__(self, record: Model, value: Model) -> None:
         raise NotImplementedError()
@@ -121,7 +145,9 @@ class Many2many(Field):
         self._foreign_model = foreign_model
 
     def _model_post_init(self, record: Model) -> None:
-        self._joint_table_name = f"_joint_{record._name}_{self._name}_{self._foreign_model}"
+        self._joint_table_name = (
+            f"_joint_{record._name}_{self._name}_{self._foreign_model}"
+        )
         self._joint_table_self_name = f"{record._name}_id"
         self._joint_table_foreign_name = f"{self._foreign_model}_id"
         self._tblmngr = sql.TableManager(self._joint_table_name)
@@ -167,7 +193,9 @@ class Many2many(Field):
         )
         if len(res) == 0:
             return None
-        return record.env[self._foreign_model].__class__(record.env, ids=[id[0] for id in res])
+        return record.env[self._foreign_model].__class__(
+            record.env, ids=[id[0] for id in res]
+        )
 
     def __set__(self, record: Model, value: tuple[int, Model]) -> None:
         record.ensure_one()
@@ -186,7 +214,9 @@ class Many2many(Field):
                         ],
                     )
                     if len(res) > 0:
-                        raise SillyORMException("attempted to insert a record twice into many2many")
+                        raise SillyORMException(
+                            "attempted to insert a record twice into many2many"
+                        )
                     self._tblmngr.insert_record(
                         record.env.cr,
                         {
