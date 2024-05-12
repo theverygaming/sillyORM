@@ -16,7 +16,9 @@ def _pg_conn(tmp_path: Path) -> postgresql.PostgreSQLConnection:
     conn = psycopg2.connect(connstr + " dbname=postgres")
     conn.autocommit = True
     cr = conn.cursor()
-    cr.execute(f'CREATE DATABASE "{dbname}";')
+    cr.execute(f"SELECT datname FROM pg_catalog.pg_database WHERE datname = '{dbname}';")
+    if cr.fetchone() is None:
+        cr.execute(f'CREATE DATABASE "{dbname}";')
     conn.close()
 
     return postgresql.PostgreSQLConnection(connstr + f" dbname={dbname}")
@@ -27,19 +29,28 @@ def _sqlite_conn(tmp_path: Path) -> SQLite.SQLiteConnection:
     return SQLite.SQLiteConnection(str(dbpath))
 
 
-def with_test_env(fn: Callable[[Environment], None]) -> Any:
-    def wrapper(tmp_path: Path, db_conn_fn: Callable[[Path], Any]) -> None:
-        env = Environment(db_conn_fn(tmp_path).cursor(), do_commit=False)
-        try:
-            fn(env)
-        except Exception as e:  # pragma: no cover
-            raise e
-        finally:
-            env.cr.rollback()
+def with_test_env(reinit: bool = False) -> Any:
+    def inner_fn(fn: Callable[[Environment], None] | Callable[[Environment, bool, Any], Any]) -> Any:
+        def wrapper(tmp_path: Path, db_conn_fn: Callable[[Path], Any]) -> None:
+            def run_test(is_second: bool = False, prev_ret = None) -> Any:
+                env = Environment(db_conn_fn(tmp_path).cursor(), do_commit=reinit)
+                try:
+                    if reinit:
+                        return fn(env, is_second, prev_ret)
+                    fn(env)
+                except Exception as e:  # pragma: no cover
+                    raise e
+                finally:
+                    if not reinit:
+                        env.cr.rollback()
+            ret = run_test()
+            if reinit:
+                run_test(True, ret)
 
-    return pytest.mark.parametrize(
-        "db_conn_fn", [(_sqlite_conn), (_pg_conn)], ids=["SQLite", "PostgreSQL"]
-    )(wrapper)
+        return pytest.mark.parametrize(
+            "db_conn_fn", [(_sqlite_conn), (_pg_conn)], ids=["SQLite", "PostgreSQL"]
+        )(wrapper)
+    return inner_fn
 
 
 def assert_db_columns(cr: Cursor, table: str, columns: list[tuple[str, SqlType]]) -> None:

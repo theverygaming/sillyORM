@@ -6,7 +6,7 @@ from sillyorm.dbms.postgresql import PostgreSQLCursor
 from .libtest import with_test_env, assert_db_columns
 
 
-@with_test_env
+@with_test_env()
 def test_add_constraint(env):
     class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"

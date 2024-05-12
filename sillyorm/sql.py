@@ -80,9 +80,7 @@ class SQL:
             values = list(values)
         if not isinstance(values, list):
             values = [values]
-        return cls._as_raw_sql(
-            f"{', '.join([str(cls.__as_safe_sql_value(x)) for x in values])}"
-        )
+        return cls._as_raw_sql(f"{', '.join([str(cls.__as_safe_sql_value(x)) for x in values])}")
 
     @classmethod
     def set(cls, values: list[Any] | tuple[Any, ...]) -> Self:
@@ -166,10 +164,7 @@ class Cursor:
                 if (
                     next(
                         filter(
-                            lambda x: (
-                                column_info.name == x.name
-                                and column_info.type == x.type
-                            ),
+                            lambda x: (column_info.name == x.name and column_info.type == x.type),
                             columns,
                         ),
                         None,
@@ -254,16 +249,12 @@ class TableManager:
     def table_init(self, cr: Cursor, columns: list[ColumnInfo]) -> None:
         cr.ensure_table(self.table_name, columns)
 
-    def read_records(
-        self, cr: Cursor, columns: list[str], extra_sql: SQL
-    ) -> list[dict[str, Any]]:
+    def read_records(self, cr: Cursor, columns: list[str], extra_sql: SQL) -> list[dict[str, Any]]:
         ret = []
         cr.execute(
             SQL(
                 "SELECT {columns} FROM {table} {extra_sql};",
-                columns=SQL.commaseperated(
-                    [SQL.identifier(column) for column in columns]
-                ),
+                columns=SQL.commaseperated([SQL.identifier(column) for column in columns]),
                 table=SQL.identifier(self.table_name),
                 extra_sql=extra_sql,
             )
@@ -286,18 +277,13 @@ class TableManager:
             )
         )
 
-    def update_records(
-        self, cr: Cursor, column_vals: dict[str, Any], extra_sql: SQL
-    ) -> None:
+    def update_records(self, cr: Cursor, column_vals: dict[str, Any], extra_sql: SQL) -> None:
         cr.execute(
             SQL(
                 "UPDATE {table} SET {data} {extra_sql};",
                 table=SQL.identifier(self.table_name),
                 data=SQL.commaseperated(
-                    [
-                        SQL("{k} = {v}", k=SQL.identifier(k), v=v)
-                        for k, v in column_vals.items()
-                    ]
+                    [SQL("{k} = {v}", k=SQL.identifier(k), v=v) for k, v in column_vals.items()]
                 ),
                 extra_sql=extra_sql,
             )
@@ -342,9 +328,7 @@ class TableManager:
         return cr.execute(
             SQL(
                 "SELECT {columns} FROM {table} WHERE {condition};",
-                columns=SQL.commaseperated(
-                    [SQL.identifier(column) for column in columns]
-                ),
+                columns=SQL.commaseperated([SQL.identifier(column) for column in columns]),
                 table=SQL.identifier(self.table_name),
                 condition=search_sql,
             )

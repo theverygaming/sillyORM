@@ -5,7 +5,7 @@ from sillyorm.exceptions import SillyORMException
 from ..libtest import with_test_env, assert_db_columns
 
 
-@with_test_env
+@with_test_env()
 def test_field_many2one_one2many(env):
     class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"
@@ -57,7 +57,7 @@ def test_field_many2one_one2many(env):
         env["sale_order"].browse(so_1_id).line_ids = 1
 
 
-@with_test_env
+@with_test_env()
 def test_field_many2many(env):
     class Tax(sillyorm.model.Model):
         _name = "tax"

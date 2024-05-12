@@ -87,7 +87,6 @@ class Date(Field):
     _sql_type = sql.SqlType.DATE
 
     def _convert_type_get(self, value: Any) -> Any:
-        print(repr(value))
         if isinstance(value, str):
             return datetime.date.fromisoformat(value)
         return value
@@ -130,9 +129,7 @@ class One2many(Field):
 
     def __get__(self, record: Model, objtype: Any = None) -> None | Model:
         record.ensure_one()
-        return record.env[self._foreign_model].search(
-            [(self._foreign_field, "=", record.id)]
-        )
+        return record.env[self._foreign_model].search([(self._foreign_field, "=", record.id)])
 
     def __set__(self, record: Model, value: Model) -> None:
         raise NotImplementedError()
@@ -145,9 +142,7 @@ class Many2many(Field):
         self._foreign_model = foreign_model
 
     def _model_post_init(self, record: Model) -> None:
-        self._joint_table_name = (
-            f"_joint_{record._name}_{self._name}_{self._foreign_model}"
-        )
+        self._joint_table_name = f"_joint_{record._name}_{self._name}_{self._foreign_model}"
         self._joint_table_self_name = f"{record._name}_id"
         self._joint_table_foreign_name = f"{self._foreign_model}_id"
         self._tblmngr = sql.TableManager(self._joint_table_name)
@@ -193,9 +188,7 @@ class Many2many(Field):
         )
         if len(res) == 0:
             return None
-        return record.env[self._foreign_model].__class__(
-            record.env, ids=[id[0] for id in res]
-        )
+        return record.env[self._foreign_model].__class__(record.env, ids=[id[0] for id in res])
 
     def __set__(self, record: Model, value: tuple[int, Model]) -> None:
         record.ensure_one()
@@ -214,9 +207,7 @@ class Many2many(Field):
                         ],
                     )
                     if len(res) > 0:
-                        raise SillyORMException(
-                            "attempted to insert a record twice into many2many"
-                        )
+                        raise SillyORMException("attempted to insert a record twice into many2many")
                     self._tblmngr.insert_record(
                         record.env.cr,
                         {
