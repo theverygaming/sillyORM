@@ -22,7 +22,7 @@ def test_field_date(env, is_second, prev_return):
 
         so_1 = env["sale_order"].create({"date": datetime.date(2024, 5, 7)})
         so_2 = env["sale_order"].create({})
-        
+
         assert so_1.date == datetime.date(2024, 5, 7)
         assert so_2.date is None
 

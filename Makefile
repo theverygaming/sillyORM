@@ -39,7 +39,7 @@ docs:
 
 .PHONY: format
 format: 
-	black sillyorm \
+	black sillyorm tests \
     --line-length 100 \
     --preview \
     --enable-unstable-feature string_processing

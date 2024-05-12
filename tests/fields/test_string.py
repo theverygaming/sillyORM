@@ -13,7 +13,9 @@ def test_field_string(env, is_second, prev_return):
         name = sillyorm.fields.String()
 
     def assert_columns():
-        assert_db_columns(env.cr, "sale_order", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR_255)])
+        assert_db_columns(
+            env.cr, "sale_order", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR_255)]
+        )
 
     def first():
         env.register_model(SaleOrder)
@@ -21,7 +23,7 @@ def test_field_string(env, is_second, prev_return):
 
         so_1 = env["sale_order"].create({"name": "order 1"})
         so_2 = env["sale_order"].create({})
-        
+
         assert so_1.name == "order 1"
         assert so_2.name is None
 
@@ -30,7 +32,7 @@ def test_field_string(env, is_second, prev_return):
 
         so_1.name = "hello world"
         assert so_1.name == "hello world"
-        
+
         with pytest.raises(SillyORMException) as e_info:
             so_1.name = 5
         assert str(e_info.value) == "String value must be str"

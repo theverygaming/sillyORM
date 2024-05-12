@@ -30,9 +30,11 @@ def _sqlite_conn(tmp_path: Path) -> SQLite.SQLiteConnection:
 
 
 def with_test_env(reinit: bool = False) -> Any:
-    def inner_fn(fn: Callable[[Environment], None] | Callable[[Environment, bool, Any], Any]) -> Any:
+    def inner_fn(
+        fn: Callable[[Environment], None] | Callable[[Environment, bool, Any], Any],
+    ) -> Any:
         def wrapper(tmp_path: Path, db_conn_fn: Callable[[Path], Any]) -> None:
-            def run_test(is_second: bool = False, prev_ret = None) -> Any:
+            def run_test(is_second: bool = False, prev_ret=None) -> Any:
                 env = Environment(db_conn_fn(tmp_path).cursor(), do_commit=reinit)
                 try:
                     if reinit:
@@ -43,6 +45,7 @@ def with_test_env(reinit: bool = False) -> Any:
                 finally:
                     if not reinit:
                         env.cr.rollback()
+
             ret = run_test()
             if reinit:
                 run_test(True, ret)
@@ -50,6 +53,7 @@ def with_test_env(reinit: bool = False) -> Any:
         return pytest.mark.parametrize(
             "db_conn_fn", [(_sqlite_conn), (_pg_conn)], ids=["SQLite", "PostgreSQL"]
         )(wrapper)
+
     return inner_fn
 
 

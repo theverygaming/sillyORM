@@ -17,7 +17,7 @@ def test_add_constraint(env):
         _name = "sale_order_line"
 
         product = sillyorm.fields.String()
-    
+
     class SaleOrderLine2(sillyorm.model.Model):
         _name = "sale_order_line"
 
@@ -26,16 +26,30 @@ def test_add_constraint(env):
 
     env.register_model(SaleOrder)
     env.register_model(SaleOrderLine1)
-    assert_db_columns(env.cr, "sale_order", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR_255)])
-    assert_db_columns(env.cr, "sale_order_line", [("id", SqlType.INTEGER), ("product", SqlType.VARCHAR_255)])
+    assert_db_columns(
+        env.cr, "sale_order", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR_255)]
+    )
+    assert_db_columns(
+        env.cr, "sale_order_line", [("id", SqlType.INTEGER), ("product", SqlType.VARCHAR_255)]
+    )
 
     del env._models["sale_order_line"]  # remove so we can register the SOL model again
 
     env.register_model(SaleOrderLine2)
 
-    assert_db_columns(env.cr, "sale_order", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR_255)])
-    assert_db_columns(env.cr, "sale_order_line", [("id", SqlType.INTEGER), ("product", SqlType.VARCHAR_255), ("sale_order_id", SqlType.INTEGER)])
-    
+    assert_db_columns(
+        env.cr, "sale_order", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR_255)]
+    )
+    assert_db_columns(
+        env.cr,
+        "sale_order_line",
+        [
+            ("id", SqlType.INTEGER),
+            ("product", SqlType.VARCHAR_255),
+            ("sale_order_id", SqlType.INTEGER),
+        ],
+    )
+
     # test the FOREIGN KEY constraint
     so_1 = env["sale_order"].create({})
     sol_1 = env["sale_order_line"].create({"sale_order_id": so_1.id})
@@ -46,5 +60,8 @@ def test_add_constraint(env):
     with pytest.raises(Exception) as e_info:
         env["sale_order_line"].create({"sale_order_id": so_1.id + 5})
     if isinstance(env.cr, PostgreSQLCursor):
-        assert str(e_info.value) == ('insert or update on table "sale_order_line" violates foreign key constraint "constraint_sale_order_id_FOREIGN_KEY"\n' 
-                                     + f'DETAIL:  Key (sale_order_id)=({so_1.id+5}) is not present in table "sale_order".\n')
+        assert str(e_info.value) == (
+            'insert or update on table "sale_order_line" violates foreign key constraint'
+            ' "constraint_sale_order_id_FOREIGN_KEY"\n'
+            + f'DETAIL:  Key (sale_order_id)=({so_1.id+5}) is not present in table "sale_order".\n'
+        )

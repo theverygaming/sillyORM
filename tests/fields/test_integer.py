@@ -13,7 +13,9 @@ def test_field_id(env, is_second, prev_return):
         line_count = sillyorm.fields.Integer()
 
     def assert_columns():
-        assert_db_columns(env.cr, "sale_order", [("id", SqlType.INTEGER), ("line_count", SqlType.INTEGER)])
+        assert_db_columns(
+            env.cr, "sale_order", [("id", SqlType.INTEGER), ("line_count", SqlType.INTEGER)]
+        )
 
     def first():
         env.register_model(SaleOrder)

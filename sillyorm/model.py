@@ -8,7 +8,7 @@ from .exceptions import SillyORMException
 _logger = logging.getLogger(__name__)
 
 
-class Model():
+class Model:
     _name = ""
     id = fields.Id()
 

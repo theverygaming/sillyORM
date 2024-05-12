@@ -21,8 +21,18 @@ def test_field_many2one_one2many(env):
 
     env.register_model(SaleOrder)
     env.register_model(SaleOrderLine)
-    assert_db_columns(env.cr, "sale_order", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR_255)])
-    assert_db_columns(env.cr, "sale_order_line", [("id", SqlType.INTEGER), ("product", SqlType.VARCHAR_255), ("sale_order_id", SqlType.INTEGER)])
+    assert_db_columns(
+        env.cr, "sale_order", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR_255)]
+    )
+    assert_db_columns(
+        env.cr,
+        "sale_order_line",
+        [
+            ("id", SqlType.INTEGER),
+            ("product", SqlType.VARCHAR_255),
+            ("sale_order_id", SqlType.INTEGER),
+        ],
+    )
 
     so_1_id = env["sale_order"].create({"name": "order 1"}).id
     so_2_id = env["sale_order"].create({"name": "order 2"}).id
@@ -43,15 +53,36 @@ def test_field_many2one_one2many(env):
     abandoned_so_line2 = env["sale_order_line"].create({"product": "p3 4 o2"})
     assert abandoned_so_line1.sale_order_id is None
     assert abandoned_so_line2.sale_order_id is None
-    assert env["sale_order_line"].browse([abandoned_so_line1.id, abandoned_so_line2.id]).sale_order_id is None
+    assert (
+        env["sale_order_line"].browse([abandoned_so_line1.id, abandoned_so_line2.id]).sale_order_id
+        is None
+    )
     abandoned_so_line1.sale_order_id = env["sale_order"].browse(so_1_id)
-    assert env["sale_order_line"].browse([abandoned_so_line1.id, abandoned_so_line2.id]).sale_order_id.id == so_1_id
+    assert (
+        env["sale_order_line"]
+        .browse([abandoned_so_line1.id, abandoned_so_line2.id])
+        .sale_order_id.id
+        == so_1_id
+    )
     abandoned_so_line2.sale_order_id = env["sale_order"].browse(so_2_id)
-    assert repr(env["sale_order_line"].browse([abandoned_so_line1.id, abandoned_so_line2.id]).sale_order_id) == f"sale_order[{so_1_id}, {so_2_id}]"
+    assert (
+        repr(
+            env["sale_order_line"]
+            .browse([abandoned_so_line1.id, abandoned_so_line2.id])
+            .sale_order_id
+        )
+        == f"sale_order[{so_1_id}, {so_2_id}]"
+    )
 
     # One2many
-    assert repr(env["sale_order"].browse(so_1_id).line_ids) == f"sale_order_line[{o1_l1.id}, {o1_l2.id}, {abandoned_so_line1.id}]"
-    assert repr(env["sale_order"].browse(so_2_id).line_ids) == f"sale_order_line[{o2_l1.id}, {o2_l2.id}, {o2_l3.id}, {abandoned_so_line2.id}]"
+    assert (
+        repr(env["sale_order"].browse(so_1_id).line_ids)
+        == f"sale_order_line[{o1_l1.id}, {o1_l2.id}, {abandoned_so_line1.id}]"
+    )
+    assert (
+        repr(env["sale_order"].browse(so_2_id).line_ids)
+        == f"sale_order_line[{o2_l1.id}, {o2_l2.id}, {o2_l3.id}, {abandoned_so_line2.id}]"
+    )
 
     with pytest.raises(NotImplementedError):
         env["sale_order"].browse(so_1_id).line_ids = 1
@@ -73,7 +104,11 @@ def test_field_many2many(env):
     env.register_model(Product)
     assert_db_columns(env.cr, "tax", [("id", SqlType.INTEGER), ("name", SqlType.VARCHAR_255)])
     assert_db_columns(env.cr, "product", [("id", SqlType.INTEGER)])
-    assert_db_columns(env.cr, "_joint_product_tax_ids_tax", [("product_id", SqlType.INTEGER), ("tax_id", SqlType.INTEGER)])
+    assert_db_columns(
+        env.cr,
+        "_joint_product_tax_ids_tax",
+        [("product_id", SqlType.INTEGER), ("tax_id", SqlType.INTEGER)],
+    )
 
     tax_1 = env["tax"].create({"name": "tax 1"})
     tax_2 = env["tax"].create({"name": "tax 2"})
@@ -84,7 +119,6 @@ def test_field_many2many(env):
     with pytest.raises(SillyORMException) as e_info:
         product_2.tax_ids = (2, None)
     assert str(e_info.value) == "unknown many2many command"
-
 
     assert product_1.tax_ids is None
     assert product_2.tax_ids is None
