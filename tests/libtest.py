@@ -3,11 +3,10 @@ from typing import Callable, Any
 import re
 import pytest
 import psycopg2
-
-from ..dbms import postgresql
-from ..dbms import SQLite
-from ..environment import Environment
-from ..sql import Cursor, SqlType
+from sillyorm.dbms import postgresql
+from sillyorm.dbms import SQLite
+from sillyorm.environment import Environment
+from sillyorm.sql import Cursor, SqlType
 
 
 def _pg_conn(tmp_path: Path) -> postgresql.PostgreSQLConnection:

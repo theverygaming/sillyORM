@@ -2,8 +2,8 @@ import pytest
 import datetime
 import sillyorm
 from sillyorm.sql import SqlType
-from sillyorm.tests.internal import with_test_env, assert_db_columns
 from sillyorm.exceptions import SillyORMException
+from ..libtest import with_test_env, assert_db_columns
 
 
 @with_test_env

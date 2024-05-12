@@ -3,4 +3,20 @@ requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sillyorm"
+name = "sillyORM"
+version = "0.0.1"
+description = "an ORM library"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {file = "LICENSE"}
+dependencies = []
+
+[project.optional-dependencies]
+postgres = ["psycopg2"]
+dev = [
+    "pytest", "coverage", "pylint", "mypy", "black", "Sphinx",
+    "psycopg2", "types-psycopg2"
+]
+
+[tool.setuptools]
+packages = ["sillyorm", "sillyorm.dbms"]
