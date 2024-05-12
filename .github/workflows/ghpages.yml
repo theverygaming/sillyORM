@@ -22,35 +22,27 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    name: "Build docs"
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
+        uses: actions/checkout@v4
       - name: Setup Pages
-        id: pages
-        uses: actions/configure-pages@v1
-
+        uses: actions/configure-pages@v5
       - name: Build docs
-        shell: bash
         run: |
-         rm -rf "_site${{ steps.pages.outputs.base_path }}"/*
-         mkdir -p output
-         echo "hello world" > output/index.html
-         cp -a output/. "_site${{ steps.pages.outputs.base_path }}"
-      - name: Upload site artifact
-        uses: actions/upload-pages-artifact@v1
+          mkdir _pagesout
+          echo "hello world" > _pagesout/index.html
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: "_site${{ steps.pages.outputs.base_path }}"
+          path: '_pagesout'
 
   deploy:
     name: "Deploy docs"
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     needs: build
     steps:
       - name: Deploy to GitHub Pages
