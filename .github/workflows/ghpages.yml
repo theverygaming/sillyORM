@@ -26,16 +26,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Install dependencies
+        run: pip install psycopg2 Sphinx
       - name: Build docs
         run: |
-          mkdir _pagesout
-          echo "hello world" > _pagesout/index.html
+          cd docs
+          make html
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '_pagesout'
+          path: 'docs/_build/html'
 
   deploy:
     name: "Deploy docs"
