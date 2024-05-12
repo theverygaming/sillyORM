@@ -116,8 +116,8 @@ def load_file(fname):
     print(_render_html(templates["test"], {}))
     #print(_render_html(templates["html_base"], {"lang": "en-US", "title": "test", "head": "<script></script>", "body": "<p>hello world!</p>"}))
 
-load_file("test.xml")
-
-#print(_render(tree.getroot()))
-#print("\n\n")
-#print(etree.tostring(tree.getroot(), encoding="unicode"))
+if __name__ == "__main__":
+    load_file("test.xml")
+    #print(_render(tree.getroot()))
+    #print("\n\n")
+    #print(etree.tostring(tree.getroot(), encoding="unicode"))
