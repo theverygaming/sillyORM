@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<templates>
-  <t t-name="error_handler">
-    <t t-if="state.error" t-slot="error_fallback"></t>
-    <t t-else="" t-slot="default"/>
-  </t>
-</templates>
