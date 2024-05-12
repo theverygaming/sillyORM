@@ -8,11 +8,7 @@ from .exceptions import SillyORMException
 _logger = logging.getLogger(__name__)
 
 
-class MetaModel(type):
-    pass
-
-
-class Model(metaclass=MetaModel):
+class Model():
     _name = ""
     id = fields.Id()
 
