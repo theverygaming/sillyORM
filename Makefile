@@ -17,6 +17,7 @@ test:
 	coverage run --source sillyorm/ -m pytest -vv --tb=long tests/
 	coverage html --omit="tests/*"
 	coverage report -m --omit="tests/*"
+	cd docs && make doctest
 
 .PHONY: postgrescontainer
 postgrescontainer:

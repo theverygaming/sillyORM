@@ -8,11 +8,11 @@ jobs:
     services:
       postgres:
         image: postgres:16
-        env: 
+        env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: postgres
-        ports: 
+        ports:
           - 5432:5432
         options: >-
           --health-cmd pg_isready
@@ -39,3 +39,38 @@ jobs:
           coverage report -m --omit="tests/*"
           echo "# Coverage" >> $GITHUB_STEP_SUMMARY
           coverage report -m --omit="tests/*" --format=markdown >> $GITHUB_STEP_SUMMARY
+  test-docs:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: pip install psycopg2 Sphinx
+      - name: generate docs
+        run: |
+          cd docs
+          make html
+      - name: run doctest
+        run: |
+          cd docs
+          make doctest

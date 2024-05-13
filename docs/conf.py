@@ -22,7 +22,7 @@ author = 'theverygaming'
 
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.doctest' # TODO: https://www.sphinx-doc.org/en/master/usage/extensions/doctest.html
+    'sphinx.ext.doctest'
 ]
 
 #templates_path = ['_templates']
