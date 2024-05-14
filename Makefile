@@ -27,17 +27,6 @@ postgrescontainer:
 psql:
 	PGPASSWORD="postgres" psql -U postgres -h 127.0.0.1 $@
 
-.PHONY: docs
-docs:
-	mkdir -p docs && cd docs
-	sphinx-apidoc --help -F -o . ../sillyorm
-	make html
-
-	# conf.py:
-	#import os
-	#import sys
-	#sys.path.insert(0, os.path.abspath('..'))  # so we can import from the directory below
-
 .PHONY: format
 format: 
 	black sillyorm tests \
