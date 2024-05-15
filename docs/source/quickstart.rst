@@ -11,11 +11,8 @@ Models
    import sillyorm
    from sillyorm.dbms import SQLite
 
-.. testcleanup:: models
-
    tmpfile = tempfile.NamedTemporaryFile()
    env = sillyorm.Environment(SQLite.SQLiteConnection(tmpfile.name).cursor())
-   env.register_model(ExampleModel)  # FIXME: this probably doesn't actually work
 
 
 ------
@@ -26,18 +23,49 @@ Each model represents a single table in the database. A model can have fields wh
 
 A model is a class that inherits from :class:`sillyorm.model.Model`.
 It has a `_name` attribute which specifies the name of the database table
-and the name of the model in the :class:`environment <sillyorm.environment.Environment>`.
-
-..
-   TODO: reference environment section
+and the name of the model in the :ref:`environment <environment>`.
 
 .. testcode:: models
 
    class ExampleModel(sillyorm.model.Model):
-       _name = "example"
+       _name = "example0"
+
+   env.register_model(ExampleModel)
 
 When a model is registered the ORM ensures the table with all required fields is created.
 If any columns/fields exist in the database but are not specified in the model **they will be removed in the database**.
+
+
+.. _environment:
+
+-----------
+Environment
+-----------
+
+The :class:`environment <sillyorm.environment.Environment>` class keeps track of the database cursor and Models registered in the database.
+
+You can get an empty :ref:`recordset <recordsets>` for each model registered in the environment
+
+.. doctest:: models
+
+   >>> env["example0"]
+   example0[]
+
+The environment can be accessed from each :ref:`recordset <recordsets>`
+
+.. doctest:: models
+
+   # the environment can be accessed from each recordset
+   >>> type(env["example0"].env)
+   <class 'sillyorm.environment.Environment'>
+
+The database cursor can be accessed from the environment
+
+.. doctest:: models
+
+   # the database cursor can be accessed from the environment
+   >>> type(env.cr)
+   <class 'sillyorm.dbms.SQLite.SQLiteCursor'>
 
 
 ------
@@ -62,12 +90,101 @@ The attribute name specifies the column name in the database.
 .. testcode:: models
 
    class ExampleModel(sillyorm.model.Model):
-       _name = "example"
+       _name = "example1"
 
        name = sillyorm.fields.String()
 
-..
-   TODO: describe recordsets
+   env.register_model(ExampleModel)
 
-..
-   TODO: describe functions
+
+.. _recordsets:
+
+----------
+Recordsets
+----------
+
+An instance of a model class is a recordset. It may contain none to multiple records.
+
+
+Recordsets can be empty
+
+.. doctest:: models
+
+   # empty recordset
+   >>> env["example1"]
+   example1[]
+
+
+Recordsets can contain single records
+
+.. doctest:: models
+
+   # recordset with one record
+   >>> rec_1 = env["example1"].create({"name": "this is record 1"})
+   >>> rec_1
+   example1[1]
+   >>> rec_1.name
+   'this is record 1'
+   >>> rec_1.id
+   1
+
+   # another recordset with one record
+   >>> env["example1"].create({"name": "this is record 2"})
+   example1[2]
+
+Recordsets can contain multiple records
+
+.. doctest:: models
+
+   # recordset with two records
+   >>> rec_12 = env["example1"].browse([1, 2])
+   >>> rec_12
+   example1[1, 2]
+   >>> rec_12.name
+   ['this is record 1', 'this is record 2']
+
+
+Recordsets can be iterated over
+
+.. doctest:: models
+
+   >>> rec_12 = env["example1"].browse([1, 2])
+   >>> for record in rec_12: record
+   example1[1]
+   example1[2]
+
+There is a :func:`function <sillyorm.model.Model.ensure_one>` to ensure a recordset contains exactly one record. It will raise an exception if that isn't the case
+
+.. doctest:: models
+
+   >>> rec_1 = env["example1"].browse(1)
+   >>> rec_1.ensure_one()
+   example1[1]
+
+---------------
+Model Functions
+---------------
+
+A model can have functions
+
+.. testcode:: models
+
+   class ExampleModel(sillyorm.model.Model):
+       _name = "example2"
+
+       name = sillyorm.fields.String()
+
+       def somefunc(self):
+           print(self)
+           for record in self:
+               print(f"it: {self}") 
+
+   env.register_model(ExampleModel)
+   record = env["example2"].create({"name": "test"})
+   record.somefunc()
+
+
+.. testoutput:: models
+
+   example2[1]
+   it: example2[1]
