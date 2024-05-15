@@ -35,6 +35,10 @@ and the name of the model in the :ref:`environment <environment>`.
 When a model is registered the ORM ensures the table with all required fields is created.
 If any columns/fields exist in the database but are not specified in the model **they will be removed in the database**.
 
+.. warning::
+   You should never call the constructor of the model class yourself.
+   Get an empty recordset via the :ref:`environment <environment>` and interact with the model from there.
+
 
 .. _environment:
 
