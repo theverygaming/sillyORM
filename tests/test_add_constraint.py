@@ -62,6 +62,6 @@ def test_add_constraint(env):
     if isinstance(env.cr, PostgreSQLCursor):
         assert str(e_info.value) == (
             'insert or update on table "sale_order_line" violates foreign key constraint'
-            ' "constraint_sale_order_id_FOREIGN_KEY"\n'
+            ' "constraint_sale_order_id_FOREIGNKEY"\n'
             + f'DETAIL:  Key (sale_order_id)=({so_1.id+5}) is not present in table "sale_order".\n'
         )

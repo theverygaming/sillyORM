@@ -54,7 +54,7 @@ class SQLiteCursor(sql.Cursor):
             sql.ColumnInfo(
                 n,
                 _str_type_to_sql_type(t),
-                [(sql.SqlConstraint.PRIMARY_KEY, {})] if pk else [],
+                [sql.SqlConstraint.PRIMARY_KEY()] if pk else [],
             )
             for n, t, pk in res
         ]
@@ -72,7 +72,7 @@ class SQLiteCursor(sql.Cursor):
         self,
         table: str,
         column: str,
-        constraint: tuple[sql.SqlConstraint, dict[str, Any]],
+        constraint: sql.SqlConstraint,
     ) -> None:
         pass  # SQLite does not support this...
 

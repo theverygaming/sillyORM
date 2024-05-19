@@ -79,14 +79,14 @@ class PostgreSQLCursor(sql.Cursor):
         self,
         table: str,
         column: str,
-        constraint: tuple[sql.SqlConstraint, dict[str, Any]],
+        constraint: sql.SqlConstraint,
     ) -> None:
         self.execute(
             SQL(
                 "ALTER TABLE {table} ADD CONSTRAINT {name} {constraint};",
                 table=SQL.identifier(table),
                 name=SQL.identifier(
-                    f"constraint_{column}_{re.sub(r'[^a-zA-Z0-9_@#]', '', constraint[0].name)}"
+                    f"constraint_{column}_{re.sub(r'[^a-zA-Z0-9_@#]', '', constraint.kind)}"
                 ),
                 constraint=self._constraint_to_sql(column, constraint),
             )

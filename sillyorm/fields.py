@@ -21,7 +21,7 @@ class Field:
     # default values
     _materialize = True  # if the field should actually exist in tables
 
-    _constraints: list[tuple[sql.SqlConstraint, dict[str, Any]]] = []
+    _constraints: list[sql.SqlConstraint] = []
 
     def __init__(self) -> None:
         if self._sql_type is None:
@@ -63,7 +63,7 @@ class Integer(Field):
 
 
 class Id(Integer):
-    _constraints = [(sql.SqlConstraint.PRIMARY_KEY, {})]
+    _constraints = [sql.SqlConstraint.PRIMARY_KEY()]
 
     def __get__(self, record: Model, objtype: Any = None) -> int:
         record.ensure_one()
@@ -99,9 +99,7 @@ class Date(Field):
 class Many2one(Integer):
     def __init__(self, foreign_model: str):
         self._foreign_model = foreign_model
-        self._constraints = [
-            (sql.SqlConstraint.FOREIGN_KEY, {"table": foreign_model, "column": "id"})
-        ]
+        self._constraints = [sql.SqlConstraint.FOREIGN_KEY(foreign_model, "id")]
 
     def __get__(self, record: Model, objtype: Any = None) -> None | Model:
         ids = super().__get__(record, objtype)
@@ -158,20 +156,14 @@ class Many2many(Field):
                     self._joint_table_self_name,
                     sql.SqlType.INTEGER(),
                     [
-                        (
-                            sql.SqlConstraint.FOREIGN_KEY,
-                            {"table": record._name, "column": "id"},
-                        )
+                        sql.SqlConstraint.FOREIGN_KEY(record._name, "id"),
                     ],
                 ),
                 sql.ColumnInfo(
                     self._joint_table_foreign_name,
                     sql.SqlType.INTEGER(),
                     [
-                        (
-                            sql.SqlConstraint.FOREIGN_KEY,
-                            {"table": self._foreign_model, "column": "id"},
-                        )
+                        sql.SqlConstraint.FOREIGN_KEY(self._foreign_model, "id"),
                     ],
                 ),
             ],

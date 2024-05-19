@@ -35,11 +35,36 @@ class SqlType:
         return SqlType("TIMESTAMP")
 
 
-class SqlConstraint(Enum):
-    NOT_NULL = 1
-    UNIQUE = 2
-    PRIMARY_KEY = 3
-    FOREIGN_KEY = 4
+class SqlConstraint:
+    def __init__(self, kind: str, **args: Any):
+        self.kind = kind
+        self.args = args
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SqlConstraint):
+            return False
+        return self.kind == other.kind and self.args == other.args
+
+    def __repr__(self) -> str:
+        return f"<SqlConstraint {self.kind}, {self.args}>"
+
+    @staticmethod
+    def NOT_NULL() -> SqlConstraint:
+        return SqlConstraint("NOT NULL")
+
+    @staticmethod
+    def UNIQUE() -> SqlConstraint:
+        return SqlConstraint("UNIQUE")
+
+    @staticmethod
+    def PRIMARY_KEY() -> SqlConstraint:
+        return SqlConstraint("PRIMARY KEY")
+
+    @staticmethod
+    def FOREIGN_KEY(foreign_table: str, foreign_column: str) -> SqlConstraint:
+        return SqlConstraint(
+            "FOREIGN KEY", foreign_table=foreign_table, foreign_column=foreign_column
+        )
 
 
 class SQL:
@@ -120,7 +145,7 @@ class SQL:
 class ColumnInfo(NamedTuple):
     name: str
     type: SqlType
-    constraints: list[tuple[SqlConstraint, dict[str, Any]]]
+    constraints: list[SqlConstraint]
 
 
 class Cursor:
@@ -226,26 +251,21 @@ class Cursor:
     def _table_exists(self, name: str) -> bool:
         raise NotImplementedError()  # pragma: no cover
 
-    def _constraint_to_sql(
-        self, column: str, constraint: tuple[SqlConstraint, dict[str, Any]]
-    ) -> SQL:
-        match constraint[0]:
-            case SqlConstraint.PRIMARY_KEY:
-                return SQL("PRIMARY KEY ({name})", name=SQL.identifier(column))
-            case SqlConstraint.FOREIGN_KEY:
-                return SQL(
-                    "FOREIGN KEY ({name}) REFERENCES {ftable}({fname})",
-                    name=SQL.identifier(column),
-                    ftable=SQL.identifier(constraint[1]["table"]),
-                    fname=SQL.identifier(constraint[1]["column"]),
-                )
-            case SqlConstraint.UNIQUE:
-                return SQL("UNIQUE ({name})", name=SQL.identifier(column))
-            case _:
-                raise SillyORMException(f"unknown SQL constraint {constraint[0]}")
+    def _constraint_to_sql(self, column: str, constraint: SqlConstraint) -> SQL:
+        if constraint.kind == "FOREIGN KEY":
+            return SQL(
+                "FOREIGN KEY ({name}) REFERENCES {ftable}({fname})",
+                name=SQL.identifier(column),
+                ftable=SQL.identifier(constraint.args["foreign_table"]),
+                fname=SQL.identifier(constraint.args["foreign_column"]),
+            )
+        elif constraint.kind in ["PRIMARY KEY", "UNIQUE"]:
+            return SQL(f"{constraint.kind} ({{column}})", column=SQL.identifier(column))
+        else:
+            raise SillyORMException(f"unknown SQL constraint {constraint}")
 
     def _alter_table_add_constraint(
-        self, table: str, column: str, constraint: tuple[SqlConstraint, dict[str, Any]]
+        self, table: str, column: str, constraint: SqlConstraint
     ) -> None:
         raise NotImplementedError()  # pragma: no cover
 

@@ -4,7 +4,7 @@ import psycopg2
 import sillyorm
 from sillyorm.dbms import SQLite
 from sillyorm.dbms import postgresql
-from sillyorm.sql import SqlType, SqlConstraint
+from sillyorm.sql import SqlType
 from sillyorm.exceptions import SillyORMException
 from .libtest import assert_db_columns
 
