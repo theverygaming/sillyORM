@@ -39,18 +39,30 @@ class PostgreSQLCursor(sql.Cursor):
         return cast(tuple[Any, ...], res)
 
     def get_table_column_info(self, name: str) -> list[sql.ColumnInfo]:
+        def _str_type_to_sql_type(t: str, maxlen: int) -> sql.SqlType:
+            match t:
+                case "character varying":
+                    return sql.SqlType.VARCHAR(maxlen)
+                case "integer":
+                    return sql.SqlType.INTEGER()
+                case "date":
+                    return sql.SqlType.DATE()
+                case _:
+                    raise SillyORMException(f"unknown pg type '{t}'")
+
         res = self.execute(
             SQL(
-                "SELECT {i1}, {i2} FROM information_schema.columns WHERE table_schema = 'public'"
-                " AND table_name = {table};",
+                "SELECT {i1}, {i2}, {i3} FROM information_schema.columns WHERE table_schema ="
+                " 'public' AND table_name = {table};",
                 i1=SQL.identifier("column_name"),
                 i2=SQL.identifier("data_type"),
+                i3=SQL.identifier("character_maximum_length"),
                 table=SQL.escape(name),
             )
         ).fetchall()
         info = []
-        for cname, ctype in res:
-            info.append(sql.ColumnInfo(cname, self._str_type_to_sql_type(ctype), []))
+        for cname, ctype, cmaxlen in res:
+            info.append(sql.ColumnInfo(cname, _str_type_to_sql_type(ctype, cmaxlen), []))
         return info
 
     def _table_exists(self, name: str) -> bool:
@@ -79,17 +91,6 @@ class PostgreSQLCursor(sql.Cursor):
                 constraint=self._constraint_to_sql(column, constraint),
             )
         )
-
-    def _str_type_to_sql_type(self, t: str) -> sql.SqlType:
-        match t:
-            case "character varying":
-                return sql.SqlType.VARCHAR(255)
-            case "integer":
-                return sql.SqlType.INTEGER()
-            case "date":
-                return sql.SqlType.DATE()
-            case _:
-                raise SillyORMException(f"unknown pg type '{t}'")
 
 
 class PostgreSQLConnection(sql.Connection):

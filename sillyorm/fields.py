@@ -57,8 +57,6 @@ class Field:
 class Integer(Field):
     _sql_type = sql.SqlType.INTEGER()
 
-    _constraints = []
-
     def _check_type(self, value: Any) -> None:
         if not isinstance(value, int):
             raise SillyORMException("Integer value must be int")
@@ -76,7 +74,9 @@ class Id(Integer):
 
 
 class String(Field):
-    _sql_type = sql.SqlType.VARCHAR(255)  # TODO: string length option
+    def __init__(self, length: int = 255) -> None:
+        self._sql_type = sql.SqlType.VARCHAR(length)
+        super().__init__()
 
     def _check_type(self, value: Any) -> None:
         if not isinstance(value, str):
@@ -97,8 +97,6 @@ class Date(Field):
 
 
 class Many2one(Integer):
-    _constraints = []
-
     def __init__(self, foreign_model: str):
         self._foreign_model = foreign_model
         self._constraints = [

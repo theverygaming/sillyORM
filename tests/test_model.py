@@ -6,6 +6,7 @@ from sillyorm.dbms import SQLite
 from sillyorm.dbms import postgresql
 from sillyorm.sql import SqlType, SqlConstraint
 from sillyorm.exceptions import SillyORMException
+from .libtest import assert_db_columns
 
 
 def pg_conn(tmp_path):
@@ -33,13 +34,6 @@ def test_model_name():
     with pytest.raises(SillyORMException) as e_info:
         TestModel(None, [])
     assert str(e_info.value) == "_name must be set"
-
-
-def assert_db_columns(cr, table, columns):
-    info = [(info.name, info.type) for info in cr.get_table_column_info(table)]
-    assert len(info) == len(columns)
-    for column in columns:
-        assert column in info
 
 
 def test_model_ids():

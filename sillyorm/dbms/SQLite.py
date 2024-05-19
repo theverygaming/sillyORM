@@ -38,6 +38,9 @@ class SQLiteCursor(sql.Cursor):
         return cast(tuple[Any, ...], res)
 
     def get_table_column_info(self, name: str) -> list[sql.ColumnInfo]:
+        def _str_type_to_sql_type(t: str) -> sql.SqlType:
+            return sql.SqlType(t)
+
         res = self.execute(
             SQL(
                 "SELECT {i1}, {i2}, {i3} FROM PRAGMA_TABLE_INFO({table});",
@@ -50,7 +53,7 @@ class SQLiteCursor(sql.Cursor):
         return [
             sql.ColumnInfo(
                 n,
-                self._str_type_to_sql_type(t),
+                _str_type_to_sql_type(t),
                 [(sql.SqlConstraint.PRIMARY_KEY, {})] if pk else [],
             )
             for n, t, pk in res

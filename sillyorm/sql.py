@@ -15,6 +15,9 @@ class SqlType:
             return False
         return self.value == other.value
 
+    def __repr__(self) -> str:
+        return f"<SqlType '{self.value}'>"
+
     @staticmethod
     def INTEGER() -> SqlType:
         return SqlType("INTEGER")
@@ -245,13 +248,6 @@ class Cursor:
         self, table: str, column: str, constraint: tuple[SqlConstraint, dict[str, Any]]
     ) -> None:
         raise NotImplementedError()  # pragma: no cover
-
-    def _str_type_to_sql_type(self, t: str) -> SqlType:
-        return SqlType(t)
-
-    # commented out because it's currently unused
-    #  def _sql_type_to_str_type(t: SqlType) -> str:
-    #      return t.value
 
 
 class Connection:
