@@ -10,6 +10,7 @@ from ..exceptions import SillyORMException
 _logger = logging.getLogger(__name__)
 
 
+# pylint: disable=duplicate-code
 class PostgreSQLCursor(sql.Cursor):
     def __init__(self, cr: psycopg2.extensions.cursor):
         self._cr = cr
@@ -20,10 +21,10 @@ class PostgreSQLCursor(sql.Cursor):
     def rollback(self) -> None:
         self._cr.connection.rollback()
 
-    def execute(self, sql: sql.SQL) -> Self:
-        if not isinstance(sql, SQL):
+    def execute(self, sqlcode: sql.SQL) -> Self:
+        if not isinstance(sqlcode, SQL):
             raise SillyORMException("SQL code must be enclosed in the SQL class")
-        code = sql.code()
+        code = sqlcode.code()
         _logger.debug("execute: %s", str(code))
         self._cr.execute(code)
         return self

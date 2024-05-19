@@ -19,10 +19,10 @@ class SQLiteCursor(sql.Cursor):
     def rollback(self) -> None:
         self._cr.connection.rollback()
 
-    def execute(self, sql: sql.SQL) -> Self:
-        if not isinstance(sql, SQL):
+    def execute(self, sqlcode: sql.SQL) -> Self:
+        if not isinstance(sqlcode, SQL):
             raise SillyORMException("SQL code must be enclosed in the SQL class")
-        code = sql.code()
+        code = sqlcode.code()
         _logger.debug("execute: %s", str(code))
         self._cr.execute(code)
         return self

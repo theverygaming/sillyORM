@@ -154,7 +154,7 @@ class Cursor:
     def rollback(self) -> None:
         raise NotImplementedError()  # pragma: no cover
 
-    def execute(self, sql: SQL) -> Self:
+    def execute(self, sqlcode: SQL) -> Self:
         raise NotImplementedError()  # pragma: no cover
 
     def fetchall(self) -> list[tuple[Any, ...]]:
@@ -197,7 +197,8 @@ class Cursor:
                 if (
                     next(
                         filter(
-                            lambda x: x.name == column.name and x.type == column.type,
+                            lambda x: x.name == column.name  # pylint: disable=cell-var-from-loop
+                            and x.type == column.type,  # pylint: disable=cell-var-from-loop
                             current_columns,
                         ),
                         None,
@@ -211,7 +212,10 @@ class Cursor:
                 if (
                     next(
                         filter(
-                            lambda x: (column_info.name == x.name and column_info.type == x.type),
+                            lambda x: (
+                                column_info.name == x.name  # pylint: disable=cell-var-from-loop
+                                and column_info.type == x.type  # pylint: disable=cell-var-from-loop
+                            ),
                             columns,
                         ),
                         None,

@@ -1,8 +1,8 @@
 import sillyorm
 import logging
 from sillyorm import sql
-from sillyorm.dbms import SQLite
-from sillyorm.dbms import SQLite, postgresql
+from sillyorm.dbms import sqlite
+from sillyorm.dbms import sqlite, postgresql
 
 
 class Thing(sillyorm.model.Model):
@@ -46,7 +46,7 @@ class Person(sillyorm.model.Model):
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s', level=logging.DEBUG)
 
-env = sillyorm.Environment(SQLite.SQLiteConnection("test.db").cursor())
+env = sillyorm.Environment(sqlite.SQLiteConnection("test.db").cursor())
 #env = sillyorm.Environment(postgresql.PostgreSQLConnection("host=127.0.0.1 dbname=test user=postgres password=postgres").cursor())
 
 env.register_model(Thing)

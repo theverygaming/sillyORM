@@ -9,10 +9,10 @@ Models
 
    import tempfile
    import sillyorm
-   from sillyorm.dbms import SQLite
+   from sillyorm.dbms import sqlite
 
    tmpfile = tempfile.NamedTemporaryFile()
-   env = sillyorm.Environment(SQLite.SQLiteConnection(tmpfile.name).cursor())
+   env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
 
 
 ------
@@ -69,7 +69,7 @@ The database cursor can be accessed from the environment
 
    # the database cursor can be accessed from the environment
    >>> type(env.cr)
-   <class 'sillyorm.dbms.SQLite.SQLiteCursor'>
+   <class 'sillyorm.dbms.sqlite.SQLiteCursor'>
 
 
 ------

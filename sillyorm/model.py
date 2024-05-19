@@ -25,8 +25,8 @@ class Model:
         return f"{self._name}{ids}"
 
     def __iter__(self) -> Iterator[Self]:
-        for id in self._ids:
-            yield self.__class__(self.env, ids=[id])
+        for x in self._ids:
+            yield self.__class__(self.env, ids=[x])
 
     def _table_init(self) -> None:
         def get_all_fields() -> list[fields.Field]:
@@ -45,23 +45,23 @@ class Model:
         self._tblmngr.table_init(
             self.env.cr,
             [
-                sql.ColumnInfo(field._name, field._sql_type, field._constraints)
+                sql.ColumnInfo(field.name, field.sql_type, field.constraints)
                 for field in all_fields
-                if field._materialize
+                if field.materialize
             ],
         )
         for field in all_fields:
-            field._model_post_init(self)
+            field.model_post_init(self)
 
     def ensure_one(self) -> Self:
         if len(self._ids) != 1:
             raise SillyORMException(f"ensure_one found {len(self._ids)} id's")
         return self
 
-    def read(self, fields: list[str]) -> list[dict[str, Any]]:
+    def read(self, field_names: list[str]) -> list[dict[str, Any]]:
         return self._tblmngr.read_records(
             self.env.cr,
-            fields,
+            field_names,
             SQL("WHERE {id} IN {ids}", id=SQL.identifier("id"), ids=SQL.set(self._ids)),
         )
 

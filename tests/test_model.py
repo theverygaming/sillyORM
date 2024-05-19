@@ -2,7 +2,7 @@ import re
 import pytest
 import psycopg2
 import sillyorm
-from sillyorm.dbms import SQLite
+from sillyorm.dbms import sqlite
 from sillyorm.dbms import postgresql
 from sillyorm.sql import SqlType
 from sillyorm.exceptions import SillyORMException
@@ -24,7 +24,7 @@ def pg_conn(tmp_path):
 
 def sqlite_conn(tmp_path):
     dbpath = tmp_path / "test.db"
-    return SQLite.SQLiteConnection(dbpath)
+    return sqlite.SQLiteConnection(dbpath)
 
 
 def test_model_name():

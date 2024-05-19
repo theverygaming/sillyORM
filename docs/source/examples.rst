@@ -5,7 +5,7 @@ Examples
 
    import tempfile
    import sillyorm
-   from sillyorm.dbms import SQLite
+   from sillyorm.dbms import sqlite
 
    class Example(sillyorm.model.Model):
        _name = "example"
@@ -13,7 +13,7 @@ Examples
        date = sillyorm.fields.Date()
 
    with tempfile.NamedTemporaryFile() as tmpfile:
-      env = sillyorm.Environment(SQLite.SQLiteConnection(tmpfile.name).cursor())
+      env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
       env.register_model(Example)
       record = env["example"].create({"name": "hello world!"})
       print(f"repr: {repr(record)}")

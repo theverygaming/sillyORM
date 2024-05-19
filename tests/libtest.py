@@ -4,7 +4,7 @@ import re
 import pytest
 import psycopg2
 from sillyorm.dbms import postgresql
-from sillyorm.dbms import SQLite
+from sillyorm.dbms import sqlite
 from sillyorm.environment import Environment
 from sillyorm.sql import Cursor, SqlType
 
@@ -24,9 +24,9 @@ def _pg_conn(tmp_path: Path) -> postgresql.PostgreSQLConnection:
     return postgresql.PostgreSQLConnection(connstr + f" dbname={dbname}")
 
 
-def _sqlite_conn(tmp_path: Path) -> SQLite.SQLiteConnection:
+def _sqlite_conn(tmp_path: Path) -> sqlite.SQLiteConnection:
     dbpath = tmp_path / "test.db"
-    return SQLite.SQLiteConnection(str(dbpath))
+    return sqlite.SQLiteConnection(str(dbpath))
 
 
 def with_test_env(reinit: bool = False) -> Any:

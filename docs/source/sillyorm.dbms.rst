@@ -4,10 +4,10 @@ sillyorm.dbms package
 Submodules
 ----------
 
-sillyorm.dbms.SQLite module
+sillyorm.dbms.sqlite module
 ---------------------------
 
-.. automodule:: sillyorm.dbms.SQLite
+.. automodule:: sillyorm.dbms.sqlite
    :members:
    :undoc-members:
    :show-inheritance:
