@@ -14,7 +14,7 @@ def test_field_string(env, is_second, prev_return):
 
     def assert_columns():
         assert_db_columns(
-            env.cr, "sale_order", [("id", SqlType.INTEGER()), ("name", SqlType.VARCHAR(255))]
+            env.cr, "sale_order", [("id", SqlType.integer()), ("name", SqlType.varchar(255))]
         )
 
     def first():
@@ -68,9 +68,9 @@ def test_field_string_length(env, is_second, prev_return):
             env.cr,
             "sale_order",
             [
-                ("id", SqlType.INTEGER()),
-                ("name", SqlType.VARCHAR(255)),
-                ("test", SqlType.VARCHAR(100)),
+                ("id", SqlType.integer()),
+                ("name", SqlType.varchar(255)),
+                ("test", SqlType.varchar(100)),
             ],
         )
 

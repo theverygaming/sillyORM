@@ -15,7 +15,7 @@ def test_field_date(env, is_second, prev_return):
 
     def assert_columns():
         assert_db_columns(
-            env.cr, "sale_order", [("id", SqlType.INTEGER()), ("date", SqlType.DATE())]
+            env.cr, "sale_order", [("id", SqlType.integer()), ("date", SqlType.date())]
         )
 
     def first():

@@ -27,10 +27,10 @@ def test_add_constraint(env):
     env.register_model(SaleOrder)
     env.register_model(SaleOrderLine1)
     assert_db_columns(
-        env.cr, "sale_order", [("id", SqlType.INTEGER()), ("name", SqlType.VARCHAR(255))]
+        env.cr, "sale_order", [("id", SqlType.integer()), ("name", SqlType.varchar(255))]
     )
     assert_db_columns(
-        env.cr, "sale_order_line", [("id", SqlType.INTEGER()), ("product", SqlType.VARCHAR(255))]
+        env.cr, "sale_order_line", [("id", SqlType.integer()), ("product", SqlType.varchar(255))]
     )
 
     del env._models["sale_order_line"]  # remove so we can register the SOL model again
@@ -38,15 +38,15 @@ def test_add_constraint(env):
     env.register_model(SaleOrderLine2)
 
     assert_db_columns(
-        env.cr, "sale_order", [("id", SqlType.INTEGER()), ("name", SqlType.VARCHAR(255))]
+        env.cr, "sale_order", [("id", SqlType.integer()), ("name", SqlType.varchar(255))]
     )
     assert_db_columns(
         env.cr,
         "sale_order_line",
         [
-            ("id", SqlType.INTEGER()),
-            ("product", SqlType.VARCHAR(255)),
-            ("sale_order_id", SqlType.INTEGER()),
+            ("id", SqlType.integer()),
+            ("product", SqlType.varchar(255)),
+            ("sale_order_id", SqlType.integer()),
         ],
     )
 

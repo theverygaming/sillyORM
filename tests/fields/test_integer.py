@@ -14,7 +14,7 @@ def test_field_id(env, is_second, prev_return):
 
     def assert_columns():
         assert_db_columns(
-            env.cr, "sale_order", [("id", SqlType.INTEGER()), ("line_count", SqlType.INTEGER())]
+            env.cr, "sale_order", [("id", SqlType.integer()), ("line_count", SqlType.integer())]
         )
 
     def first():

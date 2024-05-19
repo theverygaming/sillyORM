@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import Self, Any, cast, NamedTuple
 import re
 import datetime
-from enum import Enum
 from .exceptions import SillyORMException
 
 
@@ -19,19 +18,19 @@ class SqlType:
         return f"<SqlType '{self.value}'>"
 
     @staticmethod
-    def INTEGER() -> SqlType:
+    def integer() -> SqlType:
         return SqlType("INTEGER")
 
     @staticmethod
-    def VARCHAR(length: int) -> SqlType:
+    def varchar(length: int) -> SqlType:
         return SqlType(f"VARCHAR({length})")
 
     @staticmethod
-    def DATE() -> SqlType:  # warning, some DBMS include a timestamp for DATE
+    def date() -> SqlType:  # warning, some DBMS include a timestamp for DATE
         return SqlType("DATE")
 
     @staticmethod
-    def TIMESTAMP() -> SqlType:
+    def timestamp() -> SqlType:
         return SqlType("TIMESTAMP")
 
 
@@ -49,19 +48,19 @@ class SqlConstraint:
         return f"<SqlConstraint {self.kind}, {self.args}>"
 
     @staticmethod
-    def NOT_NULL() -> SqlConstraint:
+    def not_null() -> SqlConstraint:
         return SqlConstraint("NOT NULL")
 
     @staticmethod
-    def UNIQUE() -> SqlConstraint:
+    def unique() -> SqlConstraint:
         return SqlConstraint("UNIQUE")
 
     @staticmethod
-    def PRIMARY_KEY() -> SqlConstraint:
+    def primary_key() -> SqlConstraint:
         return SqlConstraint("PRIMARY KEY")
 
     @staticmethod
-    def FOREIGN_KEY(foreign_table: str, foreign_column: str) -> SqlConstraint:
+    def foreign_key(foreign_table: str, foreign_column: str) -> SqlConstraint:
         return SqlConstraint(
             "FOREIGN KEY", foreign_table=foreign_table, foreign_column=foreign_column
         )
@@ -88,7 +87,7 @@ class SQL:
             return cls._as_raw_sql(f"'{value.isoformat()}'")
 
         # anything that doesn't need to be escaped
-        if not (isinstance(value, (int, float))):
+        if not isinstance(value, (int, float)):
             raise SillyORMException(f"invalid type {type(value)}")
         return cls._as_raw_sql(str(value))
 
@@ -259,10 +258,9 @@ class Cursor:
                 ftable=SQL.identifier(constraint.args["foreign_table"]),
                 fname=SQL.identifier(constraint.args["foreign_column"]),
             )
-        elif constraint.kind in ["PRIMARY KEY", "UNIQUE"]:
+        if constraint.kind in ["PRIMARY KEY", "UNIQUE"]:
             return SQL(f"{constraint.kind} ({{column}})", column=SQL.identifier(column))
-        else:
-            raise SillyORMException(f"unknown SQL constraint {constraint}")
+        raise SillyORMException(f"unknown SQL constraint {constraint}")
 
     def _alter_table_add_constraint(
         self, table: str, column: str, constraint: SqlConstraint

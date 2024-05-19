@@ -22,15 +22,15 @@ def test_field_many2one_one2many(env):
     env.register_model(SaleOrder)
     env.register_model(SaleOrderLine)
     assert_db_columns(
-        env.cr, "sale_order", [("id", SqlType.INTEGER()), ("name", SqlType.VARCHAR(255))]
+        env.cr, "sale_order", [("id", SqlType.integer()), ("name", SqlType.varchar(255))]
     )
     assert_db_columns(
         env.cr,
         "sale_order_line",
         [
-            ("id", SqlType.INTEGER()),
-            ("product", SqlType.VARCHAR(255)),
-            ("sale_order_id", SqlType.INTEGER()),
+            ("id", SqlType.integer()),
+            ("product", SqlType.varchar(255)),
+            ("sale_order_id", SqlType.integer()),
         ],
     )
 
@@ -102,12 +102,12 @@ def test_field_many2many(env):
 
     env.register_model(Tax)
     env.register_model(Product)
-    assert_db_columns(env.cr, "tax", [("id", SqlType.INTEGER()), ("name", SqlType.VARCHAR(255))])
-    assert_db_columns(env.cr, "product", [("id", SqlType.INTEGER())])
+    assert_db_columns(env.cr, "tax", [("id", SqlType.integer()), ("name", SqlType.varchar(255))])
+    assert_db_columns(env.cr, "product", [("id", SqlType.integer())])
     assert_db_columns(
         env.cr,
         "_joint_product_tax_ids_tax",
-        [("product_id", SqlType.INTEGER()), ("tax_id", SqlType.INTEGER())],
+        [("product_id", SqlType.integer()), ("tax_id", SqlType.integer())],
     )
 
     tax_1 = env["tax"].create({"name": "tax 1"})

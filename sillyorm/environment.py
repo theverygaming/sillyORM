@@ -17,12 +17,12 @@ class Environment:
         self._models: dict[str, type[Model]] = {}
 
     def register_model(self, model: type[Model]) -> None:
-        name = model._name
+        name = model._name  # pylint: disable=protected-access
         if name in self._models:
             raise SillyORMException(f"cannot register model '{name}' twice")
         _logger.info("registering model '%s'", name)
         self._models[name] = model
-        model(self, [])._table_init()
+        model(self, [])._table_init()  # pylint: disable=protected-access
 
     def __getitem__(self, key: str) -> Model:
         return self._models[key](self, [])

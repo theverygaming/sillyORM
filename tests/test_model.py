@@ -76,7 +76,7 @@ def test_model_init(tmp_path, db_conn_fn):
 
     conn = db_conn_fn(tmp_path)
     assert_db_columns(
-        conn.cursor(), "test_model", [("id", SqlType.INTEGER()), ("test", SqlType.VARCHAR(255))]
+        conn.cursor(), "test_model", [("id", SqlType.integer()), ("test", SqlType.varchar(255))]
     )
     conn.close()
 
@@ -88,7 +88,7 @@ def test_model_init(tmp_path, db_conn_fn):
 
     conn = db_conn_fn(tmp_path)
     assert_db_columns(
-        conn.cursor(), "test_model", [("id", SqlType.INTEGER()), ("test", SqlType.VARCHAR(255))]
+        conn.cursor(), "test_model", [("id", SqlType.integer()), ("test", SqlType.varchar(255))]
     )
     conn.close()
 
@@ -114,7 +114,7 @@ def test_field_add_remove(tmp_path, db_conn_fn):
 
     conn = db_conn_fn(tmp_path)
     assert_db_columns(
-        conn.cursor(), "test_model", [("id", SqlType.INTEGER()), ("test", SqlType.VARCHAR(255))]
+        conn.cursor(), "test_model", [("id", SqlType.integer()), ("test", SqlType.varchar(255))]
     )
     conn.close()
 
@@ -129,10 +129,10 @@ def test_field_add_remove(tmp_path, db_conn_fn):
         conn.cursor(),
         "test_model",
         [
-            ("id", SqlType.INTEGER()),
-            ("test", SqlType.VARCHAR(255)),
-            ("test2", SqlType.VARCHAR(255)),
-            ("test3", SqlType.VARCHAR(255)),
+            ("id", SqlType.integer()),
+            ("test", SqlType.varchar(255)),
+            ("test2", SqlType.varchar(255)),
+            ("test3", SqlType.varchar(255)),
         ],
     )
     conn.close()
@@ -145,7 +145,7 @@ def test_field_add_remove(tmp_path, db_conn_fn):
 
     conn = db_conn_fn(tmp_path)
     assert_db_columns(
-        conn.cursor(), "test_model", [("id", SqlType.INTEGER()), ("test", SqlType.VARCHAR(255))]
+        conn.cursor(), "test_model", [("id", SqlType.integer()), ("test", SqlType.varchar(255))]
     )
     conn.close()
 

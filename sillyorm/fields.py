@@ -20,11 +20,13 @@ class Field:
 
     # default values
     _materialize = True  # if the field should actually exist in tables
-
     _constraints: list[sql.SqlConstraint] = []
 
+    # set automatically
+    _name = cast(str, None)
+
     def __init__(self) -> None:
-        if self._sql_type is None:
+        if self._materialize and self._sql_type is None:
             raise SillyORMException("_sql_type must be set")
 
     def _model_post_init(self, record: Model) -> None:
@@ -32,9 +34,6 @@ class Field:
 
     def __set_name__(self, record: Model, name: str) -> None:
         self._name = name
-
-    def _check_type(self, value: Any) -> None:
-        raise NotImplementedError("__check_type not implemented")  # pragma: no cover
 
     def _convert_type_get(self, value: Any) -> Any:
         return value
@@ -50,20 +49,20 @@ class Field:
         return result
 
     def __set__(self, record: Model, value: Any) -> None:
-        self._check_type(value)
         record.write({self._name: self._convert_type_set(value)})
 
 
 class Integer(Field):
-    _sql_type = sql.SqlType.INTEGER()
+    _sql_type = sql.SqlType.integer()
 
-    def _check_type(self, value: Any) -> None:
+    def __set__(self, record: Model, value: int) -> None:
         if not isinstance(value, int):
             raise SillyORMException("Integer value must be int")
+        super().__set__(record, value)
 
 
 class Id(Integer):
-    _constraints = [sql.SqlConstraint.PRIMARY_KEY()]
+    _constraints = [sql.SqlConstraint.primary_key()]
 
     def __get__(self, record: Model, objtype: Any = None) -> int:
         record.ensure_one()
@@ -75,31 +74,34 @@ class Id(Integer):
 
 class String(Field):
     def __init__(self, length: int = 255) -> None:
-        self._sql_type = sql.SqlType.VARCHAR(length)
+        self._sql_type = sql.SqlType.varchar(length)
         super().__init__()
 
-    def _check_type(self, value: Any) -> None:
+    def __set__(self, record: Model, value: str) -> None:
         if not isinstance(value, str):
             raise SillyORMException("String value must be str")
+        super().__set__(record, value)
 
 
 class Date(Field):
-    _sql_type = sql.SqlType.DATE()
+    _sql_type = sql.SqlType.date()
 
     def _convert_type_get(self, value: Any) -> Any:
         if isinstance(value, str):
             return datetime.date.fromisoformat(value)
         return value
 
-    def _check_type(self, value: Any) -> None:
+    def __set__(self, record: Model, value: Date) -> None:
         if not isinstance(value, datetime.date) or isinstance(value, datetime.datetime):
             raise SillyORMException("Date value must be date")
+        super().__set__(record, value)
 
 
 class Many2one(Integer):
     def __init__(self, foreign_model: str):
+        super().__init__()
         self._foreign_model = foreign_model
-        self._constraints = [sql.SqlConstraint.FOREIGN_KEY(foreign_model, "id")]
+        self._constraints = [sql.SqlConstraint.foreign_key(foreign_model, "id")]
 
     def __get__(self, record: Model, objtype: Any = None) -> None | Model:
         ids = super().__get__(record, objtype)
@@ -111,7 +113,7 @@ class Many2one(Integer):
                 return None
         return record.env[self._foreign_model].browse(ids)
 
-    def __set__(self, record: Model, value: Model) -> None:
+    def __set__(self, record: Model, value: Model) -> None:  # type: ignore[override]
         value.ensure_one()
         super().__set__(record, value.id)
 
@@ -120,6 +122,7 @@ class One2many(Field):
     _materialize = False
 
     def __init__(self, foreign_model: str, foreign_field: str):
+        super().__init__()
         self._foreign_model = foreign_model
         self._foreign_field = foreign_field
 
@@ -135,7 +138,12 @@ class Many2many(Field):
     _materialize = False
 
     def __init__(self, foreign_model: str):
+        super().__init__()
         self._foreign_model = foreign_model
+        self._joint_table_name = cast(str, None)
+        self._joint_table_self_name = cast(str, None)
+        self._joint_table_foreign_name = cast(str, None)
+        self._tblmngr = cast(sql.TableManager, None)
 
     def _model_post_init(self, record: Model) -> None:
         self._joint_table_name = f"_joint_{record._name}_{self._name}_{self._foreign_model}"
@@ -154,16 +162,16 @@ class Many2many(Field):
             [
                 sql.ColumnInfo(
                     self._joint_table_self_name,
-                    sql.SqlType.INTEGER(),
+                    sql.SqlType.integer(),
                     [
-                        sql.SqlConstraint.FOREIGN_KEY(record._name, "id"),
+                        sql.SqlConstraint.foreign_key(record._name, "id"),
                     ],
                 ),
                 sql.ColumnInfo(
                     self._joint_table_foreign_name,
-                    sql.SqlType.INTEGER(),
+                    sql.SqlType.integer(),
                     [
-                        sql.SqlConstraint.FOREIGN_KEY(self._foreign_model, "id"),
+                        sql.SqlConstraint.foreign_key(self._foreign_model, "id"),
                     ],
                 ),
             ],

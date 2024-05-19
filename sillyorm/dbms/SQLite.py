@@ -54,7 +54,7 @@ class SQLiteCursor(sql.Cursor):
             sql.ColumnInfo(
                 n,
                 _str_type_to_sql_type(t),
-                [sql.SqlConstraint.PRIMARY_KEY()] if pk else [],
+                [sql.SqlConstraint.primary_key()] if pk else [],
             )
             for n, t, pk in res
         ]
