@@ -6,6 +6,18 @@ from .exceptions import SillyORMException
 
 
 class SqlType:
+    """Class for SQL data types
+
+    :ivar value: SQL type as string
+    :vartype value: str
+
+    :param value: SQL type as string
+    :type value: str
+
+    .. warning::
+       You should not call the constructor of this class directly.
+    """
+
     def __init__(self, value: str):
         self.value = value
 
@@ -35,9 +47,26 @@ class SqlType:
 
 
 class SqlConstraint:
-    def __init__(self, kind: str, **args: Any):
+    """Class for SQL constraints
+
+    :ivar kind: SQL constraint kind as string
+    :vartype kind: str
+    :ivar args: Extra arguments
+       (like foreign_table for :func:`foreign_key <sillyorm.sql.SqlConstraint.foreign_key>`)
+    :vartype args: dict
+
+    :param kind: SQL constraint kind as string
+    :type value: str
+    :param \\**kwargs:
+        The kwargs dict is passed into ``args``
+
+    .. warning::
+       You should not call the constructor of this class directly.
+    """
+
+    def __init__(self, kind: str, **kwargs: Any):
         self.kind = kind
-        self.args = args
+        self.args = kwargs
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, SqlConstraint):
@@ -67,6 +96,37 @@ class SqlConstraint:
 
 
 class SQL:
+    """Class for properly constructing and escaping SQL code
+
+
+    :param code: SQL format string
+    :type code: str
+    :param \\**kwargs:
+        arguments for the format string
+
+    .. warning::
+       The ``code`` parameter may ABSOLUTELY not contain ANY user-provided input as
+       that would likely cause SQL injection
+
+    Example:
+
+    >>> from sillyorm.sql import SQL
+    >>> where = SQL(
+    ...     "WHERE {id} IN {ids};",
+    ...     id=SQL.identifier("id"),
+    ...     ids=SQL.set([1, 2, 3]),
+    ... )
+    >>> print(where.code())
+    WHERE "id" IN (1, 2, 3);
+    >>> sql = SQL(
+    ...     "SELECT * FROM {table} {where}",
+    ...     table=SQL.identifier("table"),
+    ...     where=where,
+    ... )
+    >>> print(sql.code())
+    SELECT * FROM "table" WHERE "id" IN (1, 2, 3);
+    """
+
     # WARNING: the code parameter may ABSOLUTELY not contain ANY user-provided input
     def __init__(self, code: str, **kwargs: Self | str | int | float) -> None:
         self._code = code
@@ -142,12 +202,20 @@ class SQL:
 
 # database abstractions
 class ColumnInfo(NamedTuple):
+    """
+    NamedTuple for describing SQL table columns
+    """
+
     name: str
     type: SqlType
     constraints: list[SqlConstraint]
 
 
 class Cursor:
+    """
+    Abstraction over standard python database cursors with extra features
+    """
+
     def commit(self) -> None:
         raise NotImplementedError()  # pragma: no cover
 
@@ -273,6 +341,10 @@ class Cursor:
 
 
 class Connection:
+    """
+    For managing database connections
+    """
+
     def cursor(self) -> Cursor:
         raise NotImplementedError()  # pragma: no cover
 
@@ -281,6 +353,13 @@ class Connection:
 
 
 class TableManager:
+    """
+    Class for managing an SQL table
+
+    :param table_name: SQL table name
+    :type table_name: str
+    """
+
     def __init__(self, table_name: str):
         self.table_name = table_name
 

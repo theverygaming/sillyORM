@@ -10,6 +10,13 @@ _logger = logging.getLogger(__name__)
 
 
 class SQLiteCursor(sql.Cursor):
+    """
+    SQLite database cursor abstraction
+
+    :param cr: cursor
+    :type cr: sqlite3.Cursor
+    """
+
     def __init__(self, cr: sqlite3.Cursor):
         self._cr = cr
 
@@ -78,6 +85,13 @@ class SQLiteCursor(sql.Cursor):
 
 
 class SQLiteConnection(sql.Connection):
+    """
+    SQLite database connection abstraction
+
+    :param filename: SQLite database file path
+    :type filename: str
+    """
+
     def __init__(self, filename: str):
         self._conn = sqlite3.connect(filename)
 

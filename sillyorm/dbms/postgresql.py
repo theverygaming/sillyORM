@@ -12,6 +12,13 @@ _logger = logging.getLogger(__name__)
 
 # pylint: disable=duplicate-code
 class PostgreSQLCursor(sql.Cursor):
+    """
+    PostgreSQL database cursor abstraction
+
+    :param cr: cursor
+    :type cr: psycopg2.extensions.cursor
+    """
+
     def __init__(self, cr: psycopg2.extensions.cursor):
         self._cr = cr
 
@@ -95,6 +102,15 @@ class PostgreSQLCursor(sql.Cursor):
 
 
 class PostgreSQLConnection(sql.Connection):
+    """
+    PostgreSQL database connection abstraction
+
+    :param connstr: psycopg2 connection string
+    :type connstr: str
+    :param lock_timeout: lock timeout in milliseconds
+    :type lock_timeout: int, optional
+    """
+
     def __init__(self, connstr: str, lock_timeout: int = 5000):
         self._conn = psycopg2.connect(connstr, options=f"-c lock_timeout={lock_timeout}")
 

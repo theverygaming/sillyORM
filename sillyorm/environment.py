@@ -11,6 +11,39 @@ _logger = logging.getLogger(__name__)
 
 
 class Environment:
+    """This class is meant for keeping track of :class:`models <sillyorm.model.Model>`
+    registered in it, some settings and the database cursor.
+
+    A model can be registered in the environment using the
+    :func:`register_model <sillyorm.environment.Environment.register_model>` function.
+
+    Once registered, models in the environment can be accessed using the index operator.
+    When a model is accessed this way, it will return an empty recordset.
+
+    >>> import tempfile
+    >>> import sillyorm
+    >>> class TestModel(sillyorm.model.Model):
+    ...     _name = "testmodel"
+    >>> env = sillyorm.Environment(
+    ...     sillyorm.dbms.sqlite.SQLiteConnection(
+    ...         tempfile.NamedTemporaryFile().name
+    ...     ).cursor()
+    ... )
+    >>> env.register_model(TestModel)
+    >>> env["testmodel"]
+    testmodel[]
+
+    :ivar cr: The database cursor
+    :vartype cr: :class:`sillyorm.sql.Cursor`
+    :ivar do_commit: Whether to run commit after each database transaction that requires it
+    :vartype do_commit: bool
+
+    :param cursor: The database cursor that will be passed to all models
+    :type cursor: :class:`sillyorm.sql.Cursor`
+    :param do_commit: Whether to run commit after each database transaction that requires it
+    :type do_commit: bool, optional
+    """
+
     def __init__(self, cursor: sql.Cursor, do_commit: bool = True):
         self.cr = cursor
         self.do_commit = do_commit

@@ -1,2 +1,4 @@
 class SillyORMException(Exception):
-    pass
+    """
+    Generic sillyORM Exceptions
+    """
