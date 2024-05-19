@@ -14,7 +14,9 @@ def test_field_date(env, is_second, prev_return):
         date = sillyorm.fields.Date()
 
     def assert_columns():
-        assert_db_columns(env.cr, "sale_order", [("id", SqlType.INTEGER), ("date", SqlType.DATE)])
+        assert_db_columns(
+            env.cr, "sale_order", [("id", SqlType.INTEGER()), ("date", SqlType.DATE())]
+        )
 
     def first():
         env.register_model(SaleOrder)

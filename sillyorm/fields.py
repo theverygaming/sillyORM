@@ -55,7 +55,7 @@ class Field:
 
 
 class Integer(Field):
-    _sql_type = sql.SqlType.INTEGER
+    _sql_type = sql.SqlType.INTEGER()
 
     _constraints = []
 
@@ -76,7 +76,7 @@ class Id(Integer):
 
 
 class String(Field):
-    _sql_type = sql.SqlType.VARCHAR_255  # TODO: string length option
+    _sql_type = sql.SqlType.VARCHAR(255)  # TODO: string length option
 
     def _check_type(self, value: Any) -> None:
         if not isinstance(value, str):
@@ -84,7 +84,7 @@ class String(Field):
 
 
 class Date(Field):
-    _sql_type = sql.SqlType.DATE
+    _sql_type = sql.SqlType.DATE()
 
     def _convert_type_get(self, value: Any) -> Any:
         if isinstance(value, str):
@@ -158,7 +158,7 @@ class Many2many(Field):
             [
                 sql.ColumnInfo(
                     self._joint_table_self_name,
-                    sql.SqlType.INTEGER,
+                    sql.SqlType.INTEGER(),
                     [
                         (
                             sql.SqlConstraint.FOREIGN_KEY,
@@ -168,7 +168,7 @@ class Many2many(Field):
                 ),
                 sql.ColumnInfo(
                     self._joint_table_foreign_name,
-                    sql.SqlType.INTEGER,
+                    sql.SqlType.INTEGER(),
                     [
                         (
                             sql.SqlConstraint.FOREIGN_KEY,

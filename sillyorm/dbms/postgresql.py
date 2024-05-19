@@ -83,11 +83,11 @@ class PostgreSQLCursor(sql.Cursor):
     def _str_type_to_sql_type(self, t: str) -> sql.SqlType:
         match t:
             case "character varying":
-                return sql.SqlType.VARCHAR_255
+                return sql.SqlType.VARCHAR(255)
             case "integer":
-                return sql.SqlType.INTEGER
+                return sql.SqlType.INTEGER()
             case "date":
-                return sql.SqlType.DATE
+                return sql.SqlType.DATE()
             case _:
                 raise SillyORMException(f"unknown pg type '{t}'")
 

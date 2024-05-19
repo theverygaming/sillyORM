@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Self, Any, cast, NamedTuple
 import re
 import datetime
@@ -5,11 +6,30 @@ from enum import Enum
 from .exceptions import SillyORMException
 
 
-class SqlType(Enum):
-    INTEGER = "INTEGER"
-    VARCHAR_255 = "VARCHAR(255)"
-    DATE = "DATE"  # warning, some DBMS include a timestamp for DATE
-    TIMESTAMP = "TIMESTAMP"
+class SqlType:
+    def __init__(self, value: str):
+        self.value = value
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SqlType):
+            return False
+        return self.value == other.value
+
+    @staticmethod
+    def INTEGER() -> SqlType:
+        return SqlType("INTEGER")
+
+    @staticmethod
+    def VARCHAR(length: int) -> SqlType:
+        return SqlType(f"VARCHAR({length})")
+
+    @staticmethod
+    def DATE() -> SqlType:  # warning, some DBMS include a timestamp for DATE
+        return SqlType("DATE")
+
+    @staticmethod
+    def TIMESTAMP() -> SqlType:
+        return SqlType("TIMESTAMP")
 
 
 class SqlConstraint(Enum):
