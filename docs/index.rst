@@ -11,6 +11,7 @@ Welcome to ``sillyORM``'s documentation!
    :caption: Contents:
 
    source/quickstart
+   source/concepts
    source/examples
    source/API reference
 

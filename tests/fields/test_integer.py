@@ -27,6 +27,8 @@ def test_field_id(env, is_second, prev_return):
         assert so_1.line_count == 5
         assert so_2.line_count is None
 
+        so_2.line_count = 32767
+        assert so_2.line_count == 32767
         so_2.line_count = -32768
         assert so_2.line_count == -32768
 

@@ -9,8 +9,57 @@ _logger = logging.getLogger(__name__)
 
 
 class Model:
+    """
+    Each model represents a single table in the database.
+    A model can have fields which represent columns in the database table.
+
+    When a model is registered the ORM ensures the table with all required fields is created.
+    If any columns/fields exist in the database
+    but are not specified in the model **they will be removed in the database**.
+
+    An instance of the model class (or a subclass instance)
+    represents a :ref:`recordset <recordsets>`.
+
+    .. warning::
+       You should never call the constructor of the model class yourself.
+       Get an empty :ref:`recordset <recordsets>` via the
+       :ref:`environment <environment>` and interact with the model from there.
+
+    .. testsetup:: models_model
+
+       import tempfile
+       import sillyorm
+       from sillyorm.dbms import sqlite
+
+       tmpfile = tempfile.NamedTemporaryFile()
+       env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+
+    .. testcode:: models_model
+
+       class ExampleModel(sillyorm.model.Model):
+           _name = "example0"
+           field = sillyorm.fields.String()
+
+       env.register_model(ExampleModel)
+
+       record = env["example0"].create({"field": "Hello world!"})
+       print(record.field)
+
+    .. testoutput:: models_model
+
+       Hello world!
+
+    :ivar env: The environment
+    :vartype env: :class:`sillyorm.environment.Environment`
+
+    :param env: The environment
+    :type env: :class:`sillyorm.environment.Environment`
+    :param ids: list of id's the recordset should have
+    :type env: list[int]
+    """
+
     _name = ""
-    id = fields.Id()
+    id = fields.Id()  #: Special :class:`sillyorm.fields.Id` field used as PRIMARY KEY
 
     def __init__(self, env: Environment, ids: list[int]):
         if not self._name:

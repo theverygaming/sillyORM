@@ -27,7 +27,7 @@ class SqlType:
         return self.value == other.value
 
     def __repr__(self) -> str:
-        return f"<SqlType '{self.value}'>"
+        return f"<SqlType {self.value}>"
 
     @staticmethod
     def integer() -> SqlType:
@@ -74,7 +74,7 @@ class SqlConstraint:
         return self.kind == other.kind and self.args == other.args
 
     def __repr__(self) -> str:
-        return f"<SqlConstraint {self.kind}, {self.args}>"
+        return f"<SqlConstraint {self.kind}{(', ' + str(self.args)) if len(self.args) else ''}>"
 
     @staticmethod
     def not_null() -> SqlConstraint:
