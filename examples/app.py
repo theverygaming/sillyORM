@@ -38,7 +38,6 @@ class Person(sillyorm.model.Model):
     hello = sillyorm.fields.String()
 
     machine_ids = sillyorm.fields.One2many("machine", "person_id")
-    thing_ids = sillyorm.fields.Many2many("thing")
 
     def test(self):
         print(self)

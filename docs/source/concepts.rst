@@ -82,7 +82,6 @@ Currently sillyORM supports the following fields:
 * :class:`Date <sillyorm.fields.Date>` represents a Date (as `datetime.date`)
 * :class:`Many2one <sillyorm.fields.Many2one>` represents a many to one relationship
 * :class:`One2many <sillyorm.fields.One2many>` represents a one to many relationship (requires a many to one on the other side)
-* :class:`Many2many <sillyorm.fields.Many2many>` represents a many to many relationship
 
 
 Fields are specified as class attributes on a child of the :class:`Model <sillyorm.model.Model>` class.
