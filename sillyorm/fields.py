@@ -42,7 +42,13 @@ class Field:
             raise SillyORMException("sql_type must be set")
 
     def model_post_init(self, record: Model) -> None:
-        pass
+        """
+        Called by the :class:`Model <sillyorm.model.Model>`
+        after the table is initialized
+
+        :param record: The :class:`Model <sillyorm.model.Model>` the field is in
+        :type record: :class:`Model <sillyorm.model.Model>`
+        """
 
     def __set_name__(self, record: Model, name: str) -> None:
         self.name = name

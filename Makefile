@@ -7,7 +7,7 @@ typecheck:
 
 .PHONY: lint
 lint:
-	pylint ./sillyorm --disable=missing-module-docstring,missing-function-docstring
+	pylint ./sillyorm --disable=missing-module-docstring
 
 .PHONY: precommit
 precommit: test typecheck lint

@@ -17,6 +17,10 @@ class Model:
     If any columns/fields exist in the database
     but are not specified in the model **they will be removed in the database**.
 
+    The `_name` attribute specifies the name
+    of the database table the model represents
+    and the name of the model in the :ref:`environment <environment>`.
+
     An instance of the model class (or a subclass instance)
     represents a :ref:`recordset <recordsets>`.
 
@@ -103,11 +107,27 @@ class Model:
             field.model_post_init(self)
 
     def ensure_one(self) -> Self:
+        """
+        Makes sure the recordset contains exactly one record. Raises an exception otherwise
+
+        :raises SillyORMException: If the recordset does not contain exactly one record
+        """
+
         if len(self._ids) != 1:
             raise SillyORMException(f"ensure_one found {len(self._ids)} id's")
         return self
 
     def read(self, field_names: list[str]) -> list[dict[str, Any]]:
+        """
+        Reads the specified fields of the recordset.
+
+        :param field_names: The fields to read
+        :type field_names: list[str]
+
+        :return:
+           The fields read as a list of dictionaries.
+        :rtype: list[dict[str, Any]]
+        """
         return self._tblmngr.read_records(
             self.env.cr,
             field_names,
@@ -115,6 +135,16 @@ class Model:
         )
 
     def write(self, vals: dict[str, Any]) -> None:
+        """
+        Writes the specified fields into
+        all records contained in the recordset.
+
+        :param vals:
+           The values to write. The keys represent
+           the field names and the values the
+           values for the fields
+        :type vals: dict[str, Any]
+        """
         self._tblmngr.update_records(
             self.env.cr,
             vals,
@@ -124,6 +154,17 @@ class Model:
             self.env.cr.commit()
 
     def browse(self, ids: list[int] | int) -> None | Self:
+        """
+        Returns a recordset for the ids provided.
+
+        :param ids: The ids or id
+        :type vals: list[int] | int
+
+        :return:
+           A recordset with the ids provided.
+           None if none of the ids could be found
+        :rtype: None | Self
+        """
         if not isinstance(ids, list):
             ids = [ids]
         res = self.env.cr.execute(
@@ -139,6 +180,20 @@ class Model:
         return self.__class__(self.env, ids=[id[0] for id in res])
 
     def create(self, vals: dict[str, Any]) -> Self:
+        """
+        Creates a recordset with the values provided.
+
+        :param vals:
+           The values to write into the new recordset.
+           The keys represent the field
+           names and the values the
+           values for the fields
+        :type vals: dict[str, Any]
+
+        :return:
+           The recordset that was created (containing one record)
+        :rtype: Self
+        """
         top_id = self.env.cr.execute(
             SQL(
                 "SELECT MAX({id}) FROM {table};",
@@ -155,12 +210,76 @@ class Model:
         return self.__class__(self.env, ids=[vals["id"]])
 
     def search(self, domain: list[str | tuple[str, str, Any]]) -> Self | None:
+        """
+        Searches records.
+
+        Search domains are closely tied to the SQL `WHERE` statement.
+
+        .. code-block:: python
+
+           [
+               "(",
+               ("test2", "=", "test2"),
+               "&",
+               ("test", "=", "hello world!"),
+               ")",
+               "|",
+               ("test2", "=", "2 Hii!!"),
+           ]
+
+        This search domain will result in the following SQL:
+
+        .. code-block:: SQL
+
+           SELECT "id"
+           FROM   "test_model"
+           WHERE  ( "test2" = 'test2'
+                    AND "test" = 'hello world!' )
+                   OR "test2" = '2 Hii!!';
+
+        Usage example:
+
+        .. testcode:: models_model
+
+           class ExampleModel(sillyorm.model.Model):
+               _name = "example1"
+               field = sillyorm.fields.String()
+
+           env.register_model(ExampleModel)
+
+           record1 = env["example1"].create({"field": "test1"})
+           record2 = env["example1"].create({"field": "test2"})
+           record3 = env["example1"].create({"field": "test3"})
+           print(record1.id, record2.id, record3.id)
+
+           print(env["example1"].search([
+               ("field", "=", "test1"),
+               "|",
+               ("field", "!=", "test2"),
+           ]))
+
+        .. testoutput:: models_model
+
+           1 2 3
+           example1[1, 3]
+
+        :param domain: The search domain.
+        :type domain: list[str | tuple[str, str, Any]]
+
+        :return:
+           A recordset with the records found.
+           None if nothing could be found
+        :rtype: None | Self
+        """
         res = self._tblmngr.search_records(self.env.cr, ["id"], domain)
         if len(res) == 0:
             return None
         return self.__class__(self.env, ids=[id[0] for id in res])
 
     def delete(self) -> None:
+        """
+        Deletes all records in the recordset
+        """
         self._tblmngr.delete_records(
             self.env.cr,
             SQL("WHERE {id} IN {ids}", id=SQL.identifier("id"), ids=SQL.set(self._ids)),

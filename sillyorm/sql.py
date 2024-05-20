@@ -31,18 +31,36 @@ class SqlType:
 
     @staticmethod
     def integer() -> SqlType:
+        """
+        `INTEGER` SQL type
+        """
         return SqlType("INTEGER")
 
     @staticmethod
     def varchar(length: int) -> SqlType:
+        """
+        `VARCHAR` SQL type
+
+        :param length: The maximum length
+        :type length: int
+        """
         return SqlType(f"VARCHAR({length})")
 
     @staticmethod
-    def date() -> SqlType:  # warning, some DBMS include a timestamp for DATE
+    def date() -> SqlType:
+        """
+        `DATE` SQL type
+
+        .. warning::
+           some DBMS include a timestamp for DATE
+        """
         return SqlType("DATE")
 
     @staticmethod
     def timestamp() -> SqlType:
+        """
+        `TIMESTAMP` SQL type
+        """
         return SqlType("TIMESTAMP")
 
 
@@ -58,7 +76,7 @@ class SqlConstraint:
     :param kind: SQL constraint kind as string
     :type value: str
     :param \\**kwargs:
-        The kwargs dict is passed into ``args``
+        The kwargs dict is saved in ``args``
 
     .. warning::
        You should not call the constructor of this class directly.
@@ -78,26 +96,43 @@ class SqlConstraint:
 
     @staticmethod
     def not_null() -> SqlConstraint:
+        """
+        `NOT NULL` SQL constraint
+        """
         return SqlConstraint("NOT NULL")
 
     @staticmethod
     def unique() -> SqlConstraint:
+        """
+        `UNIQUE` SQL constraint
+        """
         return SqlConstraint("UNIQUE")
 
     @staticmethod
     def primary_key() -> SqlConstraint:
+        """
+        `PRIMARY KEY` SQL constraint
+        """
         return SqlConstraint("PRIMARY KEY")
 
     @staticmethod
     def foreign_key(foreign_table: str, foreign_column: str) -> SqlConstraint:
+        """
+        `FOREIGN KEY` SQL constraint
+
+        :param foreign_table: Foreign table
+        :type foreign_table: str
+        :param foreign_column: Foreign column
+        :type foreign_column: str
+        """
         return SqlConstraint(
             "FOREIGN KEY", foreign_table=foreign_table, foreign_column=foreign_column
         )
 
 
 class SQL:
-    """Class for properly constructing and escaping SQL code
-
+    """
+    Class for properly constructing and escaping SQL code
 
     :param code: SQL format string
     :type code: str
@@ -137,19 +172,36 @@ class SQL:
 
     @classmethod
     def escape(cls, value: str | int | float) -> Self:
+        """
+        Escapes values so they can be safely used in SQL
+
+        >>> from sillyorm.sql import SQL
+        >>> print(SQL.escape("hello ' \\" world").code())
+        'hello '' " world'
+        >>> print(SQL.escape(123).code())
+        123
+
+        :param value: Value to escape
+        :type value: str | int | float
+
+        :return:
+           Returns an instance of the
+           :class:`SQL <sillyorm.sql.SQL>` class with the escaped SQL in it
+        :rtype: :class:`sillyorm.sql.SQL`
+        """
         # escape strings
         if isinstance(value, str):
             # escape all single quotes
             value = value.replace("'", "''")
-            return cls._as_raw_sql(f"'{value}'")
+            return cls.__as_raw_sql(f"'{value}'")
 
         if isinstance(value, datetime.date):
-            return cls._as_raw_sql(f"'{value.isoformat()}'")
+            return cls.__as_raw_sql(f"'{value.isoformat()}'")
 
         # anything that doesn't need to be escaped
         if not isinstance(value, (int, float)):
             raise SillyORMException(f"invalid type {type(value)}")
-        return cls._as_raw_sql(str(value))
+        return cls.__as_raw_sql(str(value))
 
     @classmethod
     def __as_safe_sql_value(cls, value: Self | str | int | float) -> str:
@@ -159,7 +211,7 @@ class SQL:
         return cls.escape(cast(str | int | float, value)).code()
 
     @classmethod
-    def _as_raw_sql(cls, code: str) -> Self:
+    def __as_raw_sql(cls, code: str) -> Self:
         code = str(code)
         ret = cls("")
         ret._code = "{v}"
@@ -167,37 +219,120 @@ class SQL:
         return ret
 
     def code(self) -> str:
+        """
+        Generates the raw SQL code as a string
+
+        >>> from sillyorm.sql import SQL
+        >>> sql = SQL(
+        ...     "SELECT * FROM {table};",
+        ...     table=SQL.identifier("something"),
+        ... )
+        >>> print(sql.code())
+        SELECT * FROM "something";
+
+        :return: The resulting code
+        :rtype: str
+        """
         return self._code.format(**self._args)
 
     def __repr__(self) -> str:
         return f"SQL({self.code()})"
 
     def __add__(self, sql: Self) -> Self:
-        return self._as_raw_sql(self.code() + sql.code())
+        return self.__as_raw_sql(self.code() + sql.code())
 
     @classmethod
     def identifier(cls, name: str) -> Self:
+        """
+        Creates an SQL identifier (surrounded in double quotes)
+        and ensures it does not contain any invalid characters
+
+        >>> from sillyorm.sql import SQL
+        >>> SQL.identifier("hello\\"world")
+        Traceback (most recent call last):
+        ...
+        sillyorm.exceptions.SillyORMException: invalid SQL identifier
+        >>> print(SQL.identifier("some_identifier").code())
+        "some_identifier"
+
+        :param name: The identifier string
+        :type name: str
+
+        :return:
+           Returns an instance of the
+           :class:`SQL <sillyorm.sql.SQL>` class with the identifier in it
+        :rtype: :class:`sillyorm.sql.SQL`
+        """
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_@#]*$", name):
             raise SillyORMException("invalid SQL identifier")
-        return cls._as_raw_sql(f'"{name}"')
+        return cls.__as_raw_sql(f'"{name}"')
 
     @classmethod
     def commaseperated(cls, values: list[Any] | tuple[Any, ...]) -> Self:
+        """
+        Creates an SQL comma seperated list
+
+        >>> from sillyorm.sql import SQL
+        >>> print(SQL.commaseperated(
+        ...     [SQL.identifier("someid"), 123, 1.2, 'hello world']
+        ... ).code())
+        "someid", 123, 1.2, 'hello world'
+
+        :param values: The values in the list
+        :type values: list[Any] | tuple[Any, ...]
+
+        :return:
+           Returns an instance of the
+           :class:`SQL <sillyorm.sql.SQL>` class with the list in it
+        :rtype: :class:`sillyorm.sql.SQL`
+        """
         if isinstance(values, tuple):
             values = list(values)
         if not isinstance(values, list):
             values = [values]
-        return cls._as_raw_sql(f"{', '.join([str(cls.__as_safe_sql_value(x)) for x in values])}")
+        return cls.__as_raw_sql(f"{', '.join([str(cls.__as_safe_sql_value(x)) for x in values])}")
 
     @classmethod
     def set(cls, values: list[Any] | tuple[Any, ...]) -> Self:
-        return cls._as_raw_sql(f"({cls.commaseperated(values).code()})")
+        """
+        Creates an SQL set
+
+        >>> from sillyorm.sql import SQL
+        >>> print(SQL.set(
+        ...     [SQL.identifier("someid"), 123, 1.2, 'hello world']
+        ... ).code())
+        ("someid", 123, 1.2, 'hello world')
+
+        :param values: The values in the list
+        :type values: list[Any] | tuple[Any, ...]
+
+        :return:
+           Returns an instance of the
+           :class:`SQL <sillyorm.sql.SQL>` class with the set in it
+        :rtype: :class:`sillyorm.sql.SQL`
+        """
+        return cls.__as_raw_sql(f"({cls.commaseperated(values).code()})")
 
     @classmethod
     def type(cls, t: SqlType) -> Self:
+        """
+        Creates an SQL type
+
+        >>> from sillyorm.sql import SQL, SqlType
+        >>> print(SQL.type(SqlType.varchar(123)).code())
+        VARCHAR(123)
+
+        :param t: The type
+        :type t: :class:`sillyorm.sql.SqlType`
+
+        :return:
+           Returns an instance of the
+           :class:`SQL <sillyorm.sql.SQL>` class with the type in it
+        :rtype: :class:`sillyorm.sql.SQL`
+        """
         if not isinstance(t, SqlType):
             raise SillyORMException("invalid SQL type")
-        return cls._as_raw_sql(t.value)
+        return cls.__as_raw_sql(t.value)
 
 
 # database abstractions
@@ -217,21 +352,58 @@ class Cursor:
     """
 
     def commit(self) -> None:
+        """
+        Commits the current transaction
+        """
         raise NotImplementedError()  # pragma: no cover
 
     def rollback(self) -> None:
+        """
+        Rolls back the current transaction
+        """
         raise NotImplementedError()  # pragma: no cover
 
     def execute(self, sqlcode: SQL) -> Self:
+        """
+        Executes SQL code
+
+        :param sqlcode: The SQL code
+        :type sqlcode: :class:`sillyorm.sql.SQL`
+
+        :return: Returns the Cursor
+        :rtype: :class:`sillyorm.sql.Cursor`
+        """
         raise NotImplementedError()  # pragma: no cover
 
     def fetchall(self) -> list[tuple[Any, ...]]:
+        """
+        Fetches all remaining rows of the query.
+
+        :return: All remaining rows of the query. Empty list if nothing is available
+        :rtype: list[tuple[Any, ...]]
+        """
         raise NotImplementedError()  # pragma: no cover
 
     def fetchone(self) -> tuple[Any, ...]:
+        """
+        Fetches the next row of the query.
+
+        :return: The next row of the query. None if nothing is available
+        :rtype: tuple[Any, ...]
+        """
         raise NotImplementedError()  # pragma: no cover
 
     def ensure_table(self, name: str, columns: list[ColumnInfo]) -> None:
+        """
+        Makes sure a table with the specified name and columns exists.
+        If any extra columns exist or their type does not match they will be removed.
+        If any columns don't exist they will be created.
+
+        :param name: The name of the table
+        :type name: str
+        :param columns: The columns of the table
+        :type columns: list[:class:`sillyorm.sql.ColumnInfo`]
+        """
         if not self._table_exists(name):
             column_sql = [
                 *[
@@ -317,6 +489,15 @@ class Cursor:
             self.commit()
 
     def get_table_column_info(self, name: str) -> list[ColumnInfo]:
+        """
+        Returns the column info of a table
+
+        :param name: The name of the table
+        :type name: str
+
+        :return: The column info of the specified table
+        :rtype: list[:class:`sillyorm.sql.ColumnInfo`]
+        """
         raise NotImplementedError()  # pragma: no cover
 
     def _table_exists(self, name: str) -> bool:
@@ -346,9 +527,18 @@ class Connection:
     """
 
     def cursor(self) -> Cursor:
+        """
+        Gets a database cursor from the connection
+
+        :return: A database cursor
+        :rtype: :class:`sillyorm.sql.Cursor`
+        """
         raise NotImplementedError()  # pragma: no cover
 
     def close(self) -> None:
+        """
+        Closes the connection
+        """
         raise NotImplementedError()  # pragma: no cover
 
 
@@ -364,9 +554,35 @@ class TableManager:
         self.table_name = table_name
 
     def table_init(self, cr: Cursor, columns: list[ColumnInfo]) -> None:
+        """
+        Initializes the database table
+
+        :param cr: The cursor to use
+        :type cr: :class:`sillyorm.sql.Cursor`
+        :param columns: The columns the table should have
+        :type columns: list[:class:`sillyorm.sql.ColumnInfo`]
+        """
         cr.ensure_table(self.table_name, columns)
 
     def read_records(self, cr: Cursor, columns: list[str], extra_sql: SQL) -> list[dict[str, Any]]:
+        """
+        Reads records
+
+        :param cr: The cursor to use
+        :type cr: :class:`sillyorm.sql.Cursor`
+        :param columns: The names of the columns to return
+        :type columns: list[str]
+        :param extra_sql:
+           Some extra SQL to use for selecting
+           which records to update. Would typically be some `WHERE`.
+        :type extra_sql: :class:`sillyorm.sql.SQL`
+
+        :return:
+           A list of dictionaries where the key is the
+           column name and the value is the value
+           read from the specified column
+        :rtype: list[dict[str, Any]]
+        """
         ret = []
         cr.execute(
             SQL(
@@ -384,6 +600,14 @@ class TableManager:
         return ret
 
     def insert_record(self, cr: Cursor, vals: dict[str, Any]) -> None:
+        """
+        Creates a record
+
+        :param cr: The cursor to use
+        :type cr: :class:`sillyorm.sql.Cursor`
+        :param vals: The values for the columns
+        :type vals: dict[str, Any]
+        """
         keys, values = zip(*vals.items())
         cr.execute(
             SQL(
@@ -395,6 +619,18 @@ class TableManager:
         )
 
     def update_records(self, cr: Cursor, column_vals: dict[str, Any], extra_sql: SQL) -> None:
+        """
+        Updates records
+
+        :param cr: The cursor to use
+        :type cr: :class:`sillyorm.sql.Cursor`
+        :param column_vals: The values for the columns
+        :type column_vals: dict[str, Any]
+        :param extra_sql:
+           Some extra SQL to use for selecting
+           which records to update. Would typically be some `WHERE`.
+        :type extra_sql: :class:`sillyorm.sql.SQL`
+        """
         cr.execute(
             SQL(
                 "UPDATE {table} SET {data} {extra_sql};",
@@ -407,6 +643,16 @@ class TableManager:
         )
 
     def delete_records(self, cr: Cursor, extra_sql: SQL) -> None:
+        """
+        Deletes records
+
+        :param cr: The cursor to use
+        :type cr: :class:`sillyorm.sql.Cursor`
+        :param extra_sql:
+           Some extra SQL to use for selecting
+           which records to delete. Would typically be some `WHERE`.
+        :type extra_sql: :class:`sillyorm.sql.SQL`
+        """
         cr.execute(
             SQL(
                 "DELETE FROM {table} {extra_sql};",
@@ -418,6 +664,20 @@ class TableManager:
     def search_records(
         self, cr: Cursor, columns: list[str], domain: list[str | tuple[str, str, Any]]
     ) -> list[Any]:
+        """
+        Searches for records
+
+        :param cr: The cursor to use
+        :type cr: :class:`sillyorm.sql.Cursor`
+        :param columns: The names of the columns to return
+        :type columns: list[str]
+        :param domain: The search domain
+        :type domain: list[str | tuple[str, str, Any]]
+
+        :return: The records found (emtpy list if none were found)
+        :rtype: list[Any]
+        """
+
         def parse_cmp_op(op: str) -> SQL:
             ops = {
                 "=": "=",

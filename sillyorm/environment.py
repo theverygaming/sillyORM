@@ -50,6 +50,13 @@ class Environment:
         self._models: dict[str, type[Model]] = {}
 
     def register_model(self, model: type[Model]) -> None:
+        """
+        Registers a model class in the environment
+
+        :param model: The :class:`Model <sillyorm.model.Model>` to register
+        :type model: type[:class:`Model <sillyorm.model.Model>`]
+        """
+
         name = model._name  # pylint: disable=protected-access
         if name in self._models:
             raise SillyORMException(f"cannot register model '{name}' twice")
