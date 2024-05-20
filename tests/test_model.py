@@ -313,6 +313,8 @@ def test_search(tmp_path, db_conn_fn):
 
     env = new_env()
 
+    assert env["test_model"].search([])._ids == [1, 2, 3]
+
     r2 = env["test_model"].search(
         [
             "(",

@@ -444,7 +444,9 @@ class TableManager:
 
         return cr.execute(
             SQL(
-                "SELECT {columns} FROM {table} WHERE {condition};",
+                "SELECT {columns} FROM {table}"
+                + (" WHERE {condition}" if len(search_sql.code()) else "")
+                + ";",
                 columns=SQL.commaseperated([SQL.identifier(column) for column in columns]),
                 table=SQL.identifier(self.table_name),
                 condition=search_sql,
