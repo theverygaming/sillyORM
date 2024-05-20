@@ -15,6 +15,9 @@ stdenv.mkDerivation {
     python311Packages.coverage
     python311Packages.pytest
 
+    # build
+    python311Packages.build
+
     # postgres
     python311Packages.psycopg2
     python311Packages.types-psycopg2
