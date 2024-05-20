@@ -159,3 +159,11 @@ class Model:
         if len(res) == 0:
             return None
         return self.__class__(self.env, ids=[id[0] for id in res])
+
+    def delete(self) -> None:
+        self._tblmngr.delete_records(
+            self.env.cr,
+            SQL("WHERE {id} IN {ids}", id=SQL.identifier("id"), ids=SQL.set(self._ids)),
+        )
+        if self.env.do_commit:
+            self.env.cr.commit()

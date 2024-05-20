@@ -344,3 +344,73 @@ def test_search(tmp_path, db_conn_fn):
         )
         is None
     )
+
+
+@pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
+def test_write(tmp_path, db_conn_fn):
+    class TestModel(sillyorm.model.Model):
+        _name = "test_model"
+
+        test = sillyorm.fields.String()
+        test2 = sillyorm.fields.String()
+        test3 = sillyorm.fields.String()
+
+    def new_env():
+        env = sillyorm.Environment(db_conn_fn(tmp_path).cursor())
+        env.register_model(TestModel)
+        return env
+
+    env = new_env()
+    r1 = env["test_model"].create({"test": "hello world!", "test2": "test2", "test3": "Hii!!"})
+    r2 = env["test_model"].create(
+        {"test": "2 hello world!", "test2": "2 test2", "test3": "2 Hii!!"}
+    )
+    r3 = env["test_model"].create(
+        {"test": "3 hello world!", "test2": "3 test2", "test3": "3 Hii!!"}
+    )
+    r4 = env["test_model"].create(
+        {"test": "4 hello world!", "test2": "4 test2", "test3": "4 Hii!!"}
+    )
+    r5 = env["test_model"].create(
+        {"test": "5 hello world!", "test2": "5 test2", "test3": "5 Hii!!"}
+    )
+    assert r1.id == 1
+    assert r2.id == 2
+    assert r3.id == 3
+    assert r4.id == 4
+    assert r5.id == 5
+
+    env = new_env()
+
+    assert env["test_model"].search([])._ids == [1, 2, 3, 4, 5]
+
+    env["test_model"].browse([1, 2]).delete()
+
+    assert env["test_model"].search([])._ids == [3, 4, 5]
+
+    env["test_model"].browse(3).delete()
+
+    assert env["test_model"].search([])._ids == [4, 5]
+
+    env = new_env()
+
+    assert env["test_model"].search([])._ids == [4, 5]
+
+    r6 = env["test_model"].create(
+        {"test": "6 hello world!", "test2": "6 test2", "test3": "6 Hii!!"}
+    )
+    assert r6.id == 6
+
+    assert env["test_model"].search([])._ids == [4, 5, 6]
+
+    env = new_env()
+
+    assert env["test_model"].search([])._ids == [4, 5, 6]
+
+    env["test_model"].search([]).delete()
+
+    assert env["test_model"].search([]) is None
+
+    env = new_env()
+
+    assert env["test_model"].search([]) is None

@@ -406,6 +406,15 @@ class TableManager:
             )
         )
 
+    def delete_records(self, cr: Cursor, extra_sql: SQL) -> None:
+        cr.execute(
+            SQL(
+                "DELETE FROM {table} {extra_sql};",
+                table=SQL.identifier(self.table_name),
+                extra_sql=extra_sql,
+            )
+        )
+
     def search_records(
         self, cr: Cursor, columns: list[str], domain: list[str | tuple[str, str, Any]]
     ) -> list[Any]:
