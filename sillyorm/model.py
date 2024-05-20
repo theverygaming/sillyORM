@@ -95,6 +95,7 @@ class Model:
 
         _logger.debug("initializing table for model: '%s'", self._name)
         all_fields = get_all_fields()
+        # TODO: a way to disable updating tables manually so accidents don't happen? # pylint: disable=fixme
         self._tblmngr.table_init(
             self.env.cr,
             [

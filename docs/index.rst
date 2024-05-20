@@ -10,9 +10,8 @@ Welcome to ``sillyORM``'s documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   source/quickstart
+   source/getting-started
    source/concepts
-   source/examples
    source/API reference
 
 
