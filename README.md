@@ -3,7 +3,7 @@
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 ![CI: Python test](https://github.com/theverygaming/sillyORM/actions/workflows/test.yml/badge.svg)
 ![CI: Python mypy](https://github.com/theverygaming/sillyORM/actions/workflows/typecheck.yml/badge.svg)
-
+[![PyPI](https://img.shields.io/pypi/v/sillyorm.svg)](https://pypi.org/project/sillyORM/)
 
 simple ORM library written in Python
 
