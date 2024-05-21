@@ -12,11 +12,11 @@ Currently supports
 - SQLite
 - PostgreSQL
 
-<!-- ## Installation
+## Installation
 
 ```bash
 pip install sillyorm
-``` -->
+```
 
 > [!CAUTION]
 > :warning: **sillyORM is not ready for use in production environments**.
