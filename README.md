@@ -12,17 +12,17 @@ Currently supports
 - SQLite
 - PostgreSQL
 
-## Installation
-
-```bash
-pip install sillyorm
-```
-
 > [!CAUTION]
 > :warning: **sillyORM is not ready for use in production environments**.
 > It is still **alpha software** and under development.
 > The API is unstable, and each release may introduce breaking changes.
 > There may even be **security vulnerabilities** present.
+
+## Installation
+
+```bash
+pip install sillyorm
+```
 
 ## Usage
 
