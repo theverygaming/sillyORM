@@ -184,6 +184,45 @@ class String(Field):
         super().__set__(record, value)
 
 
+class Text(Field):
+    """
+    Text field. Represents a large string of text
+
+    .. testcode:: models_fields
+
+       class ExampleModel(sillyorm.model.Model):
+           _name = "example_text"
+           field = sillyorm.fields.Text()
+
+       env.register_model(ExampleModel)
+
+       record = env["example_text"].create({"field": "hello"})
+       print(record.field)
+       record.field += " world!"
+       print(record.field)
+
+       largestring = "0123456789" * 100000 # 1MB of data
+       record.field = largestring
+       print(record.field == largestring)
+
+    .. testoutput:: models_fields
+
+       hello
+       hello world!
+       True
+
+    """
+
+    def __init__(self) -> None:
+        self.sql_type = sql.SqlType.text()
+        super().__init__()
+
+    def __set__(self, record: Model, value: str) -> None:
+        if not isinstance(value, str):
+            raise SillyORMException("Text value must be str")
+        super().__set__(record, value)
+
+
 class Date(Field):
     """
     Date field. Represents a python date object.

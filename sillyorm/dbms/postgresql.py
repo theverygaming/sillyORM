@@ -51,6 +51,8 @@ class PostgreSQLCursor(sql.Cursor):
             match t:
                 case "character varying":
                     return sql.SqlType.varchar(maxlen)
+                case "text":
+                    return sql.SqlType.text()
                 case "integer":
                     return sql.SqlType.integer()
                 case "date":
