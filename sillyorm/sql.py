@@ -47,6 +47,13 @@ class SqlType:
         return SqlType(f"VARCHAR({length})")
 
     @staticmethod
+    def text() -> SqlType:
+        """
+        `TEXT` SQL type
+        """
+        return SqlType("TEXT")
+
+    @staticmethod
     def date() -> SqlType:
         """
         `DATE` SQL type
