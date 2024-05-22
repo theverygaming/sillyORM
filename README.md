@@ -55,3 +55,7 @@ print(record.name)
 ## Documentation
 
 Read the docs [here](https://theverygaming.github.io/sillyORM/)
+
+> [!NOTE]
+> The docs are always for the _newest_ version.
+> If you need docs for another version you must build them yourself
