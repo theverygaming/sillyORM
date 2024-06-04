@@ -265,6 +265,51 @@ class Date(Field):
         super().__set__(record, value)
 
 
+class Boolean(Field):
+    """
+    Boolean field. Can represent either `True` or `False`.
+
+    .. testsetup:: models_fields
+
+       import tempfile
+       import sillyorm
+       from sillyorm.dbms import sqlite
+
+       tmpfile = tempfile.NamedTemporaryFile()
+       env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+
+    .. testcode:: models_fields
+
+       class ExampleModel(sillyorm.model.Model):
+           _name = "example_bool"
+           field = sillyorm.fields.Boolean()
+
+       env.register_model(ExampleModel)
+
+       record = env["example_bool"].create({"field": True})
+       print(record.field)
+       record.field = False
+       print(record.field)
+
+    .. testoutput:: models_fields
+
+       True
+       False
+    """
+
+    sql_type = sql.SqlType.boolean()
+
+    def _convert_type_get(self, value: Any) -> Any:
+        if isinstance(value, int):
+            return bool(value)
+        return value
+
+    def __set__(self, record: Model, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise SillyORMException("Boolean value must be bool")
+        super().__set__(record, value)
+
+
 class Many2one(Integer):
     """
     Many to one relational field. Represents a single record of another model.
