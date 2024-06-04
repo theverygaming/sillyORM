@@ -36,6 +36,22 @@ If any columns/fields exist in the database but are not specified in the model *
    You should never call the constructor of the model class yourself.
    Get an empty :ref:`recordset <recordsets>` via the :ref:`environment <environment>` and interact with the model from there.
 
+A model can also be inherited
+
+.. testcode:: models_concept
+
+   class ExampleModel(sillyorm.model.Model):
+       _name = "example0"
+
+   class ExampleModelCopy(ExampleModel):
+       _name = "example0_copy"
+
+   env.register_model(ExampleModelCopy)
+
+This will cause all fields to be copied on the inherited model.
+If a field is defined in both the base class and the inherited one the inherited one will be put into the database.
+**At the moment it is not possible to remove a field from an inherited model**
+
 
 .. _environment:
 

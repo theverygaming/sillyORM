@@ -83,18 +83,22 @@ class Model:
 
     def _table_init(self) -> None:
         def get_all_fields() -> list[fields.Field]:
-            all_fields = []
+            all_fields = {}
             for cls in self.__class__.__mro__:
-                if not (Model in cls.__bases__ or cls == Model):
+                if not issubclass(cls, Model):
                     break
                 for attr in vars(cls).values():
                     if not isinstance(attr, fields.Field):
                         continue
-                    all_fields.append(attr)
-            return all_fields
+                    # fields from classes closer to the
+                    # one this function was called on have priority
+                    if attr.name not in all_fields:
+                        all_fields[attr.name] = attr
+            return list(all_fields.values())
 
         _logger.debug("initializing table for model: '%s'", self._name)
         all_fields = get_all_fields()
+        _logger.debug("fields for model '%s': %s", self._name, repr(all_fields))
         # TODO: a way to disable updating tables manually so accidents don't happen? # pylint: disable=fixme
         self._tblmngr.table_init(
             self.env.cr,
