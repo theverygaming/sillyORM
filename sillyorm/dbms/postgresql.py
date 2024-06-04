@@ -57,6 +57,8 @@ class PostgreSQLCursor(sql.Cursor):
                     return sql.SqlType.integer()
                 case "date":
                     return sql.SqlType.date()
+                case "boolean":
+                    return sql.SqlType.boolean()
                 case _:
                     raise SillyORMException(f"unknown pg type '{t}'")
 

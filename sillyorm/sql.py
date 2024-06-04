@@ -70,6 +70,13 @@ class SqlType:
         """
         return SqlType("TIMESTAMP")
 
+    @staticmethod
+    def boolean() -> SqlType:
+        """
+        `BOOLEAN` SQL type
+        """
+        return SqlType("BOOLEAN")
+
 
 class SqlConstraint:
     """Class for SQL constraints
