@@ -41,6 +41,9 @@ class Field:
         if self.materialize and self.sql_type is None:
             raise SillyORMException("sql_type must be set")
 
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(name={self.name})"
+
     def model_post_init(self, record: Model) -> None:
         """
         Called by the :class:`Model <sillyorm.model.Model>`
