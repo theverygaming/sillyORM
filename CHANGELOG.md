@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- added float field
+
+**diff**: https://github.com/theverygaming/sillyORM/compare/0.2.0...0.3.0
+
 ## 0.2.0
 
 - added Boolean field
