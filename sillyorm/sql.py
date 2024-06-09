@@ -37,6 +37,13 @@ class SqlType:
         return SqlType("INTEGER")
 
     @staticmethod
+    def float() -> SqlType:
+        """
+        `FLOAT` SQL type
+        """
+        return SqlType("FLOAT")
+
+    @staticmethod
     def varchar(length: int) -> SqlType:
         """
         `VARCHAR` SQL type
