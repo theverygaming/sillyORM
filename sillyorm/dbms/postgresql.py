@@ -55,6 +55,8 @@ class PostgreSQLCursor(sql.Cursor):
                     return sql.SqlType.text()
                 case "integer":
                     return sql.SqlType.integer()
+                case "double precision":
+                    return sql.SqlType.float()
                 case "date":
                     return sql.SqlType.date()
                 case "boolean":

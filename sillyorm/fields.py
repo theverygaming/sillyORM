@@ -117,6 +117,50 @@ class Integer(Field):
         super().__set__(record, value)
 
 
+class Float(Field):
+    """
+    Float field. Can represent floating point numbers from at least ``-1.2e-38`` to ``3.4e+38``
+    (may be significantly more depending on the dbms used).
+
+    .. testsetup:: models_fields
+
+       import tempfile
+       import sillyorm
+       from sillyorm.dbms import sqlite
+
+       tmpfile = tempfile.NamedTemporaryFile()
+       env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+
+    .. testcode:: models_fields
+
+       class ExampleModel(sillyorm.model.Model):
+           _name = "example_float"
+           field = sillyorm.fields.Float()
+
+       env.register_model(ExampleModel)
+
+       record = env["example_float"].create({"field": 32768.123321})
+       print(record.field)
+       record.field = -0.000000000000000000000000000000000000012
+       print(record.field)
+       record.field = 340000000000000000000000000000000000000.0
+       print(record.field)
+
+    .. testoutput:: models_fields
+
+       32768.123321
+       -1.2e-38
+       3.4e+38
+    """
+
+    sql_type = sql.SqlType.float()
+
+    def __set__(self, record: Model, value: float) -> None:
+        if not isinstance(value, float):
+            raise SillyORMException("Float value must be float")
+        super().__set__(record, value)
+
+
 class Id(Integer):
     """
     Special ID field used as PRIMARY KEY in model tables. It's value cannot be changed.

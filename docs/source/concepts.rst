@@ -94,6 +94,7 @@ There are various kinds of fields. By default each model has a special :class:`i
 Currently sillyORM supports the following fields:
 
 * :class:`Integer <sillyorm.fields.Integer>` represents an integer
+* :class:`Float <sillyorm.fields.Float>` represents a floating point number
 * :class:`String <sillyorm.fields.String>` represents a string
 * :class:`Text <sillyorm.fields.Text>` represents a large string
 * :class:`Date <sillyorm.fields.Date>` represents a Date (as `datetime.date`)
