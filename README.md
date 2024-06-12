@@ -13,10 +13,16 @@ Currently supports
 - PostgreSQL
 
 > [!CAUTION]
-> :warning: **sillyORM is not ready for use in production environments**.
+> :warning: sillyORM is **not ready for use in production environments**.
 > It is still **alpha software** and under development.
 > The API is unstable, and each release may introduce breaking changes.
 > There may even be **security vulnerabilities** present.
+> If you use it anyway, **make sure to pin the version!**
+
+## Projects using sillyORM
+
+- [theverygaming/silly](https://github.com/theverygaming/silly)
+- [iLollek/Figuyo-Public](https://github.com/iLollek/Figuyo-Public) - An app for keeping track of Anime Figures
 
 ## Installation
 
