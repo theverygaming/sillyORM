@@ -63,11 +63,10 @@ class Field:
         return value
 
     def __get__(self, record: Model, objtype: Any = None) -> Any | list[Any]:
+        record.ensure_one()
         sql_result = record.read([self.name])
         result = [self._convert_type_get(res[self.name]) for res in sql_result]
-        if len(result) == 1:
-            return result[0]
-        return result
+        return result[0]
 
     def __set__(self, record: Model, value: Any) -> None:
         record.write({self.name: self._convert_type_set(value)})
@@ -401,14 +400,10 @@ class Many2one(Integer):
         self.constraints = [sql.SqlConstraint.foreign_key(foreign_model, "id")]
 
     def __get__(self, record: Model, objtype: Any = None) -> None | Model:
-        ids = super().__get__(record, objtype)
-        if ids is None:
+        id = super().__get__(record, objtype)
+        if id is None:
             return None
-        if isinstance(ids, list):
-            ids = list(filter(lambda x: x is not None, ids))
-            if len(ids) == 0:
-                return None
-        return record.env[self._foreign_model].browse(ids)
+        return record.env[self._foreign_model].browse(id)
 
     def __set__(self, record: Model, value: Model) -> None:  # type: ignore[override]
         value.ensure_one()

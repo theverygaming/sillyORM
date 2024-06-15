@@ -179,9 +179,15 @@ def test_create_browse(tmp_path, db_conn_fn):
     env = new_env()
 
     r12 = env["test_model"].browse([1, 2])
-    assert r12.test == ["hello world!", "2 hello world!"]
-    assert r12.test2 == ["test2", "2 test2"]
-    assert r12.test3 == ["Hii!!", "2 Hii!!"]
+    with pytest.raises(SillyORMException) as e_info:
+        r12.test
+    assert str(e_info.value) == "ensure_one found 2 id's"
+    with pytest.raises(SillyORMException) as e_info:
+        r12.test2
+    assert str(e_info.value) == "ensure_one found 2 id's"
+    with pytest.raises(SillyORMException) as e_info:
+        r12.test3
+    assert str(e_info.value) == "ensure_one found 2 id's"
 
     env = new_env()
 

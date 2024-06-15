@@ -112,6 +112,7 @@ The attribute name specifies the column name in the database.
        _name = "example1"
 
        name = sillyorm.fields.String()
+       test = sillyorm.fields.String()
 
    env.register_model(ExampleModel)
 
@@ -159,8 +160,12 @@ Recordsets can contain multiple records
    >>> rec_12 = env["example1"].browse([1, 2])
    >>> rec_12
    example1[1, 2]
-   >>> rec_12.name
-   ['this is record 1', 'this is record 2']
+   >>> rec_12.name  # reading of a field is only possible if the recordset contains exactly one record
+   Traceback (most recent call last):
+   ...
+   sillyorm.exceptions.SillyORMException: ensure_one found 2 id's
+   >>> rec_12.read(["name"])  # if a recordset with multiple records has to be read use the `read` method
+   [{'name': 'this is record 1'}, {'name': 'this is record 2'}]
 
 
 Recordsets can be iterated over
@@ -179,6 +184,26 @@ There is a :func:`function <sillyorm.model.Model.ensure_one>` to ensure a record
    >>> rec_1 = env["example1"].browse(1)
    >>> rec_1.ensure_one()
    example1[1]
+
+
+Fields can have no value
+
+.. doctest:: models_concept
+
+   # recordset with one record
+   >>> rec_3 = env["example1"].create({"name": "this is record 3"})
+   >>> rec_3
+   example1[3]
+   >>> repr(rec_3.test)
+   'None'
+   >>> rec_3.test = "test"
+   >>> rec_3.test
+   'test'
+   >>> rec_3.test = None  # setting a field to None is not supported at the moment
+   Traceback (most recent call last):
+   ...
+   sillyorm.exceptions.SillyORMException: String value must be str
+
 
 ---------------
 Model Functions

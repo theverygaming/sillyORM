@@ -14,7 +14,7 @@ precommit: test typecheck lint
 
 .PHONY: test
 test:
-	coverage run --source sillyorm/ -m pytest -vv --tb=long tests/
+	coverage run --source sillyorm/ -m pytest -vv --tb=long --showlocals tests/
 	coverage html --omit="tests/*"
 	coverage report -m --omit="tests/*"
 	cd docs && make doctest

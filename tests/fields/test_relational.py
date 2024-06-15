@@ -53,26 +53,20 @@ def test_field_many2one_one2many(env):
     abandoned_so_line2 = env["sale_order_line"].create({"product": "p3 4 o2"})
     assert abandoned_so_line1.sale_order_id is None
     assert abandoned_so_line2.sale_order_id is None
-    assert (
-        env["sale_order_line"].browse([abandoned_so_line1.id, abandoned_so_line2.id]).sale_order_id
-        is None
-    )
     abandoned_so_line1.sale_order_id = env["sale_order"].browse(so_1_id)
-    assert (
-        env["sale_order_line"]
-        .browse([abandoned_so_line1.id, abandoned_so_line2.id])
-        .sale_order_id.id
-        == so_1_id
-    )
+
+    with pytest.raises(SillyORMException) as e_info:
+        env["sale_order_line"].browse(
+            [abandoned_so_line1.id, abandoned_so_line2.id]
+        ).sale_order_id.id
+    assert str(e_info.value) == "ensure_one found 2 id's"
+
     abandoned_so_line2.sale_order_id = env["sale_order"].browse(so_2_id)
-    assert (
-        repr(
-            env["sale_order_line"]
-            .browse([abandoned_so_line1.id, abandoned_so_line2.id])
-            .sale_order_id
-        )
-        == f"sale_order[{so_1_id}, {so_2_id}]"
-    )
+    with pytest.raises(SillyORMException) as e_info:
+        env["sale_order_line"].browse([abandoned_so_line1.id, abandoned_so_line2.id]).sale_order_id
+    assert str(e_info.value) == "ensure_one found 2 id's"
+
+    assert env["sale_order_line"].browse([abandoned_so_line1.id]).sale_order_id.id == so_1_id
 
     # One2many
     assert (
