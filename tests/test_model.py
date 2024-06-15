@@ -337,18 +337,20 @@ def test_search(tmp_path, db_conn_fn):
     env = new_env()
 
     assert (
-        env["test_model"].search(
-            [
-                "(",
-                ("test2", "=", "test2"),
-                "&",
-                ("test", "=", "hello world!"),
-                ")",
-                "&",
-                ("test2", "=", "2 Hii!!"),
-            ]
+        len(
+            env["test_model"].search(
+                [
+                    "(",
+                    ("test2", "=", "test2"),
+                    "&",
+                    ("test", "=", "hello world!"),
+                    ")",
+                    "&",
+                    ("test2", "=", "2 Hii!!"),
+                ]
+            )
         )
-        is None
+        == 0
     )
 
 
@@ -415,8 +417,8 @@ def test_write(tmp_path, db_conn_fn):
 
     env["test_model"].search([]).delete()
 
-    assert env["test_model"].search([]) is None
+    assert len(env["test_model"].search([])) == 0
 
     env = new_env()
 
-    assert env["test_model"].search([]) is None
+    assert len(env["test_model"].search([])) == 0

@@ -90,28 +90,28 @@ def test_inheritance_copy(env):
     env.register_model(SaleOrderExtraFieldOverride)
     assert_columns()
 
-    assert env["sale_order"].search([]) is None
-    assert env["sale_order_copy"].search([]) is None
-    assert env["sale_order_extra_field"].search([]) is None
-    assert env["sale_order_extra_extra_field"].search([]) is None
-    assert env["sale_order_extra_field_override"].search([]) is None
+    assert len(env["sale_order"].search([])) == 0
+    assert len(env["sale_order_copy"].search([])) == 0
+    assert len(env["sale_order_extra_field"].search([])) == 0
+    assert len(env["sale_order_extra_extra_field"].search([])) == 0
+    assert len(env["sale_order_extra_field_override"].search([])) == 0
 
     env["sale_order"].create({"line_count": 5})
     env["sale_order"].create({})
 
     assert env["sale_order"].search([])._ids == [1, 2]
-    assert env["sale_order_copy"].search([]) is None
-    assert env["sale_order_extra_field"].search([]) is None
-    assert env["sale_order_extra_extra_field"].search([]) is None
-    assert env["sale_order_extra_field_override"].search([]) is None
+    assert len(env["sale_order_copy"].search([])) == 0
+    assert len(env["sale_order_extra_field"].search([])) == 0
+    assert len(env["sale_order_extra_extra_field"].search([])) == 0
+    assert len(env["sale_order_extra_field_override"].search([])) == 0
 
     env["sale_order_extra_field"].create({"line_count": 5, "extrafield": "test extra field"})
 
     assert env["sale_order"].search([])._ids == [1, 2]
-    assert env["sale_order_copy"].search([]) is None
+    assert len(env["sale_order_copy"].search([])) == 0
     assert env["sale_order_extra_field"].search([])._ids == [1]
-    assert env["sale_order_extra_extra_field"].search([]) is None
-    assert env["sale_order_extra_field_override"].search([]) is None
+    assert len(env["sale_order_extra_extra_field"].search([])) == 0
+    assert len(env["sale_order_extra_field_override"].search([])) == 0
 
 
 @with_test_env()
@@ -153,14 +153,14 @@ def test_inheritance_abstract(env):
     env.register_model(SaleOrderExtraField)
     assert_columns()
 
-    assert env["sale_order"].search([]) is None
-    assert env["sale_order_extra_field"].search([]) is None
+    assert len(env["sale_order"].search([])) == 0
+    assert len(env["sale_order_extra_field"].search([])) == 0
 
     env["sale_order"].create({"line_count": 5})
     env["sale_order"].create({})
 
     assert env["sale_order"].search([])._ids == [1, 2]
-    assert env["sale_order_extra_field"].search([]) is None
+    assert len(env["sale_order_extra_field"].search([])) == 0
 
     env["sale_order_extra_field"].create({"line_count": 5, "extrafield": "test extra field"})
 

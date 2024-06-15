@@ -81,6 +81,9 @@ class Model:
         for x in self._ids:
             yield self.__class__(self.env, ids=[x])
 
+    def __len__(self) -> int:
+        return len(self._ids)
+
     def _table_init(self) -> None:
         def get_all_fields() -> list[fields.Field]:
             all_fields = {}
@@ -214,7 +217,7 @@ class Model:
             self.env.cr.commit()
         return self.__class__(self.env, ids=[vals["id"]])
 
-    def search(self, domain: list[str | tuple[str, str, Any]]) -> Self | None:
+    def search(self, domain: list[str | tuple[str, str, Any]]) -> Self:
         """
         Searches records.
 
@@ -273,12 +276,10 @@ class Model:
 
         :return:
            A recordset with the records found.
-           None if nothing could be found
-        :rtype: None | Self
+           An empty recordset if nothing could be found
+        :rtype: Self
         """
         res = self._tblmngr.search_records(self.env.cr, ["id"], domain)
-        if len(res) == 0:
-            return None
         return self.__class__(self.env, ids=[id[0] for id in res])
 
     def delete(self) -> None:
