@@ -400,10 +400,10 @@ class Many2one(Integer):
         self.constraints = [sql.SqlConstraint.foreign_key(foreign_model, "id")]
 
     def __get__(self, record: Model, objtype: Any = None) -> None | Model:
-        id = super().__get__(record, objtype)
-        if id is None:
+        rec = super().__get__(record, objtype)
+        if rec is None:
             return None
-        return record.env[self._foreign_model].browse(id)
+        return record.env[self._foreign_model].browse(rec)
 
     def __set__(self, record: Model, value: Model) -> None:  # type: ignore[override]
         value.ensure_one()
