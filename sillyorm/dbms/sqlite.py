@@ -88,12 +88,11 @@ class SQLiteConnection(sql.Connection):
     """
     SQLite database connection abstraction
 
-    :param filename: SQLite database file path
-    :type filename: str
+    All parameters passed to the Constructor of this class get passed to `sqlite3.connect`
     """
 
-    def __init__(self, filename: str):
-        self._conn = sqlite3.connect(filename)
+    def __init__(self, *args: Any, **kwargs: Any):
+        self._conn = sqlite3.connect(*args, **kwargs)
 
     def cursor(self) -> SQLiteCursor:
         return SQLiteCursor(self._conn.cursor())
