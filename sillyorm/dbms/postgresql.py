@@ -47,7 +47,7 @@ class PostgreSQLCursor(sql.Cursor):
         return cast(tuple[Any, ...], res)
 
     def get_table_column_info(self, name: str) -> list[sql.ColumnInfo]:
-        def _str_type_to_sql_type(t: str, maxlen: int) -> sql.SqlType:
+        def _str_type_to_sql_type(t: str, maxlen: int) -> sql.SqlType:  # pylint: disable=too-many-return-statements
             match t:
                 case "character varying":
                     return sql.SqlType.varchar(maxlen)

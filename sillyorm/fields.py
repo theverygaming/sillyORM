@@ -343,7 +343,7 @@ class Datetime(Field):
 
     def __set__(self, record: Model, value: datetime.datetime) -> None:
         if not isinstance(value, datetime.datetime):
-            raise SillyORMException(f"Datetime value must be datetime")
+            raise SillyORMException("Datetime value must be datetime")
         super().__set__(record, value)
 
 
