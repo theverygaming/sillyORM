@@ -302,9 +302,48 @@ class Date(Field):
             return datetime.date.fromisoformat(value)
         return value
 
-    def __set__(self, record: Model, value: Date) -> None:
+    def __set__(self, record: Model, value: datetime.date) -> None:
         if not isinstance(value, datetime.date) or isinstance(value, datetime.datetime):
             raise SillyORMException("Date value must be date")
+        super().__set__(record, value)
+
+
+class Datetime(Field):
+    """
+    Datetime field. Represents a python datetime object.
+
+    .. testcode:: models_fields
+
+       import datetime
+
+       class ExampleModel(sillyorm.model.Model):
+           _name = "example_datetime"
+           field = sillyorm.fields.Datetime()
+
+       env.register_model(ExampleModel)
+
+       record = env["example_datetime"].create({"field": datetime.datetime(1970, 1, 1, 1, 2, 3)})
+       print(record.field)
+       record.field += datetime.timedelta(days=1, hours=2, minutes=6)
+       print(record.field)
+
+    .. testoutput:: models_fields
+
+       1970-01-01 01:02:03
+       1970-01-02 03:08:03
+
+    """
+
+    sql_type = sql.SqlType.timestamp()
+
+    def _convert_type_get(self, value: Any) -> Any:
+        if isinstance(value, str):
+            return datetime.datetime.fromisoformat(value)
+        return value
+
+    def __set__(self, record: Model, value: datetime.datetime) -> None:
+        if not isinstance(value, datetime.datetime):
+            raise SillyORMException(f"Datetime value must be datetime")
         super().__set__(record, value)
 
 

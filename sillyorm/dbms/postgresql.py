@@ -59,6 +59,8 @@ class PostgreSQLCursor(sql.Cursor):
                     return sql.SqlType.float()
                 case "date":
                     return sql.SqlType.date()
+                case "timestamp without time zone":
+                    return sql.SqlType.timestamp()
                 case "boolean":
                     return sql.SqlType.boolean()
                 case _:
