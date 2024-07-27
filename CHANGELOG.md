@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+
+- added a datetime field
+
+**diff**: https://github.com/theverygaming/sillyORM/compare/0.4.0...0.5.0
+
 ## 0.4.0
 
 - **made reading fields on recordsets with more than one record impossible**
