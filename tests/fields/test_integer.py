@@ -49,6 +49,8 @@ def test_field_integer(env, is_second, prev_return):
         so_2 = env["sale_order"].browse(so_2_id)
         assert so_1.line_count == 6
         assert so_2.line_count == -32768
+        so_2.line_count = None
+        assert so_2.line_count is None
 
     if is_second:
         second()

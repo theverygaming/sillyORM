@@ -103,6 +103,7 @@ Currently sillyORM supports the following fields:
 * :class:`Many2one <sillyorm.fields.Many2one>` represents a many to one relationship
 * :class:`One2many <sillyorm.fields.One2many>` represents a one to many relationship (requires a many to one on the other side)
 
+Most fields support None as a value, and are initialized with None by default.
 
 Fields are specified as class attributes on a child of the :class:`Model <sillyorm.model.Model>` class.
 The attribute name specifies the column name in the database.
@@ -200,10 +201,9 @@ Fields can have no value
    >>> rec_3.test = "test"
    >>> rec_3.test
    'test'
-   >>> rec_3.test = None  # setting a field to None is not supported at the moment
-   Traceback (most recent call last):
-   ...
-   sillyorm.exceptions.SillyORMException: String value must be str
+   >>> rec_3.test = None  # setting a field to None is also possible
+   >>> repr(rec_3.test)
+   'None'
 
 
 ---------------

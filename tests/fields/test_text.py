@@ -67,6 +67,8 @@ def test_field_text(env, is_second, prev_return):
         string_len = len(so_3.name)
         assert strings_eq
         assert string_len == 43000000
+        so_2.name = None
+        assert so_2.name is None
 
     if is_second:
         second()

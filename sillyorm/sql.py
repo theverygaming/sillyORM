@@ -210,6 +210,10 @@ class SQL:
            :class:`SQL <sillyorm.sql.SQL>` class with the escaped SQL in it
         :rtype: :class:`sillyorm.sql.SQL`
         """
+        # None(NULL) values
+        if value is None:
+            return cls.__as_raw_sql("NULL")
+
         # escape strings
         if isinstance(value, str):
             # escape all single quotes

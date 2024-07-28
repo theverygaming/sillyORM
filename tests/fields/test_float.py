@@ -49,6 +49,8 @@ def test_field_float(env, is_second, prev_return):
         so_2 = env["sale_order"].browse(so_2_id)
         assert so_1.price == 123456.0
         assert so_2.price == -0.000000000000000000000000000000000000012
+        so_2.price = None
+        assert so_2.price is None
 
     if is_second:
         second()

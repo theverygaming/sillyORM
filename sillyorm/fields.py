@@ -69,6 +69,8 @@ class Field:
         return result[0]
 
     def __set__(self, record: Model, value: Any) -> None:
+        if value is None:
+            record.write({self.name: value})
         record.write({self.name: self._convert_type_set(value)})
 
 
@@ -100,18 +102,21 @@ class Integer(Field):
        print(record.field)
        record.field = 32767
        print(record.field)
+       record.field = None
+       print(record.field)
 
     .. testoutput:: models_fields
 
        5
        -32768
        32767
+       None
     """
 
     sql_type = sql.SqlType.integer()
 
-    def __set__(self, record: Model, value: int) -> None:
-        if not isinstance(value, int):
+    def __set__(self, record: Model, value: int | None) -> None:
+        if not isinstance(value, int) and value is not None:
             raise SillyORMException("Integer value must be int")
         super().__set__(record, value)
 
@@ -144,18 +149,21 @@ class Float(Field):
        print(record.field)
        record.field = 340000000000000000000000000000000000000.0
        print(record.field)
+       record.field = None
+       print(record.field)
 
     .. testoutput:: models_fields
 
        32768.123321
        -1.2e-38
        3.4e+38
+       None
     """
 
     sql_type = sql.SqlType.float()
 
-    def __set__(self, record: Model, value: float) -> None:
-        if not isinstance(value, float):
+    def __set__(self, record: Model, value: float | None) -> None:
+        if not isinstance(value, float) and value is not None:
             raise SillyORMException("Float value must be float")
         super().__set__(record, value)
 
@@ -209,11 +217,14 @@ class String(Field):
        print(record.field)
        record.field += " world!"
        print(record.field)
+       record.field = None
+       print(record.field)
 
     .. testoutput:: models_fields
 
        hello
        hello world!
+       None
 
     :param length: Maximum string length, defaults to 255
     :type length: int, optional
@@ -224,8 +235,8 @@ class String(Field):
         self.sql_type = sql.SqlType.varchar(length)
         super().__init__()
 
-    def __set__(self, record: Model, value: str) -> None:
-        if not isinstance(value, str):
+    def __set__(self, record: Model, value: str | None) -> None:
+        if not isinstance(value, str) and value is not None:
             raise SillyORMException("String value must be str")
         super().__set__(record, value)
 
@@ -250,12 +261,15 @@ class Text(Field):
        largestring = "0123456789" * 100000 # 1MB of data
        record.field = largestring
        print(record.field == largestring)
+       record.field = None
+       print(record.field)
 
     .. testoutput:: models_fields
 
        hello
        hello world!
        True
+       None
 
     """
 
@@ -263,8 +277,8 @@ class Text(Field):
         self.sql_type = sql.SqlType.text()
         super().__init__()
 
-    def __set__(self, record: Model, value: str) -> None:
-        if not isinstance(value, str):
+    def __set__(self, record: Model, value: str | None) -> None:
+        if not isinstance(value, str) and value is not None:
             raise SillyORMException("Text value must be str")
         super().__set__(record, value)
 
@@ -287,11 +301,14 @@ class Date(Field):
        print(record.field)
        record.field += datetime.timedelta(days=1)
        print(record.field)
+       record.field = None
+       print(record.field)
 
     .. testoutput:: models_fields
 
        1970-01-01
        1970-01-02
+       None
 
     """
 
@@ -302,8 +319,10 @@ class Date(Field):
             return datetime.date.fromisoformat(value)
         return value
 
-    def __set__(self, record: Model, value: datetime.date) -> None:
-        if not isinstance(value, datetime.date) or isinstance(value, datetime.datetime):
+    def __set__(self, record: Model, value: datetime.date | None) -> None:
+        if (
+            not isinstance(value, datetime.date) or isinstance(value, datetime.datetime)
+        ) and value is not None:
             raise SillyORMException("Date value must be date")
         super().__set__(record, value)
 
@@ -326,11 +345,14 @@ class Datetime(Field):
        print(record.field)
        record.field += datetime.timedelta(days=1, hours=2, minutes=6)
        print(record.field)
+       record.field = None
+       print(record.field)
 
     .. testoutput:: models_fields
 
        1970-01-01 01:02:03
        1970-01-02 03:08:03
+       None
 
     """
 
@@ -341,8 +363,8 @@ class Datetime(Field):
             return datetime.datetime.fromisoformat(value)
         return value
 
-    def __set__(self, record: Model, value: datetime.datetime) -> None:
-        if not isinstance(value, datetime.datetime):
+    def __set__(self, record: Model, value: datetime.datetime | None) -> None:
+        if not isinstance(value, datetime.datetime) and value is not None:
             raise SillyORMException("Datetime value must be datetime")
         super().__set__(record, value)
 
@@ -372,11 +394,14 @@ class Boolean(Field):
        print(record.field)
        record.field = False
        print(record.field)
+       record.field = None
+       print(record.field)
 
     .. testoutput:: models_fields
 
        True
        False
+       None
     """
 
     sql_type = sql.SqlType.boolean()
@@ -386,8 +411,8 @@ class Boolean(Field):
             return bool(value)
         return value
 
-    def __set__(self, record: Model, value: bool) -> None:
-        if not isinstance(value, bool):
+    def __set__(self, record: Model, value: bool | None) -> None:
+        if not isinstance(value, bool) and value is not None:
             raise SillyORMException("Boolean value must be bool")
         super().__set__(record, value)
 
@@ -420,6 +445,8 @@ class Many2one(Integer):
        print(record.many2one_field.field)
        record.many2one_field.field = "test"
        print(other_record.field)
+       record.many2one_field = None
+       print(record.many2one_field)
 
     .. testoutput:: models_fields
 
@@ -427,6 +454,7 @@ class Many2one(Integer):
        example4[1]
        Hello world!
        test
+       None
 
     :param foreign_model: Foreign model name
     :type foreign_model: str
@@ -444,7 +472,10 @@ class Many2one(Integer):
             return None
         return record.env[self._foreign_model].browse(rec)
 
-    def __set__(self, record: Model, value: Model) -> None:  # type: ignore[override]
+    def __set__(self, record: Model, value: Model | None) -> None:  # type: ignore[override]
+        if value is None:
+            super().__set__(record, value)
+            return
         value.ensure_one()
         super().__set__(record, value.id)
 

@@ -43,11 +43,19 @@ def test_field_many2one_one2many(env):
     o2_l1 = env["sale_order_line"].create({"product": "p1 4 o2", "sale_order_id": so_2_id})
     o2_l2 = env["sale_order_line"].create({"product": "p2 4 o2", "sale_order_id": so_2_id})
     o2_l3 = env["sale_order_line"].create({"product": "p3 4 o2", "sale_order_id": so_2_id})
+    o2_l4 = env["sale_order_line"].create({"product": "p3 4 o2", "sale_order_id": None})
 
     assert isinstance(o1_l1.sale_order_id, SaleOrder)
     assert o1_l1.sale_order_id.id == so_1_id
     assert o1_l2.sale_order_id.id == so_1_id
     assert o2_l1.sale_order_id.id == so_2_id
+
+    assert o2_l4.sale_order_id is None
+    o2_l4.sale_order_id = env["sale_order"].browse(so_1_id)
+    assert o2_l4.sale_order_id.id is so_1_id
+    o2_l4.sale_order_id = None
+    assert o2_l4.sale_order_id is None
+
 
     abandoned_so_line1 = env["sale_order_line"].create({"product": "p3 4 o2"})
     abandoned_so_line2 = env["sale_order_line"].create({"product": "p3 4 o2"})

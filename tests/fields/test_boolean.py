@@ -47,6 +47,9 @@ def test_field_boolean(env, is_second, prev_return):
         so_2 = env["sale_order"].browse(so_2_id)
         assert so_1.is_confirmed is False
         assert so_2.is_confirmed is True
+        so_2.is_confirmed = None
+        assert so_2.is_confirmed is None
+        assert so_1.is_confirmed is False
 
     if is_second:
         second()

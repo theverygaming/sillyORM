@@ -99,6 +99,8 @@ def test_field_string_length(env, is_second, prev_return):
         assert so_1.test == "order 1 (test)"
         assert so_2.name is None
         assert so_2.test == "so 2"
+        so_1.name = None
+        assert so_1.name is None
 
     if is_second:
         second()

@@ -48,6 +48,8 @@ def test_field_date(env, is_second, prev_return):
         so_2 = env["sale_order"].browse(so_2_id)
         assert so_1.date == datetime.date(2023, 5, 7)
         assert so_2.date == datetime.date(2025, 5, 7)
+        so_2.date = None
+        assert so_2.date is None
 
     if is_second:
         second()
