@@ -34,9 +34,14 @@ def test_field_datetime(env, is_second, prev_return):
         so_1.time = datetime.datetime(2023, 5, 7, 23, 59, 59)
         assert so_1.time == datetime.datetime(2023, 5, 7, 23, 59, 59)
 
+        assert so_1.time.tzinfo is None
+
         with pytest.raises(SillyORMException) as e_info:
             so_1.time = datetime.date(2026, 5, 7)
         assert str(e_info.value) == "Datetime value must be datetime"
+        with pytest.raises(SillyORMException) as e_info:
+            so_1.time = datetime.datetime(2026, 5, 7, tzinfo=datetime.UTC)
+        assert str(e_info.value) == "Datetime value must be naive"
         return (so_1.id, so_2.id)
 
     def second():

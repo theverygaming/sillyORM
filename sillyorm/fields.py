@@ -366,6 +366,8 @@ class Datetime(Field):
     def __set__(self, record: Model, value: datetime.datetime | None) -> None:
         if not isinstance(value, datetime.datetime) and value is not None:
             raise SillyORMException("Datetime value must be datetime")
+        if value is not None and value.tzinfo is not None:
+            raise SillyORMException("Datetime value must be naive")
         super().__set__(record, value)
 
 
