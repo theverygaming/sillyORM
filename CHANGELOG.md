@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- added support for setting None / NULL values on fields
+
+**diff**: https://github.com/theverygaming/sillyORM/compare/0.5.0...0.6.0
+
 ## 0.5.0
 
 - added a datetime field
