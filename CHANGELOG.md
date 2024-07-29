@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0
+
+- support for extending models via _extend
+- **separate database Initialisation on the Environment, you must now call env.init_tables()**
+- only support naive datetime objects in the datetime field (specifying timezones resulted in unexpected behavior before)
+
+**diff**: https://github.com/theverygaming/sillyORM/compare/0.6.0...0.7.0
+
 ## 0.6.0
 
 - added support for setting None / NULL values on fields
