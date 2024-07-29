@@ -30,6 +30,7 @@ class Environment:
     ...     ).cursor()
     ... )
     >>> env.register_model(TestModel)
+    >>> env.init_tables()
     >>> env["testmodel"]
     testmodel[]
 
@@ -58,11 +59,42 @@ class Environment:
         """
 
         name = model._name  # pylint: disable=protected-access
+        extend = model._extend  # pylint: disable=protected-access
+
+        # sanity checks
+        if not name and not extend:
+            raise SillyORMException("cannot register a model with neither _name or _extend set")
+        if name and extend:
+            raise SillyORMException("cannot register a model with both _name and _extend set")
+
+        if not name:
+            if extend not in self._models:
+                raise SillyORMException(f"cannot extend nonexistant model '{extend}'")
+            old_model = self._models[extend]
+            self._models[extend] = type(
+                old_model.__name__,
+                (
+                    model,
+                    old_model,
+                ),
+                model.__dict__.copy(),
+            )
+            _logger.debug(
+                "extending model '%s'", old_model._name  # pylint: disable=protected-access
+            )
+            return
+
         if name in self._models:
             raise SillyORMException(f"cannot register model '{name}' twice")
         _logger.info("registering model '%s'", name)
         self._models[name] = model
-        model(self, [])._table_init()  # pylint: disable=protected-access
+
+    def init_tables(self) -> None:
+        """
+        Initializes database tables of all models registered in the environment
+        """
+        for model in self._models.values():
+            model(self, [])._table_init()  # pylint: disable=protected-access
 
     def __getitem__(self, key: str) -> Model:
         return self._models[key](self, [])

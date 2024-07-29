@@ -53,6 +53,9 @@ env = sillyorm.Environment(
 # register the model in the environment
 env.register_model(Example)
 
+# create the database tables
+env.init_tables()
+
 # start using the model
 record = env["example"].create({"name": "Hello world!"})
 print(record.name)

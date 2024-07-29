@@ -88,6 +88,7 @@ def test_inheritance_copy(env):
     env.register_model(SaleOrderExtraField)
     env.register_model(SaleOrderExtraExtraField)
     env.register_model(SaleOrderExtraFieldOverride)
+    env.init_tables()
     assert_columns()
 
     assert len(env["sale_order"].search([])) == 0
@@ -151,6 +152,7 @@ def test_inheritance_abstract(env):
 
     env.register_model(SaleOrder)
     env.register_model(SaleOrderExtraField)
+    env.init_tables()
     assert_columns()
 
     assert len(env["sale_order"].search([])) == 0

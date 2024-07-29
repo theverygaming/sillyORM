@@ -37,8 +37,10 @@ Basic usage example
        sqlite.SQLiteConnection(tmpfile.name).cursor()
    )
 
-   # register the model in the environment
+   # Register the model in the environment
    env.register_model(Example)
+   # Create the model table & fields in the database
+   env.init_tables()
 
    # start using the model
    record = env["example"].create({"name": "hello world!"})

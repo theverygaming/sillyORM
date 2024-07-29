@@ -21,6 +21,7 @@ def test_field_many2one_one2many(env):
 
     env.register_model(SaleOrder)
     env.register_model(SaleOrderLine)
+    env.init_tables()
     assert_db_columns(
         env.cr, "sale_order", [("id", SqlType.integer()), ("name", SqlType.varchar(255))]
     )
@@ -55,7 +56,6 @@ def test_field_many2one_one2many(env):
     assert o2_l4.sale_order_id.id is so_1_id
     o2_l4.sale_order_id = None
     assert o2_l4.sale_order_id is None
-
 
     abandoned_so_line1 = env["sale_order_line"].create({"product": "p3 4 o2"})
     abandoned_so_line2 = env["sale_order_line"].create({"product": "p3 4 o2"})

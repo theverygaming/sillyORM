@@ -20,6 +20,7 @@ def test_field_datetime(env, is_second, prev_return):
 
     def first():
         env.register_model(SaleOrder)
+        env.init_tables()
         assert_columns()
 
         so_1 = env["sale_order"].create({"time": datetime.datetime(2024, 5, 7, 12, 59, 30)})
@@ -47,6 +48,7 @@ def test_field_datetime(env, is_second, prev_return):
     def second():
         assert_columns()
         env.register_model(SaleOrder)
+        env.init_tables()
         assert_columns()
         so_1_id, so_2_id = prev_return
         so_1 = env["sale_order"].browse(so_1_id)

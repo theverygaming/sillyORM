@@ -33,7 +33,7 @@ def test_model_name():
 
     with pytest.raises(SillyORMException) as e_info:
         TestModel(None, [])
-    assert str(e_info.value) == "_name must be set"
+    assert str(e_info.value) == "_name or _extend must be set"
 
 
 def test_model_ids():
@@ -72,6 +72,7 @@ def test_model_init(tmp_path, db_conn_fn):
     conn = db_conn_fn(tmp_path)
     env = sillyorm.Environment(conn.cursor())
     env.register_model(TestModel)
+    env.init_tables()
     conn.close()
 
     conn = db_conn_fn(tmp_path)
@@ -84,6 +85,7 @@ def test_model_init(tmp_path, db_conn_fn):
     conn = db_conn_fn(tmp_path)
     env = sillyorm.Environment(conn.cursor())
     env.register_model(TestModel)
+    env.init_tables()
     conn.close()
 
     conn = db_conn_fn(tmp_path)
@@ -110,6 +112,7 @@ def test_field_add_remove(tmp_path, db_conn_fn):
     conn = db_conn_fn(tmp_path)
     env = sillyorm.Environment(conn.cursor())
     env.register_model(TestModel)
+    env.init_tables()
     conn.close()
 
     conn = db_conn_fn(tmp_path)
@@ -122,6 +125,7 @@ def test_field_add_remove(tmp_path, db_conn_fn):
     conn = db_conn_fn(tmp_path)
     env = sillyorm.Environment(conn.cursor())
     env.register_model(TestModel_extrafields)
+    env.init_tables()
     conn.close()
 
     conn = db_conn_fn(tmp_path)
@@ -141,6 +145,7 @@ def test_field_add_remove(tmp_path, db_conn_fn):
     conn = db_conn_fn(tmp_path)
     env = sillyorm.Environment(conn.cursor())
     env.register_model(TestModel)
+    env.init_tables()
     conn.close()
 
     conn = db_conn_fn(tmp_path)
@@ -162,6 +167,7 @@ def test_create_browse(tmp_path, db_conn_fn):
     def new_env():
         env = sillyorm.Environment(db_conn_fn(tmp_path).cursor())
         env.register_model(TestModel)
+        env.init_tables()
         return env
 
     env = new_env()
@@ -214,6 +220,7 @@ def test_read(tmp_path, db_conn_fn):
     def new_env():
         env = sillyorm.Environment(db_conn_fn(tmp_path).cursor())
         env.register_model(TestModel)
+        env.init_tables()
         return env
 
     env = new_env()
@@ -255,6 +262,7 @@ def test_write(tmp_path, db_conn_fn):
     def new_env():
         env = sillyorm.Environment(db_conn_fn(tmp_path).cursor())
         env.register_model(TestModel)
+        env.init_tables()
         return env
 
     env = new_env()
@@ -298,6 +306,7 @@ def test_search(tmp_path, db_conn_fn):
     def new_env():
         env = sillyorm.Environment(db_conn_fn(tmp_path).cursor())
         env.register_model(TestModel)
+        env.init_tables()
         return env
 
     env = new_env()
@@ -366,6 +375,7 @@ def test_write(tmp_path, db_conn_fn):
     def new_env():
         env = sillyorm.Environment(db_conn_fn(tmp_path).cursor())
         env.register_model(TestModel)
+        env.init_tables()
         return env
 
     env = new_env()

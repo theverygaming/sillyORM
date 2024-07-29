@@ -95,6 +95,7 @@ class Integer(Field):
            field = sillyorm.fields.Integer()
 
        env.register_model(ExampleModel)
+       env.init_tables()
 
        record = env["example0"].create({"field": 5})
        print(record.field)
@@ -142,6 +143,7 @@ class Float(Field):
            field = sillyorm.fields.Float()
 
        env.register_model(ExampleModel)
+       env.init_tables()
 
        record = env["example_float"].create({"field": 32768.123321})
        print(record.field)
@@ -179,6 +181,7 @@ class Id(Integer):
            # Each model automatically has an ID field
 
        env.register_model(ExampleModel)
+       env.init_tables()
 
        record = env["example1"].create({})
        record2 = env["example1"].create({})
@@ -212,6 +215,7 @@ class String(Field):
            field = sillyorm.fields.String()
 
        env.register_model(ExampleModel)
+       env.init_tables()
 
        record = env["example2"].create({"field": "hello"})
        print(record.field)
@@ -252,6 +256,7 @@ class Text(Field):
            field = sillyorm.fields.Text()
 
        env.register_model(ExampleModel)
+       env.init_tables()
 
        record = env["example_text"].create({"field": "hello"})
        print(record.field)
@@ -296,6 +301,7 @@ class Date(Field):
            field = sillyorm.fields.Date()
 
        env.register_model(ExampleModel)
+       env.init_tables()
 
        record = env["example3"].create({"field": datetime.date(1970, 1, 1)})
        print(record.field)
@@ -340,6 +346,7 @@ class Datetime(Field):
            field = sillyorm.fields.Datetime()
 
        env.register_model(ExampleModel)
+       env.init_tables()
 
        record = env["example_datetime"].create({"field": datetime.datetime(1970, 1, 1, 1, 2, 3)})
        print(record.field)
@@ -391,6 +398,7 @@ class Boolean(Field):
            field = sillyorm.fields.Boolean()
 
        env.register_model(ExampleModel)
+       env.init_tables()
 
        record = env["example_bool"].create({"field": True})
        print(record.field)
@@ -438,6 +446,7 @@ class Many2one(Integer):
 
        env.register_model(ExampleModel1)
        env.register_model(ExampleModel2)
+       env.init_tables()
 
        other_record = env["example4"].create({"field": "Hello world!"})
        record = env["example5"].create({"many2one_field": other_record.id})
@@ -505,6 +514,7 @@ class One2many(Field):
 
        env.register_model(ExampleModel1)
        env.register_model(ExampleModel2)
+       env.init_tables()
 
        other_record = env["example6"].create({})
        record = env["example7"].create({"many2one_field": other_record.id})

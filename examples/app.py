@@ -51,6 +51,8 @@ env = sillyorm.Environment(sqlite.SQLiteConnection("test.db").cursor())
 env.register_model(Thing)
 env.register_model(Person)
 env.register_model(Machine)
+env.init_tables()
+
 
 print(env["machine"].browse([1, 2]))
 

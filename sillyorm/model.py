@@ -45,6 +45,7 @@ class Model:
            field = sillyorm.fields.String()
 
        env.register_model(ExampleModel)
+       env.init_tables()
 
        record = env["example0"].create({"field": "Hello world!"})
        print(record.field)
@@ -63,11 +64,12 @@ class Model:
     """
 
     _name = ""
+    _extend = ""
     id = fields.Id()  #: Special :class:`sillyorm.fields.Id` field used as PRIMARY KEY
 
     def __init__(self, env: Environment, ids: list[int]):
-        if not self._name:
-            raise SillyORMException("_name must be set")
+        if not self._name and not self._extend:
+            raise SillyORMException("_name or _extend must be set")
 
         self._ids = ids
         self.env = env
@@ -254,6 +256,7 @@ class Model:
                field = sillyorm.fields.String()
 
            env.register_model(ExampleModel)
+           env.init_tables()
 
            record1 = env["example1"].create({"field": "test1"})
            record2 = env["example1"].create({"field": "test2"})

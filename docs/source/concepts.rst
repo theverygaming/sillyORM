@@ -28,6 +28,7 @@ and the name of the model in the :ref:`environment <environment>`.
        _name = "example0"
 
    env.register_model(ExampleModel)
+   env.init_tables()
 
 When a model is registered the ORM ensures the table with all required fields is created.
 If any columns/fields exist in the database but are not specified in the model **they will be removed in the database**.
@@ -36,21 +37,56 @@ If any columns/fields exist in the database but are not specified in the model *
    You should never call the constructor of the model class yourself.
    Get an empty :ref:`recordset <recordsets>` via the :ref:`environment <environment>` and interact with the model from there.
 
-A model can also be inherited
+A model can also be inherited and extended
+
+Inheritance:
 
 .. testcode:: models_concept
 
    class ExampleModel(sillyorm.model.Model):
-       _name = "example0"
+       _name = "example_inheritance"
+       field1 = sillyorm.fields.Integer()
 
    class ExampleModelCopy(ExampleModel):
-       _name = "example0_copy"
+       _name = "example_inheritance_copy"
+       field2 = sillyorm.fields.String()
 
+   env.register_model(ExampleModel)
    env.register_model(ExampleModelCopy)
+   env.init_tables()
+   env["example_inheritance"].create({}).field1
+   env["example_inheritance_copy"].create({}).field1
+   env["example_inheritance_copy"].create({}).field2
 
 This will cause all fields to be copied on the inherited model.
 If a field is defined in both the base class and the inherited one the inherited one will be put into the database.
 **At the moment it is not possible to remove a field from an inherited model**
+
+Extension:
+
+.. testcode:: models_concept
+
+   class ExampleModel(sillyorm.model.Model):
+       _name = "example_extension"
+       field1 = sillyorm.fields.Integer()
+       field2 = sillyorm.fields.Integer()
+
+   class ExampleModelExtension(sillyorm.model.Model):
+       _extend = "example_extension"
+       # overrides field2 on original model, now field2 is a String
+       field2 = sillyorm.fields.String()
+       # adds a new field to the original model
+       field3 = sillyorm.fields.String()
+
+   env.register_model(ExampleModel)
+   env.register_model(ExampleModelExtension)
+   env.init_tables()
+   env["example_extension"].create({}).field1
+   env["example_extension"].create({}).field2
+   env["example_extension"].create({}).field3
+
+This will add fields/modify fields on the original model.
+**At the moment it is not possible to remove a field from an extended model**
 
 
 .. _environment:
@@ -117,6 +153,7 @@ The attribute name specifies the column name in the database.
        test = sillyorm.fields.String()
 
    env.register_model(ExampleModel)
+   env.init_tables()
 
 
 .. _recordsets:
@@ -225,6 +262,7 @@ A model can have functions
                print(f"it: {self}") 
 
    env.register_model(ExampleModel)
+   env.init_tables()
    record = env["example2"].create({"name": "test"})
    record.somefunc()
 

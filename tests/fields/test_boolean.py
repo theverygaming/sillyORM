@@ -19,6 +19,7 @@ def test_field_boolean(env, is_second, prev_return):
 
     def first():
         env.register_model(SaleOrder)
+        env.init_tables()
         assert_columns()
 
         so_1 = env["sale_order"].create({"is_confirmed": True})
@@ -41,6 +42,7 @@ def test_field_boolean(env, is_second, prev_return):
     def second():
         assert_columns()
         env.register_model(SaleOrder)
+        env.init_tables()
         assert_columns()
         so_1_id, so_2_id = prev_return
         so_1 = env["sale_order"].browse(so_1_id)
