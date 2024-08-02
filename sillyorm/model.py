@@ -248,6 +248,8 @@ class Model:
         if top_id is None:
             top_id = 0
         vals["id"] = top_id + 1
+        for f, v in vals.items():
+            vals[f] = self._fields[f]._convert_type_set(v)  # pylint: disable=protected-access
         self._tblmngr.insert_record(self.env.cr, vals)
         if self.env.do_commit:
             self.env.cr.commit()
