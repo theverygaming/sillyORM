@@ -68,12 +68,27 @@ class Model:
     id = fields.Id()  #: Special :class:`sillyorm.fields.Id` field used as PRIMARY KEY
 
     def __init__(self, env: Environment, ids: list[int]):
+        def get_all_fields() -> dict[str, fields.Field]:
+            all_fields = {}
+            for cls in self.__class__.__mro__:
+                if not issubclass(cls, Model):
+                    break
+                for attr in vars(cls).values():
+                    if not isinstance(attr, fields.Field):
+                        continue
+                    # fields from classes closer to the
+                    # one this function was called on have priority
+                    if attr.name not in all_fields:
+                        all_fields[attr.name] = attr
+            return all_fields
+
         if not self._name and not self._extend:
             raise SillyORMException("_name or _extend must be set")
 
         self._ids = ids
         self.env = env
         self._tblmngr = sql.TableManager(self._name)
+        self._fields = get_all_fields()
 
     def __repr__(self) -> str:
         ids = self._ids  # [record.id for record in self]
@@ -87,22 +102,8 @@ class Model:
         return len(self._ids)
 
     def _table_init(self) -> None:
-        def get_all_fields() -> list[fields.Field]:
-            all_fields = {}
-            for cls in self.__class__.__mro__:
-                if not issubclass(cls, Model):
-                    break
-                for attr in vars(cls).values():
-                    if not isinstance(attr, fields.Field):
-                        continue
-                    # fields from classes closer to the
-                    # one this function was called on have priority
-                    if attr.name not in all_fields:
-                        all_fields[attr.name] = attr
-            return list(all_fields.values())
-
         _logger.debug("initializing table for model: '%s'", self._name)
-        all_fields = get_all_fields()
+        all_fields = list(self._fields.values())
         _logger.debug("fields for model '%s': %s", self._name, repr(all_fields))
         # TODO: a way to disable updating tables manually so accidents don't happen? # pylint: disable=fixme
         self._tblmngr.table_init(
@@ -138,6 +139,24 @@ class Model:
            The fields read as a list of dictionaries.
         :rtype: list[dict[str, Any]]
         """
+        rdata = self._read(field_names)
+        for i, data in enumerate(rdata):
+            for f, v in data.items():
+                val = self._fields[f]._convert_type_get(v)  # pylint: disable=protected-access
+                rdata[i][f] = val
+        return rdata
+
+    def _read(self, field_names: list[str]) -> list[dict[str, Any]]:
+        """
+        Reads the specified fields of the recordset. Types returned are directly from the DBMS.
+
+        :param field_names: The fields to read
+        :type field_names: list[str]
+
+        :return:
+           The fields read as a list of dictionaries.
+        :rtype: list[dict[str, Any]]
+        """
         return self._tblmngr.read_records(
             self.env.cr,
             field_names,
@@ -148,6 +167,21 @@ class Model:
         """
         Writes the specified fields into
         all records contained in the recordset.
+
+        :param vals:
+           The values to write. The keys represent
+           the field names and the values the
+           values for the fields
+        :type vals: dict[str, Any]
+        """
+        for f, v in vals.items():
+            vals[f] = self._fields[f]._convert_type_set(v)  # pylint: disable=protected-access
+        self._write(vals)
+
+    def _write(self, vals: dict[str, Any]) -> None:
+        """
+        Writes the specified fields into
+        all records contained in the recordset. Writes directly to the DBMS.
 
         :param vals:
            The values to write. The keys represent

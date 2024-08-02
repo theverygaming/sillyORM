@@ -280,16 +280,25 @@ def test_write(tmp_path, db_conn_fn):
 
     r13 = env["test_model"].browse([1, 3])
 
-    r13_test2_prev = r13.test2
+    r13_test2_prev = r13.read(["test2"])
 
     r13.write(
         {"test": "test field has been overwritten", "test3": "test3 field has been overwritten"}
     )
-    assert r13.test == ["test field has been overwritten", "test field has been overwritten"]
-    assert r13_test2_prev == r13.test2
-    assert r13.test3 == ["test3 field has been overwritten", "test3 field has been overwritten"]
+    assert r13.read(["test"]) == [
+        {"test": "test field has been overwritten"},
+        {"test": "test field has been overwritten"},
+    ]
+    assert r13_test2_prev == r13.read(["test2"])
+    assert r13.read(["test3"]) == [
+        {"test3": "test3 field has been overwritten"},
+        {"test3": "test3 field has been overwritten"},
+    ]
     r3.test3 = "hello word r3"
-    assert r13.test3 == ["test3 field has been overwritten", "hello word r3"]
+    assert r13.read(["test3"]) == [
+        {"test3": "test3 field has been overwritten"},
+        {"test3": "hello word r3"},
+    ]
 
     assert r2_read_prev == r2.read(["test", "test2", "test3"])
 
@@ -364,7 +373,7 @@ def test_search(tmp_path, db_conn_fn):
 
 
 @pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
-def test_write(tmp_path, db_conn_fn):
+def test_search_2(tmp_path, db_conn_fn):
     class TestModel(sillyorm.model.Model):
         _name = "test_model"
 

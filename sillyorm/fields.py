@@ -64,14 +64,14 @@ class Field:
 
     def __get__(self, record: Model, objtype: Any = None) -> Any | list[Any]:
         record.ensure_one()
-        sql_result = record.read([self.name])
+        sql_result = record._read([self.name])
         result = [self._convert_type_get(res[self.name]) for res in sql_result]
         return result[0]
 
     def __set__(self, record: Model, value: Any) -> None:
         if value is None:
-            record.write({self.name: value})
-        record.write({self.name: self._convert_type_set(value)})
+            record._write({self.name: value})
+        record._write({self.name: self._convert_type_set(value)})
 
 
 class Integer(Field):
@@ -116,9 +116,12 @@ class Integer(Field):
 
     sql_type = sql.SqlType.integer()
 
-    def __set__(self, record: Model, value: int | None) -> None:
+    def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, int) and value is not None:
             raise SillyORMException("Integer value must be int")
+        return value
+
+    def __set__(self, record: Model, value: int | None) -> None:
         super().__set__(record, value)
 
 
@@ -164,9 +167,12 @@ class Float(Field):
 
     sql_type = sql.SqlType.float()
 
-    def __set__(self, record: Model, value: float | None) -> None:
+    def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, float) and value is not None:
             raise SillyORMException("Float value must be float")
+        return value
+
+    def __set__(self, record: Model, value: float | None) -> None:
         super().__set__(record, value)
 
 
@@ -239,9 +245,12 @@ class String(Field):
         self.sql_type = sql.SqlType.varchar(length)
         super().__init__()
 
-    def __set__(self, record: Model, value: str | None) -> None:
+    def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
             raise SillyORMException("String value must be str")
+        return value
+
+    def __set__(self, record: Model, value: str | None) -> None:
         super().__set__(record, value)
 
 
@@ -282,9 +291,12 @@ class Text(Field):
         self.sql_type = sql.SqlType.text()
         super().__init__()
 
-    def __set__(self, record: Model, value: str | None) -> None:
+    def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
             raise SillyORMException("Text value must be str")
+        return value
+
+    def __set__(self, record: Model, value: str | None) -> None:
         super().__set__(record, value)
 
 
@@ -325,11 +337,14 @@ class Date(Field):
             return datetime.date.fromisoformat(value)
         return value
 
-    def __set__(self, record: Model, value: datetime.date | None) -> None:
+    def _convert_type_set(self, value: Any) -> Any:
         if (
             not isinstance(value, datetime.date) or isinstance(value, datetime.datetime)
         ) and value is not None:
             raise SillyORMException("Date value must be date")
+        return value
+
+    def __set__(self, record: Model, value: datetime.date | None) -> None:
         super().__set__(record, value)
 
 
@@ -370,11 +385,14 @@ class Datetime(Field):
             return datetime.datetime.fromisoformat(value)
         return value
 
-    def __set__(self, record: Model, value: datetime.datetime | None) -> None:
+    def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, datetime.datetime) and value is not None:
             raise SillyORMException("Datetime value must be datetime")
         if value is not None and value.tzinfo is not None:
             raise SillyORMException("Datetime value must be naive")
+        return value
+
+    def __set__(self, record: Model, value: datetime.datetime | None) -> None:
         super().__set__(record, value)
 
 
@@ -421,9 +439,12 @@ class Boolean(Field):
             return bool(value)
         return value
 
-    def __set__(self, record: Model, value: bool | None) -> None:
+    def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, bool) and value is not None:
             raise SillyORMException("Boolean value must be bool")
+        return value
+
+    def __set__(self, record: Model, value: bool | None) -> None:
         super().__set__(record, value)
 
 
