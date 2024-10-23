@@ -68,6 +68,7 @@ def assert_db_columns(cr: Cursor, table: str, columns: list[tuple[str, SqlType]]
 def generic_field_test(
     fieldClass: sillyorm.fields.Field,
     fieldClassArgs: list[tuple[list[Any], dict[str, Any]]],
+    sql_types: list[SqlType],
     valid_write_vals: list[Any],
     invalid_write_vals: list[Any],
     env: Environment,
@@ -87,7 +88,7 @@ def generic_field_test(
     def assert_columns():
         columns = []
         for i in range(len(valid_write_vals)):
-            columns.append((f"field_n_{i}", fieldClass.sql_type))
+            columns.append((f"field_n_{i}", sql_types[i]))
         assert_db_columns(env.cr, "model", [("id", SqlType.integer())] + columns)
 
     def get_expected_vals(offset: int):

@@ -7,6 +7,7 @@ def test_field_float(env, is_second, prev_return):
     return generic_field_test(
         sillyorm.fields.Float,
         [([], {})] * 6,
+        [sillyorm.sql.SqlType.float()] * 6,
         [
             None,
             123456.789012,

@@ -7,6 +7,7 @@ def test_field_integer(env, is_second, prev_return):
     return generic_field_test(
         sillyorm.fields.Integer,
         [([], {})] * 6,
+        [sillyorm.sql.SqlType.integer()] * 6,
         [
             None,
             5,

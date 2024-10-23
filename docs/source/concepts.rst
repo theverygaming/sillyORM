@@ -136,6 +136,7 @@ Currently sillyORM supports the following fields:
 * :class:`Date <sillyorm.fields.Date>` represents a Date (as `datetime.date`)
 * :class:`Datetime <sillyorm.fields.Datetime>` represents a Datetime (as `datetime.datetime`)
 * :class:`Boolean <sillyorm.fields.Boolean>` represents a Boolean
+* :class:`Selection <sillyorm.fields.Selection>` represents a Selection
 * :class:`Many2one <sillyorm.fields.Many2one>` represents a many to one relationship
 * :class:`One2many <sillyorm.fields.One2many>` represents a one to many relationship (requires a many to one on the other side)
 

@@ -448,6 +448,61 @@ class Boolean(Field):
         super().__set__(record, value)
 
 
+class Selection(String):
+    """
+    Selection field.
+    Basically just a string field with a little logic around it
+    that allows you to choose between multiple different predefined options.
+
+    .. testsetup:: models_fields
+
+       import tempfile
+       import sillyorm
+       from sillyorm.dbms import sqlite
+
+       tmpfile = tempfile.NamedTemporaryFile()
+       env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+
+    .. testcode:: models_fields
+
+       class ExampleModel(sillyorm.model.Model):
+           _name = "example_selection"
+           field = sillyorm.fields.Selection(["option1", "option2"])
+
+       env.register_model(ExampleModel)
+       env.init_tables()
+
+       record = env["example_selection"].create({"field": "option1"})
+       print(record.field)
+       record.field = "option2"
+       print(record.field)
+       record.field = None
+       print(record.field)
+
+    .. testoutput:: models_fields
+
+       option1
+       option2
+       None
+
+    :param length: Maximum selection length, defaults to 255
+    :type length: int, optional
+
+    """
+
+    def __init__(self, options: [str], length: int = 255) -> None:
+        self.options = options
+        super().__init__(length)
+
+    def _convert_type_set(self, value: Any) -> Any:
+        if not (isinstance(value, str) and value in self.options) and value is not None:
+            raise SillyORMException("Selection value must be str and in the list of options")
+        return value
+
+    def __set__(self, record: Model, value: bool | None) -> None:
+        super().__set__(record, value)
+
+
 class Many2one(Integer):
     """
     Many to one relational field. Represents a single record of another model.
