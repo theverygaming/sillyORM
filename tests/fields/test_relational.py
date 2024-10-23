@@ -88,3 +88,56 @@ def test_field_many2one_one2many(env):
 
     with pytest.raises(NotImplementedError):
         env["sale_order"].browse(so_1_id).line_ids = 1
+
+
+@with_test_env()
+def test_field_many2many(env):
+    class Tax(sillyorm.model.Model):
+        _name = "tax"
+
+        name = sillyorm.fields.String()
+
+    class Product(sillyorm.model.Model):
+        _name = "product"
+
+        tax_ids = sillyorm.fields.Many2many("tax")
+
+    env.register_model(Tax)
+    env.register_model(Product)
+    assert_db_columns(env.cr, "tax", [("id", SqlType.integer()), ("name", SqlType.varchar(255))])
+    assert_db_columns(env.cr, "product", [("id", SqlType.integer())])
+    assert_db_columns(
+        env.cr,
+        "_joint_product_tax_ids_tax",
+        [("product_id", SqlType.integer()), ("tax_id", SqlType.integer())],
+    )
+
+    tax_1 = env["tax"].create({"name": "tax 1"})
+    tax_2 = env["tax"].create({"name": "tax 2"})
+
+    product_1 = env["product"].create({})
+    product_2 = env["product"].create({})
+
+    with pytest.raises(SillyORMException) as e_info:
+        product_2.tax_ids = (2, None)
+    assert str(e_info.value) == "unknown many2many command"
+
+    assert product_1.tax_ids is None
+    assert product_2.tax_ids is None
+
+    product_1.tax_ids = (1, tax_1)
+    assert repr(product_1.tax_ids) == "tax[1]"
+    assert product_2.tax_ids is None
+
+    product_1.tax_ids = (1, tax_2)
+    product_2.tax_ids = (1, tax_2)
+    assert repr(product_1.tax_ids) == "tax[1, 2]"
+    assert repr(product_2.tax_ids) == "tax[2]"
+
+    with pytest.raises(SillyORMException) as e_info:
+        product_1.tax_ids = (1, tax_1)
+    assert str(e_info.value) == "attempted to insert a record twice into many2many"
+
+    with pytest.raises(SillyORMException) as e_info:
+        product_2.tax_ids = (1, tax_2)
+    assert str(e_info.value) == "attempted to insert a record twice into many2many"
