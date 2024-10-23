@@ -490,7 +490,7 @@ class Selection(String):
 
     """
 
-    def __init__(self, options: [str], length: int = 255) -> None:
+    def __init__(self, options: list[str], length: int = 255) -> None:
         self.options = options
         super().__init__(length)
 
@@ -499,7 +499,7 @@ class Selection(String):
             raise SillyORMException("Selection value must be str and in the list of options")
         return value
 
-    def __set__(self, record: Model, value: bool | None) -> None:
+    def __set__(self, record: Model, value: str | None) -> None:
         super().__set__(record, value)
 
 
