@@ -722,7 +722,7 @@ class TableManager:
 
         return search_sql
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def search_records(
         self,
         cr: Cursor,

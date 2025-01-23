@@ -255,7 +255,7 @@ class Model:
             self.env.cr.commit()
         return self.__class__(self.env, ids=[vals["id"]])
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def search(
         self,
         domain: list[str | tuple[str, str, Any]],
