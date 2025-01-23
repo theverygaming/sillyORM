@@ -332,24 +332,47 @@ def test_search(tmp_path, db_conn_fn):
 
     env = new_env()
 
-    r13 = env["test_model"].search([("test2", "=", "test2"), "|", ("test3", "=", "3 Hii!!")])
+    r13_domain = [("test2", "=", "test2"), "|", ("test3", "=", "3 Hii!!")]
+    assert env["test_model"].search_count(r13_domain) == 2
+    r13 = env["test_model"].search(r13_domain)
     assert sorted(r13._ids) == [1, 3]
 
     env = new_env()
 
+    assert env["test_model"].search_count([]) == 3
     assert env["test_model"].search([])._ids == [1, 2, 3]
 
-    r2 = env["test_model"].search(
-        [
-            "(",
-            ("test2", "=", "test2"),
-            "&",
-            ("test", "=", "hello world!"),
-            ")",
-            "|",
-            ("test2", "=", "2 Hii!!"),
-        ]
-    )
+    # test limit & offset
+    assert env["test_model"].search([], limit=1)._ids == [1]
+    assert env["test_model"].search([], limit=2)._ids == [1, 2]
+    assert env["test_model"].search([], limit=2, offset=1)._ids == [2, 3]
+    assert env["test_model"].search([], limit=10, offset=2)._ids == [3]
+    assert env["test_model"].search([], limit=1, offset=3)._ids == []
+
+    # test order by
+    assert env["test_model"].search([], order_by="id")._ids == [1, 2, 3]
+    assert env["test_model"].search([], order_by="id", order_asc=False)._ids == [3, 2, 1]
+    assert env["test_model"].search([], order_by="id", order_asc=True)._ids == [1, 2, 3]
+    assert env["test_model"].search([], order_by="test", order_asc=True)._ids == [2, 3, 1]
+    assert env["test_model"].search([], order_by="test", order_asc=False)._ids == [1, 3, 2]
+
+    # test order by, together with limit & offset AND a domain
+    assert env["test_model"].search([("id", "<", "3")], order_by="test", order_asc=True)._ids == [2, 1]
+    assert env["test_model"].search([("id", "<", "3")], order_by="test", order_asc=True, limit=1, offset=1)._ids == [1]
+    assert env["test_model"].search([("id", "<", "3")], order_by="test", order_asc=False)._ids == [1, 2]
+    assert env["test_model"].search([("id", "<", "3")], order_by="test", order_asc=False, limit=1, offset=1)._ids == [2]
+
+    domain_r2 = [
+        "(",
+        ("test2", "=", "test2"),
+        "&",
+        ("test", "=", "hello world!"),
+        ")",
+        "|",
+        ("test2", "=", "2 Hii!!"),
+    ]
+    assert env["test_model"].search_count(domain_r2) == 1
+    r2 = env["test_model"].search(domain_r2)
     assert r2._ids == [1]
 
     env = new_env()

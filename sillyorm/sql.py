@@ -686,23 +686,7 @@ class TableManager:
             )
         )
 
-    def search_records(
-        self, cr: Cursor, columns: list[str], domain: list[str | tuple[str, str, Any]]
-    ) -> list[Any]:
-        """
-        Searches for records
-
-        :param cr: The cursor to use
-        :type cr: :class:`sillyorm.sql.Cursor`
-        :param columns: The names of the columns to return
-        :type columns: list[str]
-        :param domain: The search domain
-        :type domain: list[str | tuple[str, str, Any]]
-
-        :return: The records found (emtpy list if none were found)
-        :rtype: list[Any]
-        """
-
+    def _build_search_sql(self, domain: list[str | tuple[str, str, Any]]) -> SQL:
         def parse_cmp_op(op: str) -> SQL:
             ops = {
                 "=": "=",
@@ -736,13 +720,94 @@ class TableManager:
                 }
                 search_sql += SQL(f" {ops[elem]} ")
 
+        return search_sql
+
+    # pylint: disable=too-many-arguments
+    def search_records(
+        self,
+        cr: Cursor,
+        columns: list[str],
+        domain: list[str | tuple[str, str, Any]],
+        order_by: str | None = None,
+        order_asc: bool = True,
+        offset: int | None = None,
+        limit: int | None = None,
+    ) -> list[Any]:
+        """
+        Searches for records
+
+        :param cr: The cursor to use
+        :type cr: :class:`sillyorm.sql.Cursor`
+        :param columns: The names of the columns to return
+        :type columns: list[str]
+        :param domain: The search domain
+        :type domain: list[str | tuple[str, str, Any]]
+        :param order_by: The column to order by
+        :type order_by: str | None
+        :param order_asc: Wether the order is ascending or not
+        :type order_asc: bool
+        :param offset: The row offset to use
+        :type offset: int | None
+        :param limit: The maximum amount of rows to return
+        :type limit: int | None
+
+        :return: The records found (emtpy list if none were found)
+        :rtype: list[Any]
+        """
+
+        if offset is not None and limit is None:
+            raise SillyORMException("offset can only be used together with limit")
+
+        search_sql = self._build_search_sql(domain)
+
         return cr.execute(
             SQL(
                 "SELECT {columns} FROM {table}"
                 + (" WHERE {condition}" if len(search_sql.code()) else "")
+                + (
+                    (" ORDER BY {order_by} " + ("ASC" if order_asc else "DESC"))
+                    if order_by is not None
+                    else ""
+                )
+                + (" LIMIT {limit}" if limit is not None else "")
+                + (" OFFSET {offset}" if offset is not None else "")
                 + ";",
                 columns=SQL.commaseperated([SQL.identifier(column) for column in columns]),
                 table=SQL.identifier(self.table_name),
                 condition=search_sql,
+                order_by=SQL.identifier(str(order_by)),
+                limit=limit if limit is not None else 0,
+                offset=offset if offset is not None else 0,
             )
         ).fetchall()
+
+    def search_count_records(self, cr: Cursor, domain: list[str | tuple[str, str, Any]]) -> int:
+        """
+        Counts the amount of records that would be
+        found by a search_records with the specified domain
+
+        :param cr: The cursor to use
+        :type cr: :class:`sillyorm.sql.Cursor`
+        :param domain: The search domain
+        :type domain: list[str | tuple[str, str, Any]]
+
+        :return: The amount of records found
+        :rtype: int
+        """
+
+        search_sql = self._build_search_sql(domain)
+
+        ret = cr.execute(
+            SQL(
+                "SELECT COUNT(*) FROM {table}"
+                + (" WHERE {condition}" if len(search_sql.code()) else "")
+                + ";",
+                table=SQL.identifier(self.table_name),
+                condition=search_sql,
+            )
+        ).fetchone()
+
+        if len(ret) != 1 or not isinstance(ret[0], int):
+            raise SillyORMException("invalid type returned from DB")
+
+        return ret[0]

@@ -255,7 +255,15 @@ class Model:
             self.env.cr.commit()
         return self.__class__(self.env, ids=[vals["id"]])
 
-    def search(self, domain: list[str | tuple[str, str, Any]]) -> Self:
+    # pylint: disable=too-many-arguments
+    def search(
+        self,
+        domain: list[str | tuple[str, str, Any]],
+        order_by: str | None = None,
+        order_asc: bool = True,
+        offset: int | None = None,
+        limit: int | None = None,
+    ) -> Self:
         """
         Searches records.
 
@@ -312,14 +320,76 @@ class Model:
 
         :param domain: The search domain.
         :type domain: list[str | tuple[str, str, Any]]
+        :param order_by: The column to order by
+        :type order_by: str | None
+        :param order_asc: Wether the order is ascending or not
+        :type order_asc: bool
+        :param offset: The row offset to use
+        :type offset: int | None
+        :param limit: The maximum amount of rows to return
+        :type limit: int | None
 
         :return:
            A recordset with the records found.
            An empty recordset if nothing could be found
         :rtype: Self
         """
-        res = self._tblmngr.search_records(self.env.cr, ["id"], domain)
+        res = self._tblmngr.search_records(
+            self.env.cr,
+            ["id"],
+            domain,
+            order_by,
+            order_asc,
+            offset,
+            limit,
+        )
         return self.__class__(self.env, ids=[id[0] for id in res])
+
+    def search_count(
+        self,
+        domain: list[str | tuple[str, str, Any]],
+    ) -> int:
+        """
+        Counts the total amount of records that match a domain.
+
+        The domain is the same format as for the search function.
+
+        Usage example:
+
+        .. testcode:: models_model
+
+           class ExampleModel(sillyorm.model.Model):
+               _name = "example_msc1"
+               field = sillyorm.fields.String()
+
+           env.register_model(ExampleModel)
+           env.init_tables()
+
+           record1 = env["example_msc1"].create({"field": "test1"})
+           record2 = env["example_msc1"].create({"field": "test1"})
+           record3 = env["example_msc1"].create({"field": "test2"})
+
+           print(env["example_msc1"].search_count([
+               ("field", "=", "test1"),
+           ]))
+
+           print(env["example_msc1"].search_count([
+               ("field", "=", "test2"),
+           ]))
+
+        .. testoutput:: models_model
+
+           2
+           1
+
+        :param domain: The search domain.
+        :type domain: list[str | tuple[str, str, Any]]
+
+        :return:
+           The amount of records that match the provided domain
+        :rtype: int
+        """
+        return self._tblmngr.search_count_records(self.env.cr, domain)
 
     def delete(self) -> None:
         """
