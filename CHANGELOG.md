@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0
+
+- improvements to the way type conversions are handled for read and write
+- Selection field
+- Significant improvements to search - added `search_count` and allowed for ordering and pagination
+
+**diff**: https://github.com/theverygaming/sillyORM/compare/0.7.0...0.8.0
+
 ## 0.7.0
 
 - support for extending models via _extend
