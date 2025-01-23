@@ -11,7 +11,7 @@ from sillyorm.sql import Cursor, SqlType
 
 
 def _pg_conn(tmp_path: Path) -> postgresql.PostgreSQLConnection:
-    dbname = re.sub("[^a-zA-Z0-9]", "", str(tmp_path))
+    dbname = f"pytestdb{hash(str(tmp_path))}"
     connstr = "host=127.0.0.1 user=postgres password=postgres"
 
     conn = psycopg2.connect(connstr + " dbname=postgres")
