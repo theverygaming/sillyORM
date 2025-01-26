@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.1
+
+- Fixed a bug where even if you ordered using search, Model.read would ignore the order
+- Minor Documentation improvements
+
+**diff**: https://github.com/theverygaming/sillyORM/compare/0.8.0...0.8.1
+
 ## 0.8.0
 
 - improvements to the way type conversions are handled for read and write
