@@ -201,6 +201,10 @@ class Model:
         """
         Returns a recordset for the ids provided.
 
+        .. warning::
+           Order of the ids in the recordset returned may
+           not be the same as the ids provided as input
+
         :param ids: The ids or id
         :type vals: list[int] | int
 
