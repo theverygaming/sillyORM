@@ -157,10 +157,19 @@ class Model:
            The fields read as a list of dictionaries.
         :rtype: list[dict[str, Any]]
         """
+        order_fix = SQL("ORDER BY CASE {id} ", id=SQL.identifier("id"))
+        for i, x in enumerate(self._ids):
+            order_fix += SQL("WHEN {id} THEN {n} ", id=x, n=i + 1)
+        order_fix += SQL("END")
         return self._tblmngr.read_records(
             self.env.cr,
             field_names,
-            SQL("WHERE {id} IN {ids}", id=SQL.identifier("id"), ids=SQL.set(self._ids)),
+            SQL(
+                "WHERE {id} IN {ids} {order_fix}",
+                id=SQL.identifier("id"),
+                ids=SQL.set(self._ids),
+                order_fix=order_fix,
+            ),
         )
 
     def write(self, vals: dict[str, Any]) -> None:

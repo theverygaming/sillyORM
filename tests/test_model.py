@@ -474,3 +474,64 @@ def test_search_2(tmp_path, db_conn_fn):
     env = new_env()
 
     assert len(env["test_model"].search([])) == 0
+
+
+@pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
+def test_read_order(tmp_path, db_conn_fn):
+    class TestModel(sillyorm.model.Model):
+        _name = "test_model"
+
+        test = sillyorm.fields.String()
+        test2 = sillyorm.fields.String()
+
+    env = sillyorm.Environment(db_conn_fn(tmp_path).cursor())
+    env.register_model(TestModel)
+    env.init_tables()
+
+    r1 = env["test_model"].create({"test": "a", "test2": "z"})
+    r2 = env["test_model"].create({"test": "b", "test2": "y"})
+    r3 = env["test_model"].create({"test": "c", "test2": "x"})
+    assert r1.id == 1
+    assert r2.id == 2
+    assert r3.id == 3
+
+    # Check if id orders returned by search are as expected
+    assert env["test_model"].search([], order_by="id")._ids == [1, 2, 3]
+    assert env["test_model"].search([], order_by="test")._ids == [1, 2, 3]
+    assert env["test_model"].search([], order_by="test2")._ids == [3, 2, 1]
+
+    # Check for the actual problem
+    assert env["test_model"].search([], order_by="test").read(["test"]) == [
+        {"test": "a"},
+        {"test": "b"},
+        {"test": "c"},
+    ]
+    assert env["test_model"].search([], order_by="test2").read(["test"]) == [
+        {"test": "c"},
+        {"test": "b"},
+        {"test": "a"},
+    ]
+
+    # Check if our fix conflicts with limit/offset
+    assert env["test_model"].search([], order_by="test", limit=2, offset=0).read(["test"]) == [
+        {"test": "a"},
+        {"test": "b"},
+    ]
+    assert env["test_model"].search([], order_by="test2", limit=2, offset=0).read(["test"]) == [
+        {"test": "c"},
+        {"test": "b"},
+    ]
+    assert env["test_model"].search([], order_by="test", limit=2, offset=1).read(["test"]) == [
+        {"test": "b"},
+        {"test": "c"},
+    ]
+    assert env["test_model"].search([], order_by="test2", limit=2, offset=1).read(["test"]) == [
+        {"test": "b"},
+        {"test": "a"},
+    ]
+    assert env["test_model"].search([], order_by="test", limit=2, offset=2).read(["test"]) == [
+        {"test": "c"}
+    ]
+    assert env["test_model"].search([], order_by="test2", limit=2, offset=2).read(["test"]) == [
+        {"test": "a"}
+    ]
