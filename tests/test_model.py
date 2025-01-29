@@ -10,14 +10,14 @@ from .libtest import assert_db_columns
 
 
 def pg_conn(tmp_path):
-    dbname = re.sub("[^a-zA-Z0-9]", "", str(tmp_path))
+    dbname = f"pytestdb{hash(str(tmp_path))}"
     connstr = "host=127.0.0.1 user=postgres password=postgres"
     conn = psycopg2.connect(connstr + " dbname=postgres")
     conn.autocommit = True
     cr = conn.cursor()
     cr.execute(f"SELECT datname FROM pg_catalog.pg_database WHERE datname = '{dbname}';")
     if cr.fetchone() is None:
-        cr.execute(f"CREATE DATABASE {dbname};")
+        cr.execute(f'CREATE DATABASE "{dbname}";')
 
     return postgresql.PostgreSQLConnection(connstr + f" dbname={dbname}")
 
@@ -535,3 +535,18 @@ def test_read_order(tmp_path, db_conn_fn):
     assert env["test_model"].search([], order_by="test2", limit=2, offset=2).read(["test"]) == [
         {"test": "a"}
     ]
+
+@pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
+def test_read_empty_recordset(tmp_path, db_conn_fn):
+    class TestModel(sillyorm.model.Model):
+        _name = "test_model"
+
+        test = sillyorm.fields.String()
+        test2 = sillyorm.fields.String()
+
+    env = sillyorm.Environment(db_conn_fn(tmp_path).cursor())
+    env.register_model(TestModel)
+    env.init_tables()
+
+    assert env["test_model"].search([]).read(["test"]) == []
+    assert env["test_model"].search([], order_by="test2", limit=2, offset=0).read(["test"]) == []
