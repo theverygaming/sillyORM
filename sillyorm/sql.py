@@ -687,10 +687,11 @@ class TableManager:
         )
 
     def _build_search_sql(self, domain: list[str | tuple[str, str, Any]]) -> SQL:
-        def parse_cmp_op(op: str) -> SQL:
+        def parse_cmp_op(op: str, cmp_with_null: bool) -> SQL:
             ops = {
-                "=": "=",
-                "!=": "<>",
+                # special case: equal/not equal test for NULL values
+                "=": "=" if not cmp_with_null else "IS",
+                "!=": "<>" if not cmp_with_null else "IS NOT",
                 ">": ">",
                 "<": "<",
                 ">=": ">=",
@@ -702,7 +703,7 @@ class TableManager:
             return SQL(
                 " {field} {op} {val} ",
                 field=SQL.identifier(op[0]),
-                op=parse_cmp_op(op[1]),
+                op=parse_cmp_op(op[1], op[2] is None),
                 val=op[2],
             )
 
