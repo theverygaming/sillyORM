@@ -62,3 +62,71 @@ def test_field_datetime(env, is_second, prev_return):
         second()
     else:
         return first()
+
+
+@with_test_env(False)
+def test_field_datetime_search(env):
+    class SaleOrder(sillyorm.model.Model):
+        _name = "sale_order"
+
+        time = sillyorm.fields.Datetime()
+
+    env.register_model(SaleOrder)
+    env.init_tables()
+
+    so_1 = env["sale_order"].create({"time": datetime.datetime(2025, 1, 30, 20, 24, 28)})
+    so_2 = env["sale_order"].create({"time": datetime.datetime(2025, 1, 30, 20, 24, 29)})
+    so_3 = env["sale_order"].create({"time": datetime.datetime(2025, 1, 30, 20, 24, 30)})
+    so_4 = env["sale_order"].create({"time": datetime.datetime(2024, 1, 10, 11, 12, 13)})
+    so_5 = env["sale_order"].create({"time": datetime.datetime(2020, 1, 1, 1, 1, 1)})
+    so_6 = env["sale_order"].create({})
+
+    # Time range
+    assert env["sale_order"].search(
+        [
+            ("time", ">=", datetime.datetime(2024, 1, 10, 11, 12, 13)),
+            "&",
+            ("time", "<", datetime.datetime(2025, 1, 30, 20, 24, 29)),
+        ]
+    )._ids == [1, 4]
+
+    # Equals
+    assert env["sale_order"].search(
+        [("time", "=", datetime.datetime(2025, 1, 30, 20, 24, 28))]
+    )._ids == [1]
+    assert env["sale_order"].search(
+        [("time", "=", datetime.datetime(2025, 1, 30, 20, 24, 29))]
+    )._ids == [2]
+    assert env["sale_order"].search(
+        [("time", "=", datetime.datetime(2024, 1, 10, 11, 12, 13))]
+    )._ids == [4]
+    assert env["sale_order"].search([("time", "=", None)])._ids == [6]
+
+    # Not equals
+    assert env["sale_order"].search(
+        [("time", "!=", datetime.datetime(2025, 1, 30, 20, 24, 29))]
+    )._ids == [1, 3, 4, 5]
+    assert env["sale_order"].search(
+        [("time", "!=", datetime.datetime(2024, 1, 10, 11, 12, 13))]
+    )._ids == [1, 2, 3, 5]
+    assert env["sale_order"].search([("time", "!=", None)])._ids == [1, 2, 3, 4, 5]
+
+    # Greater than
+    assert env["sale_order"].search(
+        [("time", ">", datetime.datetime(2025, 1, 30, 20, 24, 28))]
+    )._ids == [2, 3]
+
+    # Less than
+    assert env["sale_order"].search(
+        [("time", "<", datetime.datetime(2025, 1, 30, 20, 24, 29))]
+    )._ids == [1, 4, 5]
+
+    # Greater than or equal
+    assert env["sale_order"].search(
+        [("time", ">=", datetime.datetime(2025, 1, 30, 20, 24, 28))]
+    )._ids == [1, 2, 3]
+
+    # Less than or equal
+    assert env["sale_order"].search(
+        [("time", "<=", datetime.datetime(2025, 1, 30, 20, 24, 29))]
+    )._ids == [1, 2, 4, 5]
