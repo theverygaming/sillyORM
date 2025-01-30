@@ -24,4 +24,9 @@ def test_search_none(env):
     so_6 = env["test"].create({})
 
     assert env["test"].search([("s", "=", None)])._ids == [2, 4, 6]
-    assert env["test"].search([("s", "=", None), "|", ("s", "=", "some value 2")])._ids == [2, 3, 4, 6]
+    assert env["test"].search([("s", "=", None), "|", ("s", "=", "some value 2")])._ids == [
+        2,
+        3,
+        4,
+        6,
+    ]
