@@ -273,6 +273,29 @@ class Model:
             self.env.cr.commit()
         return self.__class__(self.env, ids=[vals["id"]])
 
+    def _domain_transform_types(
+        self,
+        domain: list[str | tuple[str, str, Any]],
+    ) -> list[str | tuple[str, str, Any]]:
+        # check types, just in case.. IT SHALL BE ENFORCED,
+        # typechecking aint always right esp if u cast...!
+        for d in domain:
+            if not isinstance(d, (tuple, str)):
+                raise SillyORMException("invalid domain")
+            if isinstance(d, tuple):
+                if not isinstance(d[0], str) or not isinstance(d[1], str) or not len(d) == 3:
+                    raise SillyORMException("invalid domain")
+        # call the _convert_type_set for each field so we can be sure we are
+        # comparing things correctly in the DB!
+        for i, d in enumerate(domain):
+            if isinstance(d, tuple):
+                domain[i] = (
+                    d[0],
+                    d[1],
+                    self._fields[d[0]]._convert_type_set(d[2]),  # pylint: disable=protected-access
+                )
+        return domain
+
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def search(
         self,
@@ -355,7 +378,7 @@ class Model:
         res = self._tblmngr.search_records(
             self.env.cr,
             ["id"],
-            domain,
+            self._domain_transform_types(domain),
             order_by,
             order_asc,
             offset,
@@ -407,7 +430,7 @@ class Model:
            The amount of records that match the provided domain
         :rtype: int
         """
-        return self._tblmngr.search_count_records(self.env.cr, domain)
+        return self._tblmngr.search_count_records(self.env.cr, self._domain_transform_types(domain))
 
     def delete(self) -> None:
         """

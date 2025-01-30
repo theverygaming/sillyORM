@@ -357,19 +357,19 @@ def test_search(tmp_path, db_conn_fn):
     assert env["test_model"].search([], order_by="test", order_asc=False)._ids == [1, 3, 2]
 
     # test order by, together with limit & offset AND a domain
-    assert env["test_model"].search([("id", "<", "3")], order_by="test", order_asc=True)._ids == [
+    assert env["test_model"].search([("id", "<", 3)], order_by="test", order_asc=True)._ids == [
         2,
         1,
     ]
     assert env["test_model"].search(
-        [("id", "<", "3")], order_by="test", order_asc=True, limit=1, offset=1
+        [("id", "<", 3)], order_by="test", order_asc=True, limit=1, offset=1
     )._ids == [1]
-    assert env["test_model"].search([("id", "<", "3")], order_by="test", order_asc=False)._ids == [
+    assert env["test_model"].search([("id", "<", 3)], order_by="test", order_asc=False)._ids == [
         1,
         2,
     ]
     assert env["test_model"].search(
-        [("id", "<", "3")], order_by="test", order_asc=False, limit=1, offset=1
+        [("id", "<", 3)], order_by="test", order_asc=False, limit=1, offset=1
     )._ids == [2]
 
     domain_r2 = [
@@ -535,6 +535,7 @@ def test_read_order(tmp_path, db_conn_fn):
     assert env["test_model"].search([], order_by="test2", limit=2, offset=2).read(["test"]) == [
         {"test": "a"}
     ]
+
 
 @pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
 def test_read_empty_recordset(tmp_path, db_conn_fn):
