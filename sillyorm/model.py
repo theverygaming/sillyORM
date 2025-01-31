@@ -101,6 +101,9 @@ class Model:
     def __len__(self) -> int:
         return len(self._ids)
 
+    def __getitem__(self, key: int) -> Self:
+        return self.__class__(self.env, ids=[self._ids[key]])
+
     def _table_init(self) -> None:
         _logger.debug("initializing table for model: '%s'", self._name)
         all_fields = list(self._fields.values())

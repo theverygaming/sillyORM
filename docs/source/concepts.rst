@@ -217,6 +217,16 @@ Recordsets can be iterated over
    example1[1]
    example1[2]
 
+Recordsets can be subscripted
+
+.. doctest:: models_concept
+
+   >>> rec_12 = env["example1"].browse([1, 2])
+   >>> rec_12[0]
+   example1[1]
+   >>> rec_12[1]
+   example1[2]
+
 There is a :func:`function <sillyorm.model.Model.ensure_one>` to ensure a recordset contains exactly one record. It will raise an exception if that isn't the case
 
 .. doctest:: models_concept

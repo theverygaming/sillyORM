@@ -551,3 +551,35 @@ def test_read_empty_recordset(tmp_path, db_conn_fn):
 
     assert env["test_model"].search([]).read(["test"]) == []
     assert env["test_model"].search([], order_by="test2", limit=2, offset=0).read(["test"]) == []
+
+
+@pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
+def test_model_subscript(tmp_path, db_conn_fn):
+    class TestModel(sillyorm.model.Model):
+        _name = "test_model"
+
+        test = sillyorm.fields.String()
+
+    env = sillyorm.Environment(db_conn_fn(tmp_path).cursor())
+    env.register_model(TestModel)
+    env.init_tables()
+
+    assert env["test_model"].search([])._ids == []
+    with pytest.raises(IndexError):
+        env["test_model"].search([])[0]
+
+    env["test_model"].create({"test": "a"})
+
+    assert env["test_model"].search([])._ids == [1]
+    assert env["test_model"].search([])[0]._ids == [1]
+
+    env["test_model"].create({"test": "b"})
+    assert env["test_model"].search([])._ids == [1, 2]
+    assert env["test_model"].search([])[0]._ids == [1]
+    assert env["test_model"].search([])[1]._ids == [2]
+
+    env["test_model"].create({"test": "c"})
+    assert env["test_model"].search([])._ids == [1, 2, 3]
+    assert env["test_model"].search([])[0]._ids == [1]
+    assert env["test_model"].search([])[1]._ids == [2]
+    assert env["test_model"].search([])[2]._ids == [3]
