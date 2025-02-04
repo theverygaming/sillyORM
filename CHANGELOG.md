@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.0
+
+- Fixed a bug where Model.read() would error if provide with an empty recordset
+- Transform search domain field types (before field types would always be ignored for search domains)
+- Runtime type checking of domains (side effect of the type transforming thing above)
+- Allow searching for None/NULL values explicitly
+- Recordsets can now be subscripted
+
+**diff**: https://github.com/theverygaming/sillyORM/compare/0.8.1...0.9.0
+
 ## 0.8.1
 
 - Fixed a bug where even if you ordered using search, Model.read would ignore the order
