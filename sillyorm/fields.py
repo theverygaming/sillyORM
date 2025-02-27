@@ -352,13 +352,20 @@ class Datetime(Field):
     """
     Datetime field. Represents a python datetime object.
 
+    A timezone (or none at all - which means it's naive) must be provided because in the database
+    this field does not store any timzeone-related information.
+    Mixing timezones would be fatal so this field takes care of that for you.
+
+    :param tzinfo: time zone of the date stored - None means it's a naive datetime object
+    :type tzinfo: datetime.tzinfo | None
+
     .. testcode:: models_fields
 
        import datetime
 
        class ExampleModel(sillyorm.model.Model):
            _name = "example_datetime"
-           field = sillyorm.fields.Datetime()
+           field = sillyorm.fields.Datetime(None)
 
        env.register_model(ExampleModel)
        env.init_tables()
@@ -380,16 +387,26 @@ class Datetime(Field):
 
     sql_type = sql.SqlType.timestamp()
 
+    def __init__(self, tzinfo: datetime.tzinfo | None) -> None:
+        self.tzinfo = tzinfo
+        super().__init__()
+
     def _convert_type_get(self, value: Any) -> Any:
-        if isinstance(value, str):
-            return datetime.datetime.fromisoformat(value)
+        if value is not None:
+            if isinstance(value, str):
+                value = datetime.datetime.fromisoformat(value)
+            return value.replace(tzinfo=self.tzinfo)
         return value
 
     def _convert_type_set(self, value: Any) -> Any:
-        if not isinstance(value, datetime.datetime) and value is not None:
+        if value is not None and not isinstance(value, datetime.datetime):
             raise SillyORMException("Datetime value must be datetime")
-        if value is not None and value.tzinfo is not None:
-            raise SillyORMException("Datetime value must be naive")
+        if value is not None:
+            if value.tzinfo != self.tzinfo:
+                raise SillyORMException(
+                    f"Datetime field expected tzinfo '{self.tzinfo}' and got '{value.tzinfo}'"
+                )
+            value = value.replace(tzinfo=None)
         return value
 
     def __set__(self, record: Model, value: datetime.datetime | None) -> None:
