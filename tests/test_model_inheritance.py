@@ -121,13 +121,24 @@ def test_inheritance_abstract(env):
         line_count = sillyorm.fields.Integer()
         teststr = sillyorm.fields.String()
 
+        def testfn(self):
+            return f"SaleOrderAbstract"
+
     class SaleOrder(SaleOrderAbstract):
         _name = "sale_order"
+
+        def testfn(self):
+            ret = super().testfn()
+            return f"{ret} SaleOrder"
 
     class SaleOrderExtraField(SaleOrder):
         _name = "sale_order_extra_field"
 
         extrafield = sillyorm.fields.String()
+
+        def testfn(self):
+            ret = super().testfn()
+            return f"{ret} SaleOrderExtraField"
 
     def assert_columns():
         assert_db_columns(
@@ -168,3 +179,8 @@ def test_inheritance_abstract(env):
 
     assert env["sale_order"].search([])._ids == [1, 2]
     assert env["sale_order_extra_field"].search([])._ids == [1]
+
+    assert env["sale_order"].testfn() == "SaleOrderAbstract SaleOrder"
+    assert (
+        env["sale_order_extra_field"].testfn() == "SaleOrderAbstract SaleOrder SaleOrderExtraField"
+    )
