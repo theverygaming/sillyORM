@@ -485,6 +485,8 @@ class Selection(String):
        option2
        None
 
+    :param options: List of possible selection options
+    :type options: list[str]
     :param length: Maximum selection length, defaults to 255
     :type length: int, optional
 
