@@ -118,7 +118,7 @@ class Environment:
             if model_name in visited:
                 raise SillyORMException(
                     f"Circular dependency in model inheritance: '{model_name}' - involved models:"
-                    f" '{', '.join(visited)}'"
+                    f" '{', '.join(sorted(visited))}'"
                 )
             visited.add(model_name)
 

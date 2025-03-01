@@ -231,7 +231,7 @@ def test_model_inherit_invalid(env):
     assert (
         str(e_info.value)
         == "Circular dependency in model inheritance: 'common_model' - involved models:"
-        " 'other_model, common_model'"
+        " 'common_model, other_model'"
     )
 
 
