@@ -66,6 +66,9 @@ Now you can create your models and put them somewhere.
 To register them in the environment either call :func:`Environment.register_model <sillyorm.environment.Environment.register_model>` for each model
 or to make it a little easier maybe use a `decorator <https://docs.python.org/3/glossary.html#term-decorator>`_.
 
+After all models have been registered call :func:`Environment.init_tables <sillyorm.environment.Environment.init_tables>`
+to initialize them in the database.
+
 
 ---------------
 Further reading
