@@ -33,7 +33,7 @@ def test_model_name():
 
     with pytest.raises(SillyORMException) as e_info:
         TestModel(None, [])
-    assert str(e_info.value) == "_name or _extend must be set"
+    assert str(e_info.value) == "_name or _extends must be set"
 
 
 def test_model_ids():

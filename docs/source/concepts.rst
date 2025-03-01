@@ -39,7 +39,7 @@ If any columns/fields exist in the database but are not specified in the model *
 
 A model can also be inherited and extended
 
-Inheritance:
+Standard Python Inheritance:
 
 .. testcode:: models_concept
 
@@ -72,7 +72,8 @@ Extension:
        field2 = sillyorm.fields.Integer()
 
    class ExampleModelExtension(sillyorm.model.Model):
-       _extend = "example_extension"
+       _name = "example_extension"
+       _extends = "example_extension"
        # overrides field2 on original model, now field2 is a String
        field2 = sillyorm.fields.String()
        # adds a new field to the original model
@@ -87,6 +88,56 @@ Extension:
 
 This will add fields/modify fields on the original model.
 **At the moment it is not possible to remove a field from an extended model**
+
+Inheritance (via ORM):
+
+.. testcode:: models_concept
+
+   class ExampleModel(sillyorm.model.Model):
+       _name = "example_orm_inheritance"
+       field1 = sillyorm.fields.Integer()
+
+   class ExampleModelCopy(sillyorm.model.Model):
+       _name = "example_orm_inheritance_copy"
+       _inherits = ["example_orm_inheritance"] # order matters here (later in array has higher priority)
+       field2 = sillyorm.fields.String()
+
+   env.register_model(ExampleModel)
+   env.register_model(ExampleModelCopy)
+   env.init_tables()
+   env["example_orm_inheritance"].create({}).field1
+   env["example_orm_inheritance_copy"].create({}).field1
+   env["example_orm_inheritance_copy"].create({}).field2
+
+This will cause all fields to be copied on the inherited model.
+If a field is defined in both the base class and the inherited one the inherited one will be put into the database.
+**At the moment it is not possible to remove a field from an inherited model**
+
+Inheritance (via ORM) and extension may also be combined:
+
+.. testcode:: models_concept
+
+   class ExampleModelSomefield(sillyorm.model.Model):
+       _name = "example_orm_ext_inheritance_somefield"
+       somefield = sillyorm.fields.Integer()
+
+   class ExampleModel(sillyorm.model.Model):
+       _name = "example_orm_ext_inheritance"
+       field1 = sillyorm.fields.Integer()
+
+   class ExampleModelCopy(sillyorm.model.Model):
+       _name = "example_orm_ext_inheritance"
+       _extends = "example_orm_ext_inheritance"
+       _inherits = ["example_orm_ext_inheritance_somefield"] # order matters here (later in array has higher priority)
+       field2 = sillyorm.fields.String()
+
+   env.register_model(ExampleModelSomefield)
+   env.register_model(ExampleModel)
+   env.register_model(ExampleModelCopy)
+   env.init_tables()
+   env["example_orm_ext_inheritance"].create({}).somefield
+   env["example_orm_ext_inheritance"].create({}).field1
+   env["example_orm_ext_inheritance"].create({}).field2
 
 
 .. _environment:

@@ -42,7 +42,7 @@ class Field:
             raise SillyORMException("sql_type must be set")
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}(name={self.name})"
+        return f"{type(self).__name__}(name={self.name}, sql_type={self.sql_type})"
 
     def model_post_init(self, record: Model) -> None:
         """

@@ -64,7 +64,8 @@ class Model:
     """
 
     _name = ""
-    _extend = ""
+    _extends = ""
+    _inherits: list[str] = []
     id = fields.Id()  #: Special :class:`sillyorm.fields.Id` field used as PRIMARY KEY
 
     def __init__(self, env: Environment, ids: list[int]):
@@ -82,8 +83,8 @@ class Model:
                         all_fields[attr.name] = attr
             return all_fields
 
-        if not self._name and not self._extend:
-            raise SillyORMException("_name or _extend must be set")
+        if not self._name and not self._extends:
+            raise SillyORMException("_name or _extends must be set")
 
         self._ids = ids
         self.env = env

@@ -35,6 +35,7 @@ def test_add_constraint(env):
     )
 
     del env._models["sale_order_line"]  # remove so we can register the SOL model again
+    del env._lmodels["sale_order_line"]  # remove so we can register the SOL model again
 
     env.register_model(SaleOrderLine2)
     env.init_tables()
