@@ -38,16 +38,25 @@ class Environment:
     :vartype cr: :class:`sillyorm.sql.Cursor`
     :ivar do_commit: Whether to run commit after each database transaction that requires it
     :vartype do_commit: bool
+    :ivar update_tables: Whether to update database tables.
+    :vartype update_tables: bool
 
     :param cursor: The database cursor that will be passed to all models
     :type cursor: :class:`sillyorm.sql.Cursor`
     :param do_commit: Whether to run commit after each database transaction that requires it
     :type do_commit: bool, optional
+    :param update_tables: Whether to automagically update database tables.
+        This can be dangerous in some cases, e.g. when a field is renamed or
+        field parameters are changed, **all data in the field may be lost**!
+
+        When this is `False` and the tables don't match an error will be thrown upon calling
+        :func:`Environment.init_tables <sillyorm.environment.Environment.init_tables>`
     """
 
-    def __init__(self, cursor: sql.Cursor, do_commit: bool = True):
+    def __init__(self, cursor: sql.Cursor, do_commit: bool = True, update_tables: bool = True):
         self.cr = cursor
         self.do_commit = do_commit
+        self.update_tables = update_tables
         # used during initialization
         self._lmodels: dict[str, list[type[Model] | str]] = {}
         # used during operation

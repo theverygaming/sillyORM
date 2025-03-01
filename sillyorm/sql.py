@@ -418,7 +418,8 @@ class Cursor:
         """
         raise NotImplementedError()  # pragma: no cover
 
-    def ensure_table(self, name: str, columns: list[ColumnInfo]) -> None:
+    def ensure_table(self, name: str, columns: list[ColumnInfo], no_update: bool) -> None:
+        # pylint: disable=too-many-branches
         """
         Makes sure a table with the specified name and columns exists.
         If any extra columns exist or their type does not match they will be removed.
@@ -428,6 +429,9 @@ class Cursor:
         :type name: str
         :param columns: The columns of the table
         :type columns: list[:class:`sillyorm.sql.ColumnInfo`]
+        :param no_update: If True, do not update anything, just
+                          check and if something needs to be updated, throw an exception
+        :type no_update: bool
         """
         if not self._table_exists(name):
             column_sql = [
@@ -445,6 +449,11 @@ class Cursor:
                     self._constraint_to_sql(column.name, constraint)
                     for constraint in column.constraints
                 ]
+            if no_update:
+                raise SillyORMException(
+                    f"no_update (table: '{name}'): would need to create a table '{name}' with"
+                    f" columns '{column_sql}'"
+                )
             self.execute(
                 SQL(
                     "CREATE TABLE {name} {columns};",
@@ -490,6 +499,11 @@ class Cursor:
                     continue
                 remove_columns.append(column_info)
 
+            if no_update and len(remove_columns) != 0:
+                raise SillyORMException(
+                    f"no_update (table: '{name}'): would need to remove columns '{remove_columns}'"
+                )
+
             for column_info in remove_columns:
                 self.execute(
                     SQL(
@@ -497,6 +511,11 @@ class Cursor:
                         table=SQL.identifier(name),
                         field=SQL.identifier(column_info.name),
                     )
+                )
+
+            if no_update and len(add_columns) != 0:
+                raise SillyORMException(
+                    f"no_update (table: '{name}'): would need to add columns '{add_columns}'"
                 )
 
             for column in add_columns:
@@ -578,7 +597,7 @@ class TableManager:
     def __init__(self, table_name: str):
         self.table_name = table_name
 
-    def table_init(self, cr: Cursor, columns: list[ColumnInfo]) -> None:
+    def table_init(self, cr: Cursor, columns: list[ColumnInfo], no_update: bool) -> None:
         """
         Initializes the database table
 
@@ -586,8 +605,11 @@ class TableManager:
         :type cr: :class:`sillyorm.sql.Cursor`
         :param columns: The columns the table should have
         :type columns: list[:class:`sillyorm.sql.ColumnInfo`]
+        :param no_update: If True, do not update anything, just
+                          check and if something needs to be updated, throw an exception
+        :type no_update: bool
         """
-        cr.ensure_table(self.table_name, columns)
+        cr.ensure_table(self.table_name, columns, no_update)
 
     def read_records(self, cr: Cursor, columns: list[str], extra_sql: SQL) -> list[dict[str, Any]]:
         """

@@ -109,7 +109,6 @@ class Model:
         _logger.debug("initializing table for model: '%s'", self._name)
         all_fields = list(self._fields.values())
         _logger.debug("fields for model '%s': %s", self._name, repr(all_fields))
-        # TODO: a way to disable updating tables manually so accidents don't happen? # pylint: disable=fixme
         self._tblmngr.table_init(
             self.env.cr,
             [
@@ -117,6 +116,7 @@ class Model:
                 for field in all_fields
                 if field.materialize
             ],
+            not self.env.update_tables,
         )
         for field in all_fields:
             field.model_post_init(self)
