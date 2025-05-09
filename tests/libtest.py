@@ -7,7 +7,7 @@ import sillyorm
 from sillyorm.dbms import postgresql
 from sillyorm.dbms import sqlite
 from sillyorm.environment import Environment
-from sillyorm.sql import Cursor, SqlType
+from sillyorm.sql import Cursor, SqlType, SqlConstraint
 
 
 def _pg_conn(tmp_path: Path) -> postgresql.PostgreSQLConnection:
@@ -62,6 +62,13 @@ def assert_db_columns(cr: Cursor, table: str, columns: list[tuple[str, SqlType]]
     info = [(info.name, info.type) for info in cr.get_table_column_info(table)]
     assert len(info) == len(columns)
     for column in columns:
+        assert column in info
+
+def assert_db_columns_with_constraints(cr: Cursor, table: str, columns: list[tuple[str, SqlType, [SqlConstraint]]]) -> None:
+    info = [(info.name, info.type, sorted(info.constraints)) for info in cr.get_table_column_info(table)]
+    assert len(info) == len(columns)
+    for column in columns:
+        # TODO: fix this
         assert column in info
 
 
