@@ -37,9 +37,10 @@ class Field:
     # set automatically
     name: str = cast(str, None)
 
-    def __init__(self) -> None:
+    def __init__(self, constraints: list[sql.SqlConstraint] = []) -> None:
         if self.materialize and self.sql_type is None:
             raise SillyORMException("sql_type must be set")
+        self.constraints = constraints
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}(name={self.name})"
@@ -241,9 +242,9 @@ class String(Field):
 
     """
 
-    def __init__(self, length: int = 255) -> None:
+    def __init__(self, length: int = 255, constraints: list[sql.SqlConstraint] = []) -> None:
         self.sql_type = sql.SqlType.varchar(length)
-        super().__init__()
+        super().__init__(constraints = constraints)
 
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
@@ -287,9 +288,9 @@ class Text(Field):
 
     """
 
-    def __init__(self) -> None:
+    def __init__(self, constraints: list[sql.SqlConstraint] = []) -> None:
         self.sql_type = sql.SqlType.text()
-        super().__init__()
+        super().__init__(constraints = constraints)
 
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
