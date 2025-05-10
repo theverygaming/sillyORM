@@ -69,6 +69,7 @@ def test_add_constraint(env):
             + f'DETAIL:  Key (sale_order_id)=({so_1.id+5}) is not present in table "sale_order".\n'
         )
 
+
 # TODO: actualy test the constraints
 @with_test_env()
 def test_add_constraint_via_field_args(env):
@@ -77,11 +78,11 @@ def test_add_constraint_via_field_args(env):
 
         name = sillyorm.fields.String()
 
-        ean = sillyorm.fields.String(constraints = [SqlConstraint.unique()])
+        ean = sillyorm.fields.String(constraints=[SqlConstraint.unique()])
 
         product = sillyorm.fields.String()
 
-        amount = sillyorm.fields.Integer(constraints = [SqlConstraint.not_null()])
+        amount = sillyorm.fields.Integer(constraints=[SqlConstraint.not_null()])
 
     class SaleOrderLine1(sillyorm.model.Model):
         _name = "sale_order_line"
