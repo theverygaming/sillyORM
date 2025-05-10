@@ -433,7 +433,7 @@ class Cursor:
                           check and if something needs to be updated, throw an exception
         :type no_update: bool
         """
-        if not self._table_exists(name):
+        if not self.table_exists(name):
             column_sql = [
                 *[
                     SQL(
@@ -544,7 +544,16 @@ class Cursor:
         """
         raise NotImplementedError()  # pragma: no cover
 
-    def _table_exists(self, name: str) -> bool:
+    def table_exists(self, name: str) -> bool:
+        """
+        Checks if a table exists
+
+        :param name: The name of the table
+        :type name: str
+
+        :return: whether or not the table exists
+        :rtype: bool
+        """
         raise NotImplementedError()  # pragma: no cover
 
     def _constraint_to_sql(self, column: str, constraint: SqlConstraint) -> SQL:
@@ -767,7 +776,7 @@ class TableManager:
         :type domain: list[str | tuple[str, str, Any]]
         :param order_by: The column to order by
         :type order_by: str | None
-        :param order_asc: Wether the order is ascending or not
+        :param order_asc: Whether the order is ascending or not
         :type order_asc: bool
         :param offset: The row offset to use
         :type offset: int | None

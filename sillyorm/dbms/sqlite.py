@@ -66,7 +66,7 @@ class SQLiteCursor(sql.Cursor):
             for n, t, pk in res
         ]
 
-    def _table_exists(self, name: str) -> bool:
+    def table_exists(self, name: str) -> bool:
         res = self.execute(
             SQL(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name={name};",

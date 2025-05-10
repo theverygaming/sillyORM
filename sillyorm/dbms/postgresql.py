@@ -83,7 +83,7 @@ class PostgreSQLCursor(sql.Cursor):
             info.append(sql.ColumnInfo(cname, _str_type_to_sql_type(ctype, cmaxlen), []))
         return info
 
-    def _table_exists(self, name: str) -> bool:
+    def table_exists(self, name: str) -> bool:
         res = self.execute(
             SQL(
                 "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename ="
