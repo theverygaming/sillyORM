@@ -1,6 +1,6 @@
 import pytest
 import sillyorm
-from sillyorm.sql import SqlType, SqlConstraint
+from sillyorm.sql import SqlType
 from sillyorm.dbms.sqlite import SQLiteCursor
 from sillyorm.dbms.postgresql import PostgreSQLCursor
 from .libtest import with_test_env, assert_db_columns
