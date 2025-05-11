@@ -65,18 +65,6 @@ def assert_db_columns(cr: Cursor, table: str, columns: list[tuple[str, SqlType]]
         assert column in info
 
 
-def assert_db_columns_with_constraints(
-    cr: Cursor, table: str, columns: list[tuple[str, SqlType, [SqlConstraint]]]
-) -> None:
-    info = [
-        (info.name, info.type, sorted(info.constraints)) for info in cr.get_table_column_info(table)
-    ]
-    assert len(info) == len(columns)
-    for column in columns:
-        # TODO: fix this
-        assert column in info
-
-
 def generic_field_test(
     fieldClass: sillyorm.fields.Field,
     fieldClassArgs: list[tuple[list[Any], dict[str, Any]]],
