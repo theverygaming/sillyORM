@@ -50,21 +50,30 @@ class SQLiteCursor(sql.Cursor):
 
         res = self.execute(
             SQL(
-                "SELECT {i1}, {i2}, {i3} FROM PRAGMA_TABLE_INFO({table});",
+                "SELECT {i1}, {i2}, {i3}, {i4} FROM PRAGMA_TABLE_INFO({table});",
                 i1=SQL.identifier("name"),
                 i2=SQL.identifier("type"),
                 i3=SQL.identifier("pk"),
+                i4=SQL.identifier("notnull"),
+                # sadly i found no way to check for the UNIQUE constraint yet..... unfortunate
                 table=SQL.identifier(name),
             )
         ).fetchall()
-        return [
-            sql.ColumnInfo(
-                n,
-                _str_type_to_sql_type(t),
-                [sql.SqlConstraint.primary_key()] if pk else [],
+        ret = []
+        for n, t, pk, notnull in res:
+            constraints = []
+            if pk:
+                constraints.append(sql.SqlConstraint.primary_key())
+            if notnull:
+                constraints.append(sql.SqlConstraint.not_null())
+            ret.append(
+                sql.ColumnInfo(
+                    n,
+                    _str_type_to_sql_type(t),
+                    constraints,
+                )
             )
-            for n, t, pk in res
-        ]
+        return ret
 
     def table_exists(self, name: str) -> bool:
         res = self.execute(
