@@ -434,21 +434,26 @@ class Cursor:
         :type no_update: bool
         """
         if not self.table_exists(name):
-            column_sql = [
-                *[
+            column_sql = []
+            table_constraints = []
+            for column in columns:
+                on_column_constraints = SQL("")
+                for constraint in column.constraints:
+                    csql = self._constraint_to_sql(column.name, constraint)
+                    if self._is_column_only_constraint(constraint):
+                        on_column_constraints += SQL(" ") + csql
+                    else:
+                        table_constraints.append(csql)
+                column_sql.append(
                     SQL(
-                        "{name} {type}",
+                        "{name} {type}{on_column_constraints}",
                         name=SQL.identifier(column.name),
                         type=SQL.type(column.type),
+                        on_column_constraints=on_column_constraints,
                     )
-                    for column in columns
-                ]
-            ]
-            for column in columns:
-                column_sql += [
-                    self._constraint_to_sql(column.name, constraint)
-                    for constraint in column.constraints
-                ]
+                )
+            # all the constraints must come AFTER the column definitions
+            column_sql += table_constraints
             if no_update:
                 raise SillyORMException(
                     f"no_update (table: '{name}'): would need to create a table '{name}' with"
@@ -556,6 +561,9 @@ class Cursor:
         """
         raise NotImplementedError()  # pragma: no cover
 
+    def _is_column_only_constraint(self, constraint: SqlConstraint) -> bool:
+        return constraint.kind in ["NOT NULL"]
+
     def _constraint_to_sql(self, column: str, constraint: SqlConstraint) -> SQL:
         if constraint.kind == "FOREIGN KEY":
             return SQL(
@@ -566,6 +574,8 @@ class Cursor:
             )
         if constraint.kind in ["PRIMARY KEY", "UNIQUE"]:
             return SQL(f"{constraint.kind} ({{column}})", column=SQL.identifier(column))
+        if constraint.kind in ["NOT NULL"]:
+            return SQL(f"{constraint.kind}")
         raise SillyORMException(f"unknown SQL constraint {constraint}")
 
     def _alter_table_add_constraint(
