@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.0
+
+- improved documentation
+- datetime fields now hae improved timezone support
+- Model inheritance mechanisms have been improved
+- users can now disable automatic table updates (an exception will be raised when the tables do not match)
+- The abilitiy to add unique and not null constraints to fields has been added (unique and required field attributes)
+
+**diff**: https://github.com/theverygaming/sillyORM/compare/0.9.0...0.10.0
+
 ## 0.9.0
 
 - Fixed a bug where Model.read() would error if provide with an empty recordset
