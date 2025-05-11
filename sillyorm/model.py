@@ -207,13 +207,12 @@ class Model:
            values for the fields
         :type vals: dict[str, Any]
         """
-        self._tblmngr.update_records(
-            self.env.cr,
-            vals,
-            SQL("WHERE {id} IN {ids}", id=SQL.identifier("id"), ids=SQL.set(self._ids)),
-        )
-        if self.env.do_commit:
-            self.env.cr.commit()
+        with self.env.managed_transaction():
+            self._tblmngr.update_records(
+                self.env.cr,
+                vals,
+                SQL("WHERE {id} IN {ids}", id=SQL.identifier("id"), ids=SQL.set(self._ids)),
+            )
 
     def browse(self, ids: list[int] | int) -> None | Self:
         """
@@ -260,22 +259,21 @@ class Model:
            The recordset that was created (containing one record)
         :rtype: Self
         """
-        top_id = self.env.cr.execute(
-            SQL(
-                "SELECT MAX({id}) FROM {table};",
-                id=SQL.identifier("id"),
-                table=SQL.identifier(self._name),
-            )
-        ).fetchone()[0]
-        if top_id is None:
-            top_id = 0
-        vals["id"] = top_id + 1
-        for f, v in vals.items():
-            vals[f] = self._fields[f]._convert_type_set(v)  # pylint: disable=protected-access
-        self._tblmngr.insert_record(self.env.cr, vals)
-        if self.env.do_commit:
-            self.env.cr.commit()
-        return self.__class__(self.env, ids=[vals["id"]])
+        with self.env.managed_transaction():
+            top_id = self.env.cr.execute(
+                SQL(
+                    "SELECT MAX({id}) FROM {table};",
+                    id=SQL.identifier("id"),
+                    table=SQL.identifier(self._name),
+                )
+            ).fetchone()[0]
+            if top_id is None:
+                top_id = 0
+            vals["id"] = top_id + 1
+            for f, v in vals.items():
+                vals[f] = self._fields[f]._convert_type_set(v)  # pylint: disable=protected-access
+            self._tblmngr.insert_record(self.env.cr, vals)
+            return self.__class__(self.env, ids=[vals["id"]])
 
     def _domain_transform_types(
         self,
@@ -440,9 +438,8 @@ class Model:
         """
         Deletes all records in the recordset
         """
-        self._tblmngr.delete_records(
-            self.env.cr,
-            SQL("WHERE {id} IN {ids}", id=SQL.identifier("id"), ids=SQL.set(self._ids)),
-        )
-        if self.env.do_commit:
-            self.env.cr.commit()
+        with self.env.managed_transaction():
+            self._tblmngr.delete_records(
+                self.env.cr,
+                SQL("WHERE {id} IN {ids}", id=SQL.identifier("id"), ids=SQL.set(self._ids)),
+            )

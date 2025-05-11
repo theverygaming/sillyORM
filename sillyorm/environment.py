@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import contextlib
 from typing import TYPE_CHECKING, Any, Iterable, Generator
 from . import sql
 from .exceptions import SillyORMException
@@ -172,3 +173,18 @@ class Environment:
 
     def __getitem__(self, key: str) -> Model:
         return self._models[key](self, [])
+
+    @contextlib.contextmanager
+    def managed_transaction(self) -> Generator[None, None, None]:
+        """
+        Context manager for transactions, only actually does anything
+        when do_commit is set on the environment object
+        """
+        try:
+            yield
+        except Exception:
+            if self.do_commit:
+                self.cr.rollback()
+            raise
+        if self.do_commit:
+            self.cr.commit()
