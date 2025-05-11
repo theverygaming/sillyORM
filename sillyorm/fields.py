@@ -21,10 +21,22 @@ class Field:
     :vartype sql_type: :class:`sillyorm.sql.SqlType`
     :cvar materialize: Whether the field actually exists as a column in the database table
     :vartype materialize: bool
-    :cvar constraints: SQL constraints of the field
+
+    :ivar constraints: SQL constraints of the field
     :vartype constraints: list[:class:`sillyorm.sql.SqlConstraint`]
     :ivar name: column name of the field
     :vartype name: str
+    :ivar required: If the field must be set (checked via SQL constraints and runtime checks)
+    :vartype required: bool
+    :ivar unique: If the field's value should be unique in the column (checked via SQL constraints)
+    :vartype unique: bool
+
+    :param required: If the field must be set (checked via SQL constraints and runtime checks)
+    :type required: bool
+    :default required: False
+    :param unique: If the field's value should be unique in the column (checked via SQL constraints)
+    :type unique: bool
+    :default unique: False
     """
 
     # __must__ be set by all fields
@@ -32,16 +44,20 @@ class Field:
 
     # default values
     materialize = True  # if the field should actually exist in tables
-    constraints: list[sql.SqlConstraint] = []
 
     # set automatically
     name: str = cast(str, None)
 
-    def __init__(self, constraints: list[sql.SqlConstraint] | None = None) -> None:
+    def __init__(self, required: bool = False, unique: bool = False) -> None:
+        self.constraints: list[sql.SqlConstraint] = []
+        self.required = required
+        self.unique = unique
         if self.materialize and self.sql_type is None:
-            raise SillyORMException("sql_type must be set")
-        if constraints:
-            self.constraints += constraints
+            raise SillyORMException("sql_type must be set for all fields that materialize")
+        if self.required:
+            self.constraints.append(sql.SqlConstraint.not_null())
+        if self.unique:
+            self.constraints.append(sql.SqlConstraint.unique())
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}(name={self.name}, sql_type={self.sql_type})"
@@ -62,6 +78,8 @@ class Field:
         return value
 
     def _convert_type_set(self, value: Any) -> Any:
+        if self.required and value is None:
+            raise SillyORMException(f"attempted to set required field '{self.name}' to '{value}'")
         return value
 
     def __get__(self, record: Model, objtype: Any = None) -> Any | list[Any]:
@@ -121,7 +139,7 @@ class Integer(Field):
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, int) and value is not None:
             raise SillyORMException("Integer value must be int")
-        return value
+        return super()._convert_type_set(value)
 
     def __set__(self, record: Model, value: int | None) -> None:
         super().__set__(record, value)
@@ -172,7 +190,7 @@ class Float(Field):
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, float) and value is not None:
             raise SillyORMException("Float value must be float")
-        return value
+        return super()._convert_type_set(value)
 
     def __set__(self, record: Model, value: float | None) -> None:
         super().__set__(record, value)
@@ -202,7 +220,9 @@ class Id(Integer):
        2
     """
 
-    constraints = [sql.SqlConstraint.primary_key()]
+    def __init__(self, required: bool = False, unique: bool = False) -> None:
+        super().__init__(required=required, unique=unique)
+        self.constraints += [sql.SqlConstraint.primary_key()]
 
     def __get__(self, record: Model, objtype: Any = None) -> int:
         record.ensure_one()
@@ -244,15 +264,18 @@ class String(Field):
     """
 
     def __init__(
-        self, length: int = 255, constraints: list[sql.SqlConstraint] | None = None
+        self,
+        length: int = 255,
+        required: bool = False,
+        unique: bool = False,
     ) -> None:
         self.sql_type = sql.SqlType.varchar(length)
-        super().__init__(constraints=constraints)
+        super().__init__(required=required, unique=unique)
 
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
             raise SillyORMException("String value must be str")
-        return value
+        return super()._convert_type_set(value)
 
     def __set__(self, record: Model, value: str | None) -> None:
         super().__set__(record, value)
@@ -291,14 +314,14 @@ class Text(Field):
 
     """
 
-    def __init__(self, constraints: list[sql.SqlConstraint] | None = None) -> None:
+    def __init__(self, required: bool = False, unique: bool = False) -> None:
         self.sql_type = sql.SqlType.text()
-        super().__init__(constraints=constraints)
+        super().__init__(required=required, unique=unique)
 
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
             raise SillyORMException("Text value must be str")
-        return value
+        return super()._convert_type_set(value)
 
     def __set__(self, record: Model, value: str | None) -> None:
         super().__set__(record, value)
@@ -346,7 +369,7 @@ class Date(Field):
             not isinstance(value, datetime.date) or isinstance(value, datetime.datetime)
         ) and value is not None:
             raise SillyORMException("Date value must be date")
-        return value
+        return super()._convert_type_set(value)
 
     def __set__(self, record: Model, value: datetime.date | None) -> None:
         super().__set__(record, value)
@@ -391,9 +414,11 @@ class Datetime(Field):
 
     sql_type = sql.SqlType.timestamp()
 
-    def __init__(self, tzinfo: datetime.tzinfo | None) -> None:
+    def __init__(
+        self, tzinfo: datetime.tzinfo | None, required: bool = False, unique: bool = False
+    ) -> None:
+        super().__init__(required=required, unique=unique)
         self.tzinfo = tzinfo
-        super().__init__()
 
     def _convert_type_get(self, value: Any) -> Any:
         if value is not None:
@@ -411,7 +436,7 @@ class Datetime(Field):
                     f"Datetime field expected tzinfo '{self.tzinfo}' and got '{value.tzinfo}'"
                 )
             value = value.replace(tzinfo=None)
-        return value
+        return super()._convert_type_set(value)
 
     def __set__(self, record: Model, value: datetime.datetime | None) -> None:
         super().__set__(record, value)
@@ -463,7 +488,7 @@ class Boolean(Field):
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, bool) and value is not None:
             raise SillyORMException("Boolean value must be bool")
-        return value
+        return super()._convert_type_set(value)
 
     def __set__(self, record: Model, value: bool | None) -> None:
         super().__set__(record, value)
@@ -513,14 +538,16 @@ class Selection(String):
 
     """
 
-    def __init__(self, options: list[str], length: int = 255) -> None:
+    def __init__(
+        self, options: list[str], length: int = 255, required: bool = False, unique: bool = False
+    ) -> None:
+        super().__init__(length, required=required, unique=unique)
         self.options = options
-        super().__init__(length)
 
     def _convert_type_set(self, value: Any) -> Any:
         if not (isinstance(value, str) and value in self.options) and value is not None:
             raise SillyORMException("Selection value must be str and in the list of options")
-        return value
+        return super()._convert_type_set(value)
 
 
 class Many2one(Integer):
@@ -568,10 +595,10 @@ class Many2one(Integer):
 
     """
 
-    def __init__(self, foreign_model: str):
-        super().__init__()
+    def __init__(self, foreign_model: str, required: bool = False, unique: bool = False):
+        super().__init__(required=required, unique=unique)
         self._foreign_model = foreign_model
-        self.constraints = [sql.SqlConstraint.foreign_key(foreign_model, "id")]
+        self.constraints += [sql.SqlConstraint.foreign_key(foreign_model, "id")]
 
     def __get__(self, record: Model, objtype: Any = None) -> None | Model:
         rec = super().__get__(record, objtype)
@@ -635,8 +662,10 @@ class One2many(Field):
 
     materialize = False
 
-    def __init__(self, foreign_model: str, foreign_field: str):
-        super().__init__()
+    def __init__(
+        self, foreign_model: str, foreign_field: str, required: bool = False, unique: bool = False
+    ):
+        super().__init__(required=required, unique=unique)
         self._foreign_model = foreign_model
         self._foreign_field = foreign_field
 

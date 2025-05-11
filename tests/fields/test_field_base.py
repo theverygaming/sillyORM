@@ -10,4 +10,4 @@ def test_field_base():
             _name = "sale_order"
             impossible = sillyorm.fields.Field()
 
-    assert str(e_info.value) == "sql_type must be set"
+    assert str(e_info.value) == "sql_type must be set for all fields that materialize"
