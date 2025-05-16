@@ -675,3 +675,96 @@ class One2many(Field):
 
     def __set__(self, record: Model, value: Model) -> None:
         raise NotImplementedError()
+
+
+class Many2many(Field):
+    """
+    Many to many relational field.
+
+    .. warning::
+       This field's implementation is currently incomplete
+
+    """
+
+    materialize = False
+
+    def __init__(self, foreign_model: str):
+        super().__init__()
+        self._foreign_model = foreign_model
+        self._joint_table_name = cast(str, None)
+        self._joint_table_self_name = cast(str, None)
+        self._joint_table_foreign_name = cast(str, None)
+        self._tblmngr = cast(sql.TableManager, None)
+
+    def model_post_init(self, record: Model) -> None:
+        self._joint_table_name = f"_joint_{record._name}_{self.name}_{self._foreign_model}"  # pylint: disable=protected-access
+        self._joint_table_self_name = f"{record._name}_id"  # pylint: disable=protected-access
+        self._joint_table_foreign_name = f"{self._foreign_model}_id"
+        self._tblmngr = sql.TableManager(self._joint_table_name)
+        _logger.debug(
+            "initializing many2many joint table: '%s.%s' -> '%s' named '%s'",
+            record._name,  # pylint: disable=protected-access
+            self.name,
+            self._foreign_model,
+            self._joint_table_name,
+        )
+        self._tblmngr.table_init(
+            record.env.cr,
+            [
+                sql.ColumnInfo(
+                    self._joint_table_self_name,
+                    sql.SqlType.integer(),
+                    [
+                        sql.SqlConstraint.foreign_key(
+                            record._name, "id"  # pylint: disable=protected-access
+                        ),
+                    ],
+                ),
+                sql.ColumnInfo(
+                    self._joint_table_foreign_name,
+                    sql.SqlType.integer(),
+                    [
+                        sql.SqlConstraint.foreign_key(self._foreign_model, "id"),
+                    ],
+                ),
+            ],
+        )
+
+    def __get__(self, record: Model, objtype: Any = None) -> None | Model:
+        record.ensure_one()
+        res = self._tblmngr.search_records(
+            record.env.cr,
+            [self._joint_table_foreign_name],
+            [(self._joint_table_self_name, "=", record.id)],
+        )
+        if len(res) == 0:
+            return None
+        return record.env[self._foreign_model].__class__(record.env, ids=[id[0] for id in res])
+
+    def __set__(self, record: Model, value: tuple[int, Model]) -> None:
+        record.ensure_one()
+        cmd = value[0]
+        records_f = value[1]
+        match cmd:
+            case 1:
+                for record_f in records_f:
+                    res = self._tblmngr.search_records(
+                        record.env.cr,
+                        [self._joint_table_foreign_name],
+                        [
+                            (self._joint_table_self_name, "=", record.id),
+                            "&",
+                            (self._joint_table_foreign_name, "=", record_f.id),
+                        ],
+                    )
+                    if len(res) > 0:
+                        raise SillyORMException("attempted to insert a record twice into many2many")
+                    self._tblmngr.insert_record(
+                        record.env.cr,
+                        {
+                            self._joint_table_self_name: record.id,
+                            self._joint_table_foreign_name: record_f.id,
+                        },
+                    )
+            case _:
+                raise SillyORMException("unknown many2many command")

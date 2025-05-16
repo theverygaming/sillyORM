@@ -190,6 +190,7 @@ Currently sillyORM supports the following fields:
 * :class:`Selection <sillyorm.fields.Selection>` represents a Selection
 * :class:`Many2one <sillyorm.fields.Many2one>` represents a many to one relationship
 * :class:`One2many <sillyorm.fields.One2many>` represents a one to many relationship (requires a many to one on the other side)
+* :class:`Many2many <sillyorm.fields.Many2many>` represents a many to many relationship
 
 Most fields support None as a value, and are initialized with None by default.
 
