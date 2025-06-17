@@ -4,6 +4,7 @@
 ![CI: Python test](https://github.com/theverygaming/sillyORM/actions/workflows/test.yml/badge.svg)
 ![CI: Python mypy](https://github.com/theverygaming/sillyORM/actions/workflows/typecheck.yml/badge.svg)
 [![PyPI](https://img.shields.io/pypi/v/sillyorm.svg)](https://pypi.org/project/sillyORM/)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Ftheverygaming%2FsillyORM.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Ftheverygaming%2FsillyORM?ref=badge_shield)
 
 simple ORM library written in Python
 
@@ -68,3 +69,7 @@ Read the docs [here](https://theverygaming.github.io/sillyORM/)
 > [!NOTE]
 > The docs are always for the _newest_ version.
 > If you need docs for another version you must build them yourself
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Ftheverygaming%2FsillyORM.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Ftheverygaming%2FsillyORM?ref=badge_large)
