@@ -583,6 +583,15 @@ class Cursor:
     ) -> None:
         raise NotImplementedError()  # pragma: no cover
 
+    def case_insensitive_like(self) -> str:
+        """
+        Returns the operator for case-insensitive like in the current DBMS
+
+        :return: the case-insensitive LIKE operator
+        :rtype: str
+        """
+        return "ILIKE"
+
 
 class Connection:
     """
@@ -727,25 +736,35 @@ class TableManager:
             )
         )
 
-    def _build_search_sql(self, domain: list[str | tuple[str, str, Any]]) -> SQL:
-        def parse_cmp_op(op: str, cmp_with_null: bool) -> SQL:
+    def _build_search_sql(self, cr: Cursor, domain: list[str | tuple[str, str, Any]]) -> SQL:
+        def parse_cmp_op(op: str, val: Any) -> tuple[SQL, Any]:
             ops = {
                 # special case: equal/not equal test for NULL values
-                "=": "=" if not cmp_with_null else "IS",
-                "!=": "<>" if not cmp_with_null else "IS NOT",
+                "=": "=" if val is not None else "IS",
+                "!=": "<>" if val is not None else "IS NOT",
                 ">": ">",
-                "<": "<",
                 ">=": ">=",
+                "<": "<",
                 "<=": "<=",
+                # we only implement ILIKE for now because SQLite doesn't actually support
+                # case-sensitive LIKE out of the box without fuckery it seems
+                "=ilike": cr.case_insensitive_like(),
+                "ilike": (cr.case_insensitive_like(), lambda x: f"%{x}%"),
             }
-            return SQL(ops[op])
+            mop = ops[op]
+            if isinstance(mop, tuple):
+                return (SQL(mop[0]), mop[1](val))
+            if isinstance(mop, str):
+                return (SQL(mop), val)
+            raise AssertionError("unreachable")
 
         def parse_criteria(op: tuple[str, str, Any]) -> SQL:
+            sop, val = parse_cmp_op(op[1], op[2])
             return SQL(
                 " {field} {op} {val} ",
                 field=SQL.identifier(op[0]),
-                op=parse_cmp_op(op[1], op[2] is None),
-                val=op[2],
+                op=sop,
+                val=val,
             )
 
         search_sql = SQL("")
@@ -800,7 +819,7 @@ class TableManager:
         if offset is not None and limit is None:
             raise SillyORMException("offset can only be used together with limit")
 
-        search_sql = self._build_search_sql(domain)
+        search_sql = self._build_search_sql(cr, domain)
 
         return cr.execute(
             SQL(
@@ -837,7 +856,7 @@ class TableManager:
         :rtype: int
         """
 
-        search_sql = self._build_search_sql(domain)
+        search_sql = self._build_search_sql(cr, domain)
 
         ret = cr.execute(
             SQL(

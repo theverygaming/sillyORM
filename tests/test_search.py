@@ -30,3 +30,40 @@ def test_search_none(env):
         4,
         6,
     ]
+
+
+@with_test_env(False)
+def test_search_like(env):
+    class Test(sillyorm.model.Model):
+        _name = "test"
+
+        s = sillyorm.fields.String()
+
+    env.register_model(Test)
+    env.init_tables()
+
+    so_1 = env["test"].create({"s": "bla bla uwu bla bla"})
+    so_2 = env["test"].create({})
+    so_3 = env["test"].create({"s": "bla bla uwu"})
+    so_4 = env["test"].create({})
+    so_5 = env["test"].create({"s": "uwu bla bla"})
+    so_6 = env["test"].create({"s": "UwU bla bla"})
+    so_7 = env["test"].create({"s": "helloAworld"})
+    so_8 = env["test"].create({"s": "helloBworld"})
+    so_9 = env["test"].create({"s": "helloABworld"})
+
+    # Test %
+    assert env["test"].search([("s", "ilike", "uwu")])._ids == [1, 3, 5, 6]
+    assert env["test"].search([("s", "ilike", "UwU")])._ids == [1, 3, 5, 6]
+    assert env["test"].search([("s", "=ilike", "uwu%")])._ids == [5, 6]
+    assert env["test"].search([("s", "=ilike", "UwU%")])._ids == [5, 6]
+    assert env["test"].search([("s", "=ilike", "Hello%World")])._ids == [7, 8, 9]
+
+    # Test _
+    assert env["test"].search([("s", "=ilike", "hello_world")])._ids == [7, 8]
+    assert env["test"].search([("s", "=ilike", "Hello__world")])._ids == [9]
+
+    # Test % and _ in an OR
+    assert env["test"].search(
+        [("s", "=ilike", "uwu%"), "|", ("s", "=ilike", "hello_world")]
+    )._ids == [5, 6, 7, 8]

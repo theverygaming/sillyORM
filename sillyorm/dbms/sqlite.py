@@ -92,6 +92,9 @@ class SQLiteCursor(sql.Cursor):
     ) -> None:
         pass  # SQLite does not support this...
 
+    def case_insensitive_like(self) -> str:
+        return "LIKE"
+
 
 class SQLiteConnection(sql.Connection):
     """

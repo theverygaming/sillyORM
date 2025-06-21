@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.0
+
+- improved documentation
+- add `ilike` and `=ilike` search operators
+
+**diff**: https://github.com/theverygaming/sillyORM/compare/0.10.0...0.11.0
+
 ## 0.10.0
 
 - improved documentation

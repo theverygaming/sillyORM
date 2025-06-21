@@ -334,6 +334,18 @@ class Model:
                     AND "test" = 'hello world!' )
                    OR "test2" = '2 Hii!!';
 
+        Search operators:
+
+        *  `=` Equals to
+        * `!=` not equal
+        * `>` greater than
+        * `>=` greater than or equal
+        * `<` less than
+        * `<=` less than or equal
+        * `=ilike` matches against the pattern provided (case-insentitive), `_` in the pattern
+          matches any single character and `%` matches any string of zero or more characters
+        * `ilike` similar to `=ilike` but will wrap the pattern provided in `%`
+
         Usage example:
 
         .. testcode:: models_model
