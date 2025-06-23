@@ -3,6 +3,7 @@ stdenv.mkDerivation {
   name = "sillyORM";
   buildInputs = [
     python311
+    python311Packages.sqlalchemy
 
     # lint, fmt, type, docs
     python311Packages.pylint

@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 import logging
 import datetime
+import sqlalchemy
 from . import sql
 from .exceptions import SillyORMException
 
@@ -18,12 +19,12 @@ class Field:
     Base descriptor class for :class:`Model <sillyorm.model.Model>` fields
 
     :cvar sql_type: SQL type of the field
-    :vartype sql_type: :class:`sillyorm.sql.SqlType`
+    :vartype sql_type: :class:`sqlalchemy.types.TypeEngine`
     :cvar materialize: Whether the field actually exists as a column in the database table
     :vartype materialize: bool
 
     :ivar constraints: SQL constraints of the field
-    :vartype constraints: list[:class:`sillyorm.sql.SqlConstraint`]
+    :vartype constraints: list[sqlalchemy.schema.Constraint | tuple[str, Any]]
     :ivar name: column name of the field
     :vartype name: str
     :ivar required: If the field must be set (checked via SQL constraints and runtime checks)
@@ -40,7 +41,7 @@ class Field:
     """
 
     # __must__ be set by all fields
-    sql_type: sql.SqlType = cast(sql.SqlType, None)
+    sql_type: sqlalchemy.types.TypeEngine = cast(sqlalchemy.types.TypeEngine, None)
 
     # default values
     materialize = True  # if the field should actually exist in tables
@@ -49,27 +50,18 @@ class Field:
     name: str = cast(str, None)
 
     def __init__(self, required: bool = False, unique: bool = False) -> None:
-        self.constraints: list[sql.SqlConstraint] = []
+        self.constraints: list[sqlalchemy.schema.Constraint | tuple[str, Any]] = []
         self.required = required
         self.unique = unique
         if self.materialize and self.sql_type is None:
             raise SillyORMException("sql_type must be set for all fields that materialize")
         if self.required:
-            self.constraints.append(sql.SqlConstraint.not_null())
+            self.constraints.append(("nullable", False))
         if self.unique:
-            self.constraints.append(sql.SqlConstraint.unique())
+            self.constraints.append(("unique", True))
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}(name={self.name}, sql_type={self.sql_type})"
-
-    def model_post_init(self, record: Model) -> None:
-        """
-        Called by the :class:`Model <sillyorm.model.Model>`
-        after the table is initialized
-
-        :param record: The :class:`Model <sillyorm.model.Model>` the field is in
-        :type record: :class:`Model <sillyorm.model.Model>`
-        """
 
     def __set_name__(self, record: Model, name: str) -> None:
         self.name = name
@@ -134,7 +126,7 @@ class Integer(Field):
        None
     """
 
-    sql_type = sql.SqlType.integer()
+    sql_type = sqlalchemy.types.Integer
 
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, int) and value is not None:
@@ -185,7 +177,7 @@ class Float(Field):
        None
     """
 
-    sql_type = sql.SqlType.float()
+    sql_type = sqlalchemy.types.Float
 
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, float) and value is not None:
@@ -222,7 +214,7 @@ class Id(Integer):
 
     def __init__(self, required: bool = False, unique: bool = False) -> None:
         super().__init__(required=required, unique=unique)
-        self.constraints += [sql.SqlConstraint.primary_key()]
+        self.constraints += [("primary_key", True)]
 
     def __get__(self, record: Model, objtype: Any = None) -> int:
         record.ensure_one()
@@ -269,7 +261,7 @@ class String(Field):
         required: bool = False,
         unique: bool = False,
     ) -> None:
-        self.sql_type = sql.SqlType.varchar(length)
+        self.sql_type = sqlalchemy.types.String(length)
         super().__init__(required=required, unique=unique)
 
     def _convert_type_set(self, value: Any) -> Any:
@@ -315,7 +307,7 @@ class Text(Field):
     """
 
     def __init__(self, required: bool = False, unique: bool = False) -> None:
-        self.sql_type = sql.SqlType.text()
+        self.sql_type = sqlalchemy.types.Text()
         super().__init__(required=required, unique=unique)
 
     def _convert_type_set(self, value: Any) -> Any:
@@ -357,7 +349,7 @@ class Date(Field):
 
     """
 
-    sql_type = sql.SqlType.date()
+    sql_type = sqlalchemy.types.Date
 
     def _convert_type_get(self, value: Any) -> Any:
         if isinstance(value, str):
@@ -412,7 +404,7 @@ class Datetime(Field):
 
     """
 
-    sql_type = sql.SqlType.timestamp()
+    sql_type = sqlalchemy.types.DateTime
 
     def __init__(
         self, tzinfo: datetime.tzinfo | None, required: bool = False, unique: bool = False
@@ -478,7 +470,7 @@ class Boolean(Field):
        None
     """
 
-    sql_type = sql.SqlType.boolean()
+    sql_type = sqlalchemy.types.Boolean
 
     def _convert_type_get(self, value: Any) -> Any:
         if isinstance(value, int):
