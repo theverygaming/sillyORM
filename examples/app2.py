@@ -23,12 +23,12 @@ registry.register_model(Thing2)
 print(registry._raw_models)
 
 registry.resolve_tables()
-registry.init_db()
+registry.init_db_tables()
 
 registry.reset()
 
 registry.resolve_tables()
-registry.init_db()
+registry.init_db_tables()
 
 env = registry.get_environment()
 
@@ -45,7 +45,7 @@ print(env["thing"].browse([2, 1]))
 registry.reset()
 
 registry.resolve_tables()
-registry.init_db()
+registry.init_db_tables()
 
 env = registry.get_environment()
 

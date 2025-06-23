@@ -138,7 +138,10 @@ class Registry:
             model._build_sqlalchemy_table(self.metadata)
             _logger.debug(f"table for model '{model._name}': {repr(model._table)}")
 
-    def init_db(self):
+    def init_db_tables(self):
+        """
+        Initializes database tables. Only works on an empty database!
+        """
         self.metadata.create_all(self.engine)
 
     def get_environment(self, autocommit: bool = False) -> Environment:
