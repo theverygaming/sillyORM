@@ -6,6 +6,7 @@ import sqlalchemy
 
 if TYPE_CHECKING:  # pragma: no cover
     from .model import Model
+    from .registry import Registry
 
 _logger = logging.getLogger(__name__)
 
@@ -19,12 +20,16 @@ class Environment:
 
     :ivar connection: The database Connection
     :vartype connection: sqlalchemy.Connection
+    :ivar registry: The registry this environment object was created from
+    :vartype registry: :class:`sillyorm.registry.Registry`
     :ivar autocommit: Whether to automatically run commit after each database transaction that requires it (and rollback on error)
     :vartype autocommit: bool
 
     :param models: The database cursor that will be passed to all models
     :param connection: The database connection
     :type connection: sqlalchemy.Connection
+    :param registry: The registry this environment object was created from
+    :type registry: :class:`sillyorm.registry.Registry`
     :param autocommit: Whether to automatically run commit after each database transaction that requires it (and rollback on error)
     :type autocommit: bool, optional
     """
@@ -33,10 +38,12 @@ class Environment:
         self,
         models: dict[str, type[Model]],
         connection: sqlalchemy.Connection,
+        registry: Registry,
         autocommit: bool = False,
     ):
         self._models = models
         self.connection = connection
+        self.registry = registry
         self.autocommit = autocommit
 
     def close(self):

@@ -155,6 +155,6 @@ class Registry:
            The new Environment object
         :rtype: :class:`environment <sillyorm.environment.Environment>`
         """
-        new_env = Environment(self._models, self.engine.connect(), autocommit=autocommit)
+        new_env = Environment(self._models, self.engine.connect(), self, autocommit=autocommit)
         self._environments_given_out.append(new_env)
         return new_env
