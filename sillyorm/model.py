@@ -1,8 +1,7 @@
 import logging
 from typing import Any, Iterator, Self, cast
 import sqlalchemy
-from . import sql, fields
-from .sql import SQL
+from . import fields
 from .environment import Environment
 from .exceptions import SillyORMException
 

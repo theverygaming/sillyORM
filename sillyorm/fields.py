@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any, cast
 import logging
 import datetime
 import sqlalchemy
-from . import sql
 from .exceptions import SillyORMException
 
 if TYPE_CHECKING:  # pragma: no cover
