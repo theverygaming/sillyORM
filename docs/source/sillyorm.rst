@@ -4,6 +4,14 @@ sillyorm package
 Submodules
 ----------
 
+sillyorm.registry module
+---------------------------
+
+.. automodule:: sillyorm.registry
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 sillyorm.environment module
 ---------------------------
 
@@ -32,14 +40,6 @@ sillyorm.model module
 ---------------------
 
 .. automodule:: sillyorm.model
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-sillyorm.sql module
--------------------
-
-.. automodule:: sillyorm.sql
    :members:
    :undoc-members:
    :show-inheritance:

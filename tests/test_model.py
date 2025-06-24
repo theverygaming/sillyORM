@@ -82,62 +82,6 @@ def test_model_init(tmp_path, db_conn_fn):
     )
 
 
-@pytest.mark.skip(
-    reason="the DB layout stuff changed ever since we added sqlalchemy"
-)  # TODO: add DB layout assertion
-@pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
-def test_field_add_remove(tmp_path, db_conn_fn):
-    class TestModel(sillyorm.model.Model):
-        _name = "test_model"
-
-        test = sillyorm.fields.String()
-
-    class TestModel_extrafields(sillyorm.model.Model):
-        _name = "test_model"
-
-        test = sillyorm.fields.String()
-        test2 = sillyorm.fields.String()
-        test3 = sillyorm.fields.String()
-
-    registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
-
-    assert_db_columns(
-        registry,
-        "test_model",
-        [
-            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
-            ("test", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
-        ],
-    )
-
-    # add new fields
-    registry, env = _new_env(db_conn_fn, tmp_path, [TestModel_extrafields])
-
-    conn = db_conn_fn(tmp_path)
-    assert_db_columns(
-        registry,
-        "test_model",
-        [
-            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
-            ("test", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
-            ("test2", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
-            ("test3", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
-        ],
-    )
-
-    # remove the added fields again
-    registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
-
-    assert_db_columns(
-        registry,
-        "test_model",
-        [
-            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
-            ("test", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
-        ],
-    )
-
-
 @pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
 def test_create_browse(tmp_path, db_conn_fn):
     class TestModel(sillyorm.model.Model):

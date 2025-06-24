@@ -1,7 +1,9 @@
 from __future__ import annotations
 import logging
-from typing import TYPE_CHECKING, Any, Iterable, Generator
+from typing import TYPE_CHECKING, Any, Iterable, Generator, Literal
 import sqlalchemy
+import alembic.migration
+import alembic.autogenerate
 from . import Environment
 from .exceptions import SillyORMException
 
@@ -20,6 +22,13 @@ class Registry:
         # finished model list (inheritance applied etc.)
         self._models: dict[str, type[Model]] = {}
         self._environments_given_out: list[Environment] = []
+
+    def reset_full(self) -> None:
+        """
+        Fully Reset the registry object, **including** the models that have been registered
+        """
+        self.reset()
+        self._raw_models = {}
 
     def reset(self) -> None:
         """
@@ -71,7 +80,7 @@ class Registry:
         Resolve model inheritance and build the models table in the registry
         """
 
-        self._models = {}
+        self.reset()
 
         resolved_model_classes = self._raw_models
 
@@ -138,10 +147,26 @@ class Registry:
             model._build_sqlalchemy_table(self.metadata)
             _logger.debug(f"table for model '{model._name}': {repr(model._table)}")
 
-    def init_db_tables(self):
+    def init_db_tables(self, automigrate: Literal["ignore", "none", "safe"] = "safe"):
         """
-        Initializes database tables. Only works on an empty database!
+        Initializes database tables.
         """
+        if automigrate != "ignore":
+            conn = self.engine.connect()
+            context = alembic.migration.MigrationContext.configure(conn)
+            diffs = alembic.autogenerate.compare_metadata(context, self.metadata)
+            if automigrate == "none" and diffs:
+                raise SillyORMException(
+                    f"The DB does not match the schema and automigrate is set to '{automigrate}' -"
+                    f" diffs: {diffs}"
+                )
+            unsafe_diffs = [x for x in diffs if x[0] != "add_table"]
+            if automigrate == "safe" and unsafe_diffs:
+                raise SillyORMException(
+                    "The DB does not match the schema, things other than adding tables must be"
+                    f" done and automigrate is set to '{automigrate}' - diffs: {diffs}"
+                )
+            conn.close()
         self.metadata.create_all(self.engine)
 
     def get_environment(self, autocommit: bool = False) -> Environment:

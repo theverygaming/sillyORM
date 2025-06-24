@@ -9,7 +9,10 @@ description = "an ORM library"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {file = "LICENSE"}
-dependencies = ["sqlalchemy"]
+dependencies = [
+    "alembic",
+    "sqlalchemy",
+]
 
 [project.optional-dependencies]
 dev = [

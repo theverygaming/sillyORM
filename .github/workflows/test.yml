@@ -31,7 +31,7 @@ jobs:
       - name: Install test dependencies
         run: pip install pytest coverage psycopg2
       - name: Install dependencies
-        run: pip install sqlalchemy
+        run: pip install alembic sqlalchemy
       - name: run tests
         run: coverage run --source sillyorm/ -m pytest -vv --tb=long --showlocals tests/
       - name: Report coverage
@@ -65,7 +65,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install sqlalchemy Sphinx
+        run: pip install alembic sqlalchemy Sphinx
       - name: generate docs
         run: |
           cd docs
