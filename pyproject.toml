@@ -9,13 +9,11 @@ description = "an ORM library"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {file = "LICENSE"}
-dependencies = []
+dependencies = ["sqlalchemy"]
 
 [project.optional-dependencies]
-postgres = ["psycopg2"]
 dev = [
     "pytest", "coverage", "pylint", "mypy", "black", "Sphinx",
-    "psycopg2", "types-psycopg2"
 ]
 
 [tool.setuptools]
