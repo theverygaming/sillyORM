@@ -187,7 +187,7 @@ class Model:
             stmt = stmt.order_by(case_ordering)
 
         result = self.env.connection.execute(stmt)
-        return [dict(row._mapping) for row in result]
+        return [dict(row) for row in result.mappings()]
 
     def write(self, vals: dict[str, Any]) -> None:
         """
@@ -300,6 +300,7 @@ class Model:
 
     def _parse_domain(self, domain: list[str | tuple[str, str, Any]]) -> object | None:
         def cmp_expr(col: str, op: str, val: Any) -> Any:
+            # pylint: disable=too-many-return-statements
             clmn = self._table.c[col]
             match op:
                 case "=":
@@ -333,11 +334,13 @@ class Model:
                 "infix2normalpolish: mismatched parenthesis.. Your domain is broken!"
             )
 
-            # https://en.wikipedia.org/wiki/Shunting_yard_algorithm (adapted for polish notaton as specified in the article)
+            # https://en.wikipedia.org/wiki/Shunting_yard_algorithm
+            # (adapted for polish notaton as specified in the article)
             output_stack: list[str | tuple[str, str, Any]] = []
             operator_stack: list[str] = []
             # rparen and lparen are switched around because we are iterating in reverse!
-            # This is what you do if u want normal polish notation instead of reverse polish notation
+            # This is what you do if u want normal polish notation instead of
+            # reverse polish notation
             for token in reversed(domain):
                 if isinstance(token, tuple):
                     output_stack.append(token)
@@ -375,20 +378,19 @@ class Model:
         def pn_parse(parts_iter: Iterator[str | tuple[str, str, Any]]) -> object:
             try:
                 part = next(parts_iter)
-            except StopIteration:
+            except StopIteration as e:
                 raise SillyORMException(
                     "failed to parse domain, expected at least one further element"
-                )
+                ) from e
             if part == "&":
                 return sqlalchemy.and_(pn_parse(parts_iter), pn_parse(parts_iter))  # type: ignore
-            elif part == "|":
+            if part == "|":
                 return sqlalchemy.or_(pn_parse(parts_iter), pn_parse(parts_iter))  # type: ignore
-            elif part == "!":
+            if part == "!":
                 return sqlalchemy.not_(pn_parse(parts_iter))  # type: ignore
-            elif isinstance(part, tuple):
+            if isinstance(part, tuple):
                 return cmp_expr(*part)
-            else:
-                raise SillyORMException(f"Invalid domain part: {repr(part)}")
+            raise SillyORMException(f"Invalid domain part: {repr(part)}")
 
         if not domain:
             return None
@@ -560,6 +562,7 @@ class Model:
            The amount of records that match the provided domain
         :rtype: int
         """
+        # pylint: disable=not-callable # https://github.com/sqlalchemy/sqlalchemy/discussions/9202
         stmt = sqlalchemy.select(sqlalchemy.func.count()).select_from(self._table)
 
         filter_expr = self._parse_domain(self._domain_transform_types(domain))

@@ -18,11 +18,14 @@ class Environment:
     Once registered, models in the environment can be accessed using the index operator.
     When a model is accessed this way, it will return an empty recordset.
 
+    **it is not meant to be initialized directly by the user**
+
     :ivar connection: The database Connection
     :vartype connection: sqlalchemy.Connection
     :ivar registry: The registry this environment object was created from
     :vartype registry: :class:`sillyorm.registry.Registry`
-    :ivar autocommit: Whether to automatically run commit after each database transaction that requires it (and rollback on error)
+    :ivar autocommit: Whether to automatically run commit after each
+       database transaction that requires it (and rollback on error)
     :vartype autocommit: bool
 
     :param models: The database cursor that will be passed to all models
@@ -30,7 +33,8 @@ class Environment:
     :type connection: sqlalchemy.Connection
     :param registry: The registry this environment object was created from
     :type registry: :class:`sillyorm.registry.Registry`
-    :param autocommit: Whether to automatically run commit after each database transaction that requires it (and rollback on error)
+    :param autocommit: Whether to automatically run commit after each
+       database transaction that requires it (and rollback on error)
     :type autocommit: bool, optional
     """
 

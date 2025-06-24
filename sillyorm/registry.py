@@ -14,8 +14,22 @@ _logger = logging.getLogger(__name__)
 
 
 class Registry:
-    def __init__(self, create_engine_url: str, create_engine_kwargs: dict[str, Any] = {}):
-        self.engine = sqlalchemy.create_engine(create_engine_url, **create_engine_kwargs)
+    """
+    SillyORM Model Registry - keeps track of models and handles model inheritance
+
+    :ivar engine: The SQLAlchemy database engine
+    :ivar metadata: The SQLAlchemy MetaData
+
+    :param create_engine_url: The URL passed to `sqlalchemy.create_engine`
+    :type create_engine_url: str
+    :param create_engine_kwargs: keyword arguments passed to `sqlalchemy.create_engine`
+    :type create_engine_kwargs: dict[str, Any]
+    """
+
+    def __init__(self, create_engine_url: str, create_engine_kwargs: dict[str, Any] | None = None):
+        self.engine = sqlalchemy.create_engine(
+            create_engine_url, **(create_engine_kwargs if create_engine_kwargs else {})
+        )
         self.metadata = sqlalchemy.MetaData()
         # raw model list, result from register_model calls
         self._raw_models: dict[str, list[type[Model] | str]] = {}
@@ -38,7 +52,7 @@ class Registry:
         self._models = {}
         for env in self._environments_given_out:
             env.close()
-            del env
+        self._environments_given_out.clear()
 
     def register_model(self, model: type[Model]) -> None:
         """
@@ -144,8 +158,12 @@ class Registry:
             _build_model_inheritance(model_name)
 
         for model in self._models.values():
-            model._build_sqlalchemy_table(self.metadata)
-            _logger.debug(f"table for model '{model._name}': {repr(model._table)}")
+            model._build_sqlalchemy_table(self.metadata)  # pylint: disable=protected-access
+            _logger.debug(
+                "table for model '%s': %s",
+                {model._name},  # pylint: disable=protected-access
+                repr(model._table),  # pylint: disable=protected-access
+            )
 
     def init_db_tables(self, automigrate: Literal["ignore", "none", "safe"] = "safe") -> None:
         """
@@ -173,7 +191,8 @@ class Registry:
         """
         Returns a new environment object (will also grab a new connection from the connection pool)
 
-        :param autocommit: Whether to automatically run commit after each database transaction that requires it (and rollback on error)
+        :param autocommit: Whether to automatically run commit after
+           each database transaction that requires it (and rollback on error)
         :type autocommit: bool, optional
 
         :return:
