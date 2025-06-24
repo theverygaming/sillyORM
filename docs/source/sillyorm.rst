@@ -1,14 +1,6 @@
 sillyorm package
 ================
 
-Subpackages
------------
-
-.. toctree::
-   :maxdepth: 4
-
-   sillyorm.dbms
-
 Submodules
 ----------
 

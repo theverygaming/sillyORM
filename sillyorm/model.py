@@ -496,7 +496,7 @@ class Model:
 
         stmt = sqlalchemy.select(self._table.c.id)
 
-        filter_expr = self._parse_domain(domain)
+        filter_expr = self._parse_domain(self._domain_transform_types(domain))
 
         if filter_expr is not None:
             stmt = stmt.where(filter_expr)
@@ -561,7 +561,7 @@ class Model:
         """
         stmt = sqlalchemy.select(sqlalchemy.func.count()).select_from(self._table)
 
-        filter_expr = self._parse_domain(domain)
+        filter_expr = self._parse_domain(self._domain_transform_types(domain))
 
         if filter_expr is not None:
             stmt = stmt.where(filter_expr)

@@ -59,9 +59,6 @@ class Field:
         if self.unique:
             self.constraints.append(("unique", True))
 
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}(name={self.name}, sql_type={self.sql_type})"
-
     def __set_name__(self, record: Model, name: str) -> None:
         self.name = name
 
@@ -351,8 +348,6 @@ class Date(Field):
     sql_type = sqlalchemy.types.Date
 
     def _convert_type_get(self, value: Any) -> Any:
-        if isinstance(value, str):
-            return datetime.date.fromisoformat(value)
         return value
 
     def _convert_type_set(self, value: Any) -> Any:
@@ -413,8 +408,6 @@ class Datetime(Field):
 
     def _convert_type_get(self, value: Any) -> Any:
         if value is not None:
-            if isinstance(value, str):
-                value = datetime.datetime.fromisoformat(value)
             return value.replace(tzinfo=self.tzinfo)
         return value
 
