@@ -67,7 +67,7 @@ class Model:
     _extends = ""
     _inherits: list[str] = []
 
-    _fields: list[fields.Field] = []
+    _fields: dict[str, fields.Field] = {}
     _table: sqlalchemy.Table = cast(sqlalchemy.Table, None)
 
     id = fields.Id()  #: Special :class:`sillyorm.fields.Id` field used as PRIMARY KEY
@@ -298,10 +298,8 @@ class Model:
                 )
         return domain
 
-    def _parse_domain(
-        self, domain: list[str | tuple[str, str, Any]]
-    ) -> sqlalchemy.sql.elements.ClauseElement:
-        def cmp_expr(col, op, val):
+    def _parse_domain(self, domain: list[str | tuple[str, str, Any]]) -> object | None:
+        def cmp_expr(col: str, op: str, val: Any) -> Any:
             clmn = self._table.c[col]
             match op:
                 case "=":
@@ -325,7 +323,9 @@ class Model:
                     return clmn.ilike(f"%{val}%")
             raise SillyORMException(f"Unsupported operator {op}")
 
-        def infix2normalpolish(domain):
+        def infix2normalpolish(
+            domain: list[str | tuple[str, str, Any]],
+        ) -> list[str | tuple[str, str, Any]]:
             left_associative_operators = ["!"]
             operator_precedence = {"!": 3, "&": 2, "|": 1}
 
@@ -334,13 +334,14 @@ class Model:
             )
 
             # https://en.wikipedia.org/wiki/Shunting_yard_algorithm (adapted for polish notaton as specified in the article)
-            output_stack = []
-            operator_stack = []
+            output_stack: list[str | tuple[str, str, Any]] = []
+            operator_stack: list[str] = []
             # rparen and lparen are switched around because we are iterating in reverse!
             # This is what you do if u want normal polish notation instead of reverse polish notation
             for token in reversed(domain):
                 if isinstance(token, tuple):
                     output_stack.append(token)
+                    continue
                 if token in operator_precedence:
                     o1 = token
                     if operator_stack:
@@ -371,7 +372,7 @@ class Model:
 
             return list(reversed(output_stack))
 
-        def pn_parse(parts_iter):
+        def pn_parse(parts_iter: Iterator[str | tuple[str, str, Any]]) -> object:
             try:
                 part = next(parts_iter)
             except StopIteration:
@@ -379,11 +380,11 @@ class Model:
                     "failed to parse domain, expected at least one further element"
                 )
             if part == "&":
-                return sqlalchemy.and_(pn_parse(parts_iter), pn_parse(parts_iter))
+                return sqlalchemy.and_(pn_parse(parts_iter), pn_parse(parts_iter))  # type: ignore
             elif part == "|":
-                return sqlalchemy.or_(pn_parse(parts_iter), pn_parse(parts_iter))
+                return sqlalchemy.or_(pn_parse(parts_iter), pn_parse(parts_iter))  # type: ignore
             elif part == "!":
-                return sqlalchemy.not_(pn_parse(parts_iter))
+                return sqlalchemy.not_(pn_parse(parts_iter))  # type: ignore
             elif isinstance(part, tuple):
                 return cmp_expr(*part)
             else:
@@ -499,7 +500,7 @@ class Model:
         filter_expr = self._parse_domain(self._domain_transform_types(domain))
 
         if filter_expr is not None:
-            stmt = stmt.where(filter_expr)
+            stmt = stmt.where(filter_expr)  # type: ignore
 
         if order_by is not None:
             col = self._table.c[order_by]
@@ -564,7 +565,7 @@ class Model:
         filter_expr = self._parse_domain(self._domain_transform_types(domain))
 
         if filter_expr is not None:
-            stmt = stmt.where(filter_expr)
+            stmt = stmt.where(filter_expr)  # type: ignore
 
         result = self.env.connection.execute(stmt).scalar_one()
         return result

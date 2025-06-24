@@ -40,7 +40,7 @@ class Field:
     """
 
     # __must__ be set by all fields
-    sql_type: sqlalchemy.types.TypeEngine = cast(sqlalchemy.types.TypeEngine, None)
+    sql_type: sqlalchemy.types.TypeEngine[Any] = cast(sqlalchemy.types.TypeEngine[Any], None)
 
     # default values
     materialize = True  # if the field should actually exist in tables
@@ -49,7 +49,7 @@ class Field:
     name: str = cast(str, None)
 
     def __init__(self, required: bool = False, unique: bool = False) -> None:
-        self.constraints: list[sqlalchemy.schema.Constraint | tuple[str, Any]] = []
+        self.constraints: list[sqlalchemy.schema.SchemaItem | tuple[str, Any]] = []
         self.required = required
         self.unique = unique
         if self.materialize and self.sql_type is None:
@@ -122,7 +122,7 @@ class Integer(Field):
        None
     """
 
-    sql_type = sqlalchemy.types.Integer
+    sql_type = sqlalchemy.types.Integer()
 
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, int) and value is not None:
@@ -173,7 +173,7 @@ class Float(Field):
        None
     """
 
-    sql_type = sqlalchemy.types.Float
+    sql_type = sqlalchemy.types.Float()
 
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, float) and value is not None:
@@ -345,7 +345,7 @@ class Date(Field):
 
     """
 
-    sql_type = sqlalchemy.types.Date
+    sql_type = sqlalchemy.types.Date()
 
     def _convert_type_get(self, value: Any) -> Any:
         return value
@@ -398,7 +398,7 @@ class Datetime(Field):
 
     """
 
-    sql_type = sqlalchemy.types.DateTime
+    sql_type = sqlalchemy.types.DateTime()
 
     def __init__(
         self, tzinfo: datetime.tzinfo | None, required: bool = False, unique: bool = False
@@ -462,7 +462,7 @@ class Boolean(Field):
        None
     """
 
-    sql_type = sqlalchemy.types.Boolean
+    sql_type = sqlalchemy.types.Boolean()
 
     def _convert_type_get(self, value: Any) -> Any:
         if isinstance(value, int):

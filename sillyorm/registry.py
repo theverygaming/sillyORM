@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Generator, Literal
 import sqlalchemy
 import alembic.migration
 import alembic.autogenerate
-from . import Environment
+from .environment import Environment
 from .exceptions import SillyORMException
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -75,7 +75,7 @@ class Registry:
         _logger.info("registering model '%s'", name)
         self._raw_models[name] = inherits + [model]
 
-    def resolve_tables(self):
+    def resolve_tables(self) -> None:
         """
         Resolve model inheritance and build the models table in the registry
         """
@@ -147,7 +147,7 @@ class Registry:
             model._build_sqlalchemy_table(self.metadata)
             _logger.debug(f"table for model '{model._name}': {repr(model._table)}")
 
-    def init_db_tables(self, automigrate: Literal["ignore", "none", "safe"] = "safe"):
+    def init_db_tables(self, automigrate: Literal["ignore", "none", "safe"] = "safe") -> None:
         """
         Initializes database tables.
         """

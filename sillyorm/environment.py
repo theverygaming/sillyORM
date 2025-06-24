@@ -1,7 +1,7 @@
 from __future__ import annotations
 import logging
 import contextlib
-from typing import TYPE_CHECKING, Generator
+from typing import TYPE_CHECKING, Generator, cast
 import sqlalchemy
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -46,7 +46,7 @@ class Environment:
         self.registry = registry
         self.autocommit = autocommit
 
-    def close(self):
+    def close(self) -> None:
         """
         Close this environment object, close it's connection
         If it has an active transaction that will be rolled back.
@@ -54,9 +54,9 @@ class Environment:
         if self.connection is not None:
             if self.connection.get_transaction() is not None:
                 self.connection.rollback()
-            self.connection = None
+            self.connection = cast(sqlalchemy.Connection, None)
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.close()
 
     def __getitem__(self, key: str) -> Model:
