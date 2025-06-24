@@ -15,7 +15,7 @@ _logger = logging.getLogger(__name__)
 
 class Registry:
     """
-    SillyORM Model Registry - keeps track of models and handles model inheritance
+    sillyORM Model Registry - keeps track of models and handles model inheritance
 
     :ivar engine: The SQLAlchemy database engine
     :ivar metadata: The SQLAlchemy MetaData

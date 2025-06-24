@@ -34,7 +34,6 @@ pip install sillyorm
 
 ```python
 import sillyorm
-from sillyorm.dbms import sqlite
 
 
 # define a model, a model abstracts a table in the database
@@ -45,16 +44,16 @@ class Example(sillyorm.model.Model):
     name = sillyorm.fields.String(length=255)
 
 
-# Create the environment
-env = sillyorm.Environment(
-    sqlite.SQLiteConnection("test.db").cursor()
-)
+# connect to the DB and create a model registry
+registry = sillyorm.Registry("sqlite:///test.db")
 
 # register the model in the environment
-env.register_model(Example)
+registry.register_model(Example)
 
 # create the database tables
-env.init_tables()
+registry.resolve_tables()
+registry.init_db_tables()
+env = registry.get_environment(autocommit=True)
 
 # start using the model
 record = env["example"].create({"name": "Hello world!"})

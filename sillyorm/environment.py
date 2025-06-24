@@ -12,7 +12,8 @@ _logger = logging.getLogger(__name__)
 
 
 class Environment:
-    """This class is meant for keeping track of :class:`models <sillyorm.model.Model>`
+    """
+    This class is meant for keeping track of :class:`models <sillyorm.model.Model>`
     registered in it, some settings and the database connection (SQLAlchemy Connection object).
 
     Once registered, models in the environment can be accessed using the index operator.

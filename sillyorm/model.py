@@ -13,10 +13,6 @@ class Model:
     Each model represents a single table in the database.
     A model can have fields which represent columns in the database table.
 
-    When a model is registered the ORM ensures the table with all required fields is created.
-    If any columns/fields exist in the database
-    but are not specified in the model **they will be removed in the database**.
-
     The `_name` attribute specifies the name
     of the database table the model represents
     and the name of the model in the :ref:`environment <environment>`.
@@ -33,10 +29,9 @@ class Model:
 
        import tempfile
        import sillyorm
-       from sillyorm.dbms import sqlite
 
        tmpfile = tempfile.NamedTemporaryFile()
-       env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+       registry = sillyorm.Registry(f"sqlite:///{tmpfile.name}")
 
     .. testcode:: models_model
 
@@ -44,8 +39,10 @@ class Model:
            _name = "example0"
            field = sillyorm.fields.String()
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       registry.register_model(ExampleModel)
+       registry.resolve_tables()
+       registry.init_db_tables()
+       env = registry.get_environment()
 
        record = env["example0"].create({"field": "Hello world!"})
        print(record.field)
@@ -229,7 +226,7 @@ class Model:
         Returns a recordset for the ids provided.
 
         .. warning::
-           Order of the ids in the recordset returned may
+           The order of the ids in the recordset returned may
            not be the same as the ids provided as input
 
         :param ids: The ids or id
@@ -429,7 +426,7 @@ class Model:
                ("test2", "=", "2 Hii!!"),
            ]
 
-        This search domain will result in the following SQL:
+        This search domain will result in SQL code that looks something like this:
 
         .. code-block:: SQL
 
@@ -459,8 +456,10 @@ class Model:
                _name = "example1"
                field = sillyorm.fields.String()
 
-           env.register_model(ExampleModel)
-           env.init_tables()
+           registry.register_model(ExampleModel)
+           registry.resolve_tables()
+           registry.init_db_tables()
+           env = registry.get_environment()
 
            record1 = env["example1"].create({"field": "test1"})
            record2 = env["example1"].create({"field": "test2"})
@@ -535,8 +534,10 @@ class Model:
                _name = "example_msc1"
                field = sillyorm.fields.String()
 
-           env.register_model(ExampleModel)
-           env.init_tables()
+           registry.register_model(ExampleModel)
+           registry.resolve_tables()
+           registry.init_db_tables()
+           env = registry.get_environment()
 
            record1 = env["example_msc1"].create({"field": "test1"})
            record2 = env["example_msc1"].create({"field": "test1"})

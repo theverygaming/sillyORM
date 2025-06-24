@@ -91,10 +91,15 @@ class Integer(Field):
 
        import tempfile
        import sillyorm
-       from sillyorm.dbms import sqlite
 
-       tmpfile = tempfile.NamedTemporaryFile()
-       env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+       def reinit_env(m):
+           registry = sillyorm.Registry(f"sqlite:///:memory:")
+           for x in m:
+               registry.register_model(x)
+           registry.resolve_tables()
+           registry.init_db_tables()
+           env = registry.get_environment()
+           return env
 
     .. testcode:: models_fields
 
@@ -102,8 +107,7 @@ class Integer(Field):
            _name = "example0"
            field = sillyorm.fields.Integer()
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example0"].create({"field": 5})
        print(record.field)
@@ -142,10 +146,9 @@ class Float(Field):
 
        import tempfile
        import sillyorm
-       from sillyorm.dbms import sqlite
 
        tmpfile = tempfile.NamedTemporaryFile()
-       env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+       registry = sillyorm.Registry(f"sqlite:///{tmpfile.name}")
 
     .. testcode:: models_fields
 
@@ -153,8 +156,7 @@ class Float(Field):
            _name = "example_float"
            field = sillyorm.fields.Float()
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example_float"].create({"field": 32768.123321})
        print(record.field)
@@ -194,8 +196,7 @@ class Id(Integer):
            _name = "example1"
            # Each model automatically has an ID field
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example1"].create({})
        record2 = env["example1"].create({})
@@ -230,8 +231,7 @@ class String(Field):
            _name = "example2"
            field = sillyorm.fields.String()
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example2"].create({"field": "hello"})
        print(record.field)
@@ -279,8 +279,7 @@ class Text(Field):
            _name = "example_text"
            field = sillyorm.fields.Text()
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example_text"].create({"field": "hello"})
        print(record.field)
@@ -327,8 +326,7 @@ class Date(Field):
            _name = "example3"
            field = sillyorm.fields.Date()
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example3"].create({"field": datetime.date(1970, 1, 1)})
        print(record.field)
@@ -380,8 +378,7 @@ class Datetime(Field):
            _name = "example_datetime"
            field = sillyorm.fields.Datetime(None)
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example_datetime"].create({"field": datetime.datetime(1970, 1, 1, 1, 2, 3)})
        print(record.field)
@@ -434,10 +431,9 @@ class Boolean(Field):
 
        import tempfile
        import sillyorm
-       from sillyorm.dbms import sqlite
 
        tmpfile = tempfile.NamedTemporaryFile()
-       env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+       registry = sillyorm.Registry(f"sqlite:///{tmpfile.name}")
 
     .. testcode:: models_fields
 
@@ -445,8 +441,7 @@ class Boolean(Field):
            _name = "example_bool"
            field = sillyorm.fields.Boolean()
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example_bool"].create({"field": True})
        print(record.field)
@@ -488,10 +483,9 @@ class Selection(String):
 
        import tempfile
        import sillyorm
-       from sillyorm.dbms import sqlite
 
        tmpfile = tempfile.NamedTemporaryFile()
-       env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+       registry = sillyorm.Registry(f"sqlite:///{tmpfile.name}")
 
     .. testcode:: models_fields
 
@@ -499,8 +493,7 @@ class Selection(String):
            _name = "example_selection"
            field = sillyorm.fields.Selection(["option1", "option2"])
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example_selection"].create({"field": "option1"})
        print(record.field)
@@ -551,9 +544,7 @@ class Many2one(Integer):
            _name = "example5"
            many2one_field = sillyorm.fields.Many2one("example4")
 
-       env.register_model(ExampleModel1)
-       env.register_model(ExampleModel2)
-       env.init_tables()
+       env = reinit_env([ExampleModel1, ExampleModel2])
 
        other_record = env["example4"].create({"field": "Hello world!"})
        record = env["example5"].create({"many2one_field": other_record.id})
@@ -619,9 +610,7 @@ class One2many(Field):
            _name = "example7"
            many2one_field = sillyorm.fields.Many2one("example6")
 
-       env.register_model(ExampleModel1)
-       env.register_model(ExampleModel2)
-       env.init_tables()
+       env = reinit_env([ExampleModel1, ExampleModel2])
 
        other_record = env["example6"].create({})
        record = env["example7"].create({"many2one_field": other_record.id})
