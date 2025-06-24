@@ -17,8 +17,6 @@ jobs:
       - name: Install mypy
         run: pip install mypy
       - name: Install dependencies
-        run: pip install psycopg2 pytest
-      - name: Install typing dependencies
-        run: pip install types-psycopg2
+        run: pip install sqlalchemy pytest
       - name: run typecheck
         run: make typecheck

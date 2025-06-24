@@ -17,6 +17,6 @@ jobs:
       - name: Install pylint
         run: pip install pylint
       - name: Install dependencies
-        run: pip install psycopg2 pytest
+        run: pip install sqlalchemy pytest
       - name: run linter
         run: make lint
