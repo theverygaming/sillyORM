@@ -7,7 +7,7 @@ import sillyorm
 import sqlalchemy
 
 
-def _pg_conn(tmp_path: Path) -> str:
+def pg_conn(tmp_path: Path) -> str:
     dbname = f"pytestdb{hash(str(tmp_path))}"
     connstr = "host=127.0.0.1 user=postgres password=postgres"
 
@@ -22,7 +22,7 @@ def _pg_conn(tmp_path: Path) -> str:
     return f"postgresql+psycopg2://postgres:postgres@127.0.0.1/{dbname}"
 
 
-def _sqlite_conn(tmp_path: Path) -> str:
+def sqlite_conn(tmp_path: Path) -> str:
     dbpath = tmp_path / "test.db"
     return f"sqlite:///{dbpath}"
 
@@ -50,7 +50,7 @@ def with_test_registry(reinit: bool = False, with_request: bool = False) -> Any:
                 run_test(True, ret)
 
         return pytest.mark.parametrize(
-            "db_conn_fn", [(_sqlite_conn), (_pg_conn)], ids=["SQLite", "PostgreSQL"]
+            "db_conn_fn", [(sqlite_conn), (pg_conn)], ids=["SQLite", "PostgreSQL"]
         )(wrapper)
 
     return inner_fn

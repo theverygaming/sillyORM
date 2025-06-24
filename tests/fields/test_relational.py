@@ -1,12 +1,12 @@
 import pytest
 import sillyorm
-from sillyorm.sql import SqlType
+import sqlalchemy
 from sillyorm.exceptions import SillyORMException
-from ..libtest import with_test_env, assert_db_columns
+from ..libtest import with_test_registry, assert_db_columns
 
 
-@with_test_env()
-def test_field_many2one_one2many(env):
+@with_test_registry()
+def test_field_many2one_one2many(registry):
     class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"
 
@@ -19,19 +19,26 @@ def test_field_many2one_one2many(env):
         product = sillyorm.fields.String()
         sale_order_id = sillyorm.fields.Many2one("sale_order")
 
-    env.register_model(SaleOrder)
-    env.register_model(SaleOrderLine)
-    env.init_tables()
+    registry.register_model(SaleOrder)
+    registry.register_model(SaleOrderLine)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
     assert_db_columns(
-        env.cr, "sale_order", [("id", SqlType.integer()), ("name", SqlType.varchar(255))]
+        registry,
+        "sale_order",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+        ],
     )
     assert_db_columns(
-        env.cr,
+        registry,
         "sale_order_line",
         [
-            ("id", SqlType.integer()),
-            ("product", SqlType.varchar(255)),
-            ("sale_order_id", SqlType.integer()),
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("product", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("sale_order_id", sqlalchemy.sql.sqltypes.INTEGER()),
         ],
     )
 

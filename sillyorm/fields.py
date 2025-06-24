@@ -589,7 +589,7 @@ class Many2one(Integer):
     def __init__(self, foreign_model: str, required: bool = False, unique: bool = False):
         super().__init__(required=required, unique=unique)
         self._foreign_model = foreign_model
-        self.constraints += [sql.SqlConstraint.foreign_key(foreign_model, "id")]
+        self.constraints += [sqlalchemy.ForeignKey(f"{foreign_model}.id")]
 
     def __get__(self, record: Model, objtype: Any = None) -> None | Model:
         rec = super().__get__(record, objtype)

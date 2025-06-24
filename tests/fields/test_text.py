@@ -1,15 +1,15 @@
 import pytest
 import sillyorm
-from sillyorm.sql import SqlType
+import sqlalchemy
 from sillyorm.exceptions import SillyORMException
-from ..libtest import with_test_env, assert_db_columns
+from ..libtest import with_test_registry, assert_db_columns
 
 _STRING_1MB = "a" * 1000000
 _STRING_43MB = "the quick brown fox jumps over the lazy dog" * 1000000
 
 
-@with_test_env(True)
-def test_field_text(env, is_second, prev_return):
+@with_test_registry(True)
+def test_field_text(registry, is_second, prev_return):
     class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"
 
@@ -17,12 +17,16 @@ def test_field_text(env, is_second, prev_return):
 
     def assert_columns():
         assert_db_columns(
-            env.cr, "sale_order", [("id", SqlType.integer()), ("name", SqlType.text())]
+            registry,
+            "sale_order",
+            [("id", sqlalchemy.sql.sqltypes.INTEGER()), ("name", sqlalchemy.sql.sqltypes.TEXT())],
         )
 
     def first():
-        env.register_model(SaleOrder)
-        env.init_tables()
+        registry.register_model(SaleOrder)
+        registry.resolve_tables()
+        registry.init_db_tables()
+        env = registry.get_environment(autocommit=True)
         assert_columns()
 
         so_1 = env["sale_order"].create({"name": "order 1"})
@@ -56,8 +60,10 @@ def test_field_text(env, is_second, prev_return):
 
     def second():
         assert_columns()
-        env.register_model(SaleOrder)
-        env.init_tables()
+        registry.register_model(SaleOrder)
+        registry.resolve_tables()
+        registry.init_db_tables()
+        env = registry.get_environment(autocommit=True)
         assert_columns()
         so_1_id, so_2_id, so_3_id = prev_return
         so_1 = env["sale_order"].browse(so_1_id)
