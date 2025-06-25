@@ -44,6 +44,14 @@ sillyorm.model module
    :undoc-members:
    :show-inheritance:
 
+sillyorm.migration_helpers module
+---------------------------------
+
+.. automodule:: sillyorm.migration_helpers
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
