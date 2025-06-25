@@ -60,6 +60,12 @@ class Environment:
             if self.connection.get_transaction() is not None:
                 self.connection.rollback()
             self.connection = cast(sqlalchemy.Connection, None)
+            if self in self.registry._environments_given_out:  # pylint: disable=protected-access
+                self.registry._environments_given_out.remove(  # pylint: disable=protected-access
+                    self
+                )
+            self._models = {}
+            self.registry = None  # type: ignore
 
     def __del__(self) -> None:
         self.close()

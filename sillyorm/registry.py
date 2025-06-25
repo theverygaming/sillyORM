@@ -213,7 +213,7 @@ class Registry:
            each database transaction that requires it (and rollback on error)
         :type autocommit: bool, optional
         """
-        new_env = self.get_environment()
+        new_env = self.get_environment(autocommit)
         try:
             yield new_env
         finally:
