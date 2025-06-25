@@ -30,8 +30,12 @@ def _monkeypatch(registry: Registry, script_template_path: str, migration_folder
     )
 
     def new_generate_template(self, _, dest, **kw):  # type: ignore
-        # type: ignore[arg-type, unused-ignore]
-        orig_generate_template(self, _MP_SCRIPY_TEMPLATE_PATH, dest, **kw)
+        orig_generate_template(
+            self,
+            _MP_SCRIPY_TEMPLATE_PATH,  # type: ignore[arg-type, unused-ignore]
+            dest,
+            **kw,
+        )
 
     alembic.script.ScriptDirectory._generate_template = new_generate_template  # type: ignore  # pylint: disable=protected-access
 
