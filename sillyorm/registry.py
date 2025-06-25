@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import contextlib
 from typing import TYPE_CHECKING, Any, Iterable, Generator, Literal
 import sqlalchemy
 import alembic.migration
@@ -202,3 +203,18 @@ class Registry:
         new_env = Environment(self._models, self.engine.connect(), self, autocommit=autocommit)
         self._environments_given_out.append(new_env)
         return new_env
+
+    @contextlib.contextmanager
+    def environment(self, autocommit: bool = False) -> Generator[Environment, None, None]:
+        """
+        Context manager for environments, will close the environment for you when you are done.
+
+        :param autocommit: Whether to automatically run commit after
+           each database transaction that requires it (and rollback on error)
+        :type autocommit: bool, optional
+        """
+        new_env = self.get_environment()
+        try:
+            yield new_env
+        finally:
+            new_env.close()

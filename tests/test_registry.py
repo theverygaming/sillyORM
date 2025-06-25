@@ -34,3 +34,29 @@ def test_registry_environment_invalidate(registry):
         assert recordset.id == env["a"].browse(recordset.id).id
     with pytest.raises(Exception):
         env["a"].create({})
+
+
+@with_test_registry()
+def test_registry_environment_contextmanager(registry):
+    class Model1(sillyorm.model.Model):
+        _name = "a"
+
+    registry.register_model(Model1)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    with registry.environment() as env:
+        recordset = env["a"].create({})
+        assert recordset.id == env["a"].browse(recordset.id).id
+    with pytest.raises(Exception):
+        assert recordset.id == env["a"].browse(recordset.id).id
+    with pytest.raises(Exception):
+        env["a"].create({})
+
+    registry.reset_full()
+    registry.register_model(Model1)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    with pytest.raises(Exception):
+        assert recordset.id == env["a"].browse(recordset.id).id
+    with pytest.raises(Exception):
+        env["a"].create({})
