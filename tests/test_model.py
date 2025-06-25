@@ -474,3 +474,30 @@ def test_model_subscript(tmp_path, db_conn_fn):
     assert env["test_model"].search([])[0]._ids == [1]
     assert env["test_model"].search([])[1]._ids == [2]
     assert env["test_model"].search([])[2]._ids == [3]
+
+
+@pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
+def test_table_name_sanitize(tmp_path, db_conn_fn):
+    class TestModel(sillyorm.model.Model):
+        _name = "123!@#$%^&*()_=][]\"'  silly goofball\n test.model"
+
+        test = sillyorm.fields.String()
+
+    registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
+    assert_db_columns(
+        registry,
+        "_23___________________silly_goofball__test_model",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("test", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+        ],
+    )
+    r1 = env["123!@#$%^&*()_=][]\"'  silly goofball\n test.model"].create({"test": "hello world!"})
+    r2 = env["123!@#$%^&*()_=][]\"'  silly goofball\n test.model"].create(
+        {"test": "2 hello world!"}
+    )
+
+    assert r1.read(["test"]) == [{"test": "hello world!"}]
+
+    r12 = env["123!@#$%^&*()_=][]\"'  silly goofball\n test.model"].browse([1, 2])
+    assert r12.read(["test"]) == [{"test": "hello world!"}, {"test": "2 hello world!"}]

@@ -18,7 +18,7 @@ Basic usage example
 
    # define a model, a model abstracts a table in the database
    class Example(sillyorm.model.Model):
-       _name = "example"  # database table name & name in environment
+       _name = "example"  # database table name (sanitized) & name in environment
 
        # fields
        name = sillyorm.fields.String(length=255)
