@@ -7,14 +7,13 @@
 
 simple ORM library written in Python
 
-Currently supports
-
+Should work with most DBMS that SQLAlchemy supports as it uses SQLAlchemy core, but it's only tested with
 - SQLite
 - PostgreSQL
 
 > [!CAUTION]
 > :warning: sillyORM is **not ready for use in production environments**.
-> It is still **alpha software** and under development.
+> It is still **beta software** and under development.
 > The API is unstable, and each release may introduce breaking changes.
 > There may even be **security vulnerabilities** present.
 > If you use it anyway, **make sure to pin the version!**
