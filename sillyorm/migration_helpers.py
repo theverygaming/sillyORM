@@ -86,7 +86,7 @@ def helper_init(
     )
 
 
-def helper_do_migrate(revision: str = "head") -> None:
+def helper_do_migrate(revision: str = "head", downgrade: bool = False) -> None:
     """
     Runs migration scripts up to revision
     """
@@ -96,7 +96,10 @@ def helper_do_migrate(revision: str = "head") -> None:
 
     alembic_cfg.set_main_option("script_location", _MP_MIGRATION_FOLDER)
 
-    alembic.command.upgrade(alembic_cfg, revision)
+    if not downgrade:
+        alembic.command.upgrade(alembic_cfg, revision)
+    else:
+        alembic.command.downgrade(alembic_cfg, revision)
 
 
 def helper_gen_migrations(
