@@ -8,10 +8,13 @@ version = "0.11.0"
 description = "an ORM library"
 readme = "README.md"
 requires-python = ">=3.11"
+# FIXME: switch to the new way to specify licenses sometime (BEFORE FEB. 2026!)
+# license = "LGPL-3.0-only"
+# license-files = ["LICENSE"]
 license = {file = "LICENSE"}
 dependencies = [
-    "alembic",
-    "sqlalchemy",
+    "alembic~=1.15.2",
+    "sqlalchemy~=2.0.40",
 ]
 
 [project.optional-dependencies]

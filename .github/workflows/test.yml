@@ -74,3 +74,20 @@ jobs:
         run: |
           cd docs
           make doctest
+
+  test-release-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: build release distributions
+        run: |
+          pip3 install --upgrade build
+          python3 -m build
+      - name: upload dists
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-dists
+          path: dist/
