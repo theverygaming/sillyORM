@@ -12,13 +12,20 @@ _MP = False
 _MP_REGISTRY: Registry = cast(Registry, None)
 _MP_SCRIPY_TEMPLATE_PATH = cast(str, None)
 _MP_MIGRATION_FOLDER = cast(str, None)
+_MP_VERSION_TABLE = cast(str, None)
 
 
-def _monkeypatch(registry: Registry, script_template_path: str, migration_folder_path: str) -> None:
-    global _MP, _MP_REGISTRY, _MP_SCRIPY_TEMPLATE_PATH, _MP_MIGRATION_FOLDER  # pylint: disable=global-statement
+def _monkeypatch(
+    registry: Registry,
+    script_template_path: str,
+    migration_folder_path: str,
+    version_table: str,
+) -> None:
+    global _MP, _MP_REGISTRY, _MP_SCRIPY_TEMPLATE_PATH, _MP_MIGRATION_FOLDER, _MP_VERSION_TABLE  # pylint: disable=global-statement
     _MP_REGISTRY = registry
     _MP_SCRIPY_TEMPLATE_PATH = script_template_path
     _MP_MIGRATION_FOLDER = migration_folder_path
+    _MP_VERSION_TABLE = version_table
     if _MP:
         return
 
@@ -47,6 +54,8 @@ def _monkeypatch(registry: Registry, script_template_path: str, migration_folder
             alembic.context.configure(  # pylint: disable=no-member
                 connection=conn,
                 target_metadata=_MP_REGISTRY.metadata,
+                version_table=_MP_VERSION_TABLE,
+                include_object=_MP_REGISTRY._table_cmp_should_include,  # pylint: disable=protected-access
             )
 
             with alembic.context.begin_transaction():  # pylint: disable=no-member
@@ -56,7 +65,10 @@ def _monkeypatch(registry: Registry, script_template_path: str, migration_folder
 
 
 def helper_init(
-    registry: Registry, migration_folder_path: str, script_template_path: str | None = None
+    registry: Registry,
+    migration_folder_path: str,
+    script_template_path: str | None = None,
+    version_table: str = "alembic_version",
 ) -> None:
     """
     Initialize the migration helper.
@@ -70,6 +82,7 @@ def helper_init(
         script_template_path
         or str(importlib.resources.files("alembic.templates").joinpath("generic/script.py.mako")),
         migration_folder_path,
+        version_table,
     )
 
 
@@ -96,7 +109,13 @@ def helper_gen_migrations(
     if not _MP:
         raise SillyORMException("helper_init not called")
     with _MP_REGISTRY.engine.connect() as conn:
-        context = alembic.runtime.migration.MigrationContext.configure(conn)
+        context = alembic.runtime.migration.MigrationContext.configure(
+            conn,
+            opts={
+                "version_table": _MP_VERSION_TABLE,
+                "include_object": _MP_REGISTRY._table_cmp_should_include,  # pylint: disable=protected-access
+            },
+        )
         migration_script = alembic.autogenerate.produce_migrations(
             context, metadata=_MP_REGISTRY.metadata
         )

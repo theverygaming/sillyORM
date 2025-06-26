@@ -166,14 +166,38 @@ class Registry:
                 repr(model._table),  # pylint: disable=protected-access
             )
 
+    @staticmethod
+    def _table_cmp_should_include(
+        # pylint: disable=unused-argument
+        obj: sqlalchemy.sql.schema.SchemaItem,
+        name: str | None,
+        type_: alembic.runtime.environment.NameFilterType,
+        reflected: bool,
+        compare_to: sqlalchemy.sql.schema.SchemaItem | None,
+    ) -> bool:
+        return True
+
+    def get_schema_diffs(self) -> Any:
+        """
+        Asks Alembic for the differences between the
+        metadata in the registry and the current DB state are
+        """
+        with self.engine.connect() as conn:
+            context = alembic.migration.MigrationContext.configure(
+                conn,
+                opts={
+                    "include_object": self._table_cmp_should_include,
+                },
+            )
+            diffs = alembic.autogenerate.compare_metadata(context, self.metadata)
+        return diffs
+
     def init_db_tables(self, automigrate: Literal["ignore", "none", "safe"] = "safe") -> None:
         """
         Initializes database tables.
         """
         if automigrate != "ignore":
-            conn = self.engine.connect()
-            context = alembic.migration.MigrationContext.configure(conn)
-            diffs = alembic.autogenerate.compare_metadata(context, self.metadata)
+            diffs = self.get_schema_diffs()
             if automigrate == "none" and diffs:
                 raise SillyORMException(
                     f"The DB does not match the schema and automigrate is set to '{automigrate}' -"
@@ -185,7 +209,6 @@ class Registry:
                     "The DB does not match the schema, things other than adding tables must be"
                     f" done and automigrate is set to '{automigrate}' - diffs: {diffs}"
                 )
-            conn.close()
         self.metadata.create_all(self.engine)
 
     def get_environment(self, autocommit: bool = False) -> Environment:
