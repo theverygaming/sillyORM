@@ -9,7 +9,7 @@ from .exceptions import SillyORMException
 _logger = logging.getLogger(__name__)
 
 
-class Model:
+class BaseModel:
     """
     Each model represents a single table in the database.
     A model can have fields which represent columns in the database table.
@@ -65,6 +65,8 @@ class Model:
     _extends = ""
     _inherits: list[str] = []
 
+    _has_table: bool = False
+
     _fields: dict[str, fields.Field] = {}
     _table: sqlalchemy.Table = cast(sqlalchemy.Table, None)
 
@@ -102,7 +104,7 @@ class Model:
         def get_all_fields() -> dict[str, fields.Field]:
             all_fields = {}
             for clsx in cls.__mro__:
-                if not issubclass(clsx, Model):
+                if not issubclass(clsx, BaseModel):
                     break
                 for attr in vars(clsx).values():
                     if not isinstance(attr, fields.Field):
@@ -591,3 +593,19 @@ class Model:
         with self.env.managed_transaction():
             stmt = sqlalchemy.delete(self._table).where(self._table.c.id.in_(self._ids))
             self.env.connection.execute(stmt)
+
+
+class AbstractModel(BaseModel):
+    """
+    Use this as the base for any Abstract Models.
+    Won't create a database table. See :class:`sillyorm.model.BaseModel` for docs
+    """
+
+
+class Model(BaseModel):
+    """
+    Use this as the base for any normal Models.
+    Will create a database table. See :class:`sillyorm.model.BaseModel` for docs
+    """
+
+    _has_table = True

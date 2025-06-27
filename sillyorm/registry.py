@@ -159,6 +159,9 @@ class Registry:
             _build_model_inheritance(model_name)
 
         for model in self._models.values():
+            model._build_fields_list()  # pylint: disable=protected-access
+            if not model._has_table:  # pylint: disable=protected-access
+                continue
             model._build_sqlalchemy_table(self.metadata)  # pylint: disable=protected-access
             _logger.debug(
                 "table for model '%s': %s",

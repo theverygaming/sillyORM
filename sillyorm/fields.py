@@ -6,7 +6,7 @@ import sqlalchemy
 from .exceptions import SillyORMException
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .model import Model
+    from .model import BaseModel
 
 _logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ _logger = logging.getLogger(__name__)
 
 class Field:
     """
-    Base descriptor class for :class:`Model <sillyorm.model.Model>` fields
+    Base descriptor class for :class:`BaseModel <sillyorm.model.BaseModel>` fields
 
     :cvar sql_type: SQL type of the field
     :vartype sql_type: :class:`sqlalchemy.types.TypeEngine`
@@ -59,7 +59,7 @@ class Field:
         if self.unique:
             self.constraints.append(("unique", True))
 
-    def __set_name__(self, record: Model, name: str) -> None:
+    def __set_name__(self, record: BaseModel, name: str) -> None:
         self.name = name
 
     def _convert_type_get(self, value: Any) -> Any:
@@ -70,13 +70,13 @@ class Field:
             raise SillyORMException(f"attempted to set required field '{self.name}' to '{value}'")
         return value
 
-    def __get__(self, record: Model, objtype: Any = None) -> Any | list[Any]:
+    def __get__(self, record: BaseModel, objtype: Any = None) -> Any | list[Any]:
         record.ensure_one()
         sql_result = record._read([self.name])
         result = [self._convert_type_get(res[self.name]) for res in sql_result]
         return result[0]
 
-    def __set__(self, record: Model, value: Any) -> None:
+    def __set__(self, record: BaseModel, value: Any) -> None:
         if value is None:
             record._write({self.name: value})
         record._write({self.name: self._convert_type_set(value)})
@@ -133,7 +133,7 @@ class Integer(Field):
             raise SillyORMException("Integer value must be int")
         return super()._convert_type_set(value)
 
-    def __set__(self, record: Model, value: int | None) -> None:
+    def __set__(self, record: BaseModel, value: int | None) -> None:
         super().__set__(record, value)
 
 
@@ -182,7 +182,7 @@ class Float(Field):
             raise SillyORMException("Float value must be float")
         return super()._convert_type_set(value)
 
-    def __set__(self, record: Model, value: float | None) -> None:
+    def __set__(self, record: BaseModel, value: float | None) -> None:
         super().__set__(record, value)
 
 
@@ -213,11 +213,11 @@ class Id(Integer):
         super().__init__(required=required, unique=unique)
         self.constraints += [("primary_key", True)]
 
-    def __get__(self, record: Model, objtype: Any = None) -> int:
+    def __get__(self, record: BaseModel, objtype: Any = None) -> int:
         record.ensure_one()
         return record._ids[0]
 
-    def __set__(self, record: Model, value: Any) -> None:
+    def __set__(self, record: BaseModel, value: Any) -> None:
         raise SillyORMException("cannot set id")
 
 
@@ -265,7 +265,7 @@ class String(Field):
             raise SillyORMException("String value must be str")
         return super()._convert_type_set(value)
 
-    def __set__(self, record: Model, value: str | None) -> None:
+    def __set__(self, record: BaseModel, value: str | None) -> None:
         super().__set__(record, value)
 
 
@@ -310,7 +310,7 @@ class Text(Field):
             raise SillyORMException("Text value must be str")
         return super()._convert_type_set(value)
 
-    def __set__(self, record: Model, value: str | None) -> None:
+    def __set__(self, record: BaseModel, value: str | None) -> None:
         super().__set__(record, value)
 
 
@@ -355,7 +355,7 @@ class Date(Field):
             raise SillyORMException("Date value must be date")
         return super()._convert_type_set(value)
 
-    def __set__(self, record: Model, value: datetime.date | None) -> None:
+    def __set__(self, record: BaseModel, value: datetime.date | None) -> None:
         super().__set__(record, value)
 
 
@@ -419,7 +419,7 @@ class Datetime(Field):
             value = value.replace(tzinfo=None)
         return super()._convert_type_set(value)
 
-    def __set__(self, record: Model, value: datetime.datetime | None) -> None:
+    def __set__(self, record: BaseModel, value: datetime.datetime | None) -> None:
         super().__set__(record, value)
 
 
@@ -469,7 +469,7 @@ class Boolean(Field):
             raise SillyORMException("Boolean value must be bool")
         return super()._convert_type_set(value)
 
-    def __set__(self, record: Model, value: bool | None) -> None:
+    def __set__(self, record: BaseModel, value: bool | None) -> None:
         super().__set__(record, value)
 
 
@@ -575,13 +575,13 @@ class Many2one(Integer):
         self._foreign_model = foreign_model
         self.constraints += [sqlalchemy.ForeignKey(f"{foreign_model}.id")]
 
-    def __get__(self, record: Model, objtype: Any = None) -> None | Model:
+    def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
         rec = super().__get__(record, objtype)
         if rec is None:
             return None
         return record.env[self._foreign_model].browse(rec)
 
-    def __set__(self, record: Model, value: Model | None) -> None:  # type: ignore[override]
+    def __set__(self, record: BaseModel, value: BaseModel | None) -> None:  # type: ignore[override]
         if value is None:
             super().__set__(record, value)
             return
@@ -642,9 +642,9 @@ class One2many(Field):
         self._foreign_model = foreign_model
         self._foreign_field = foreign_field
 
-    def __get__(self, record: Model, objtype: Any = None) -> None | Model:
+    def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
         record.ensure_one()
         return record.env[self._foreign_model].search([(self._foreign_field, "=", record.id)])
 
-    def __set__(self, record: Model, value: Model) -> None:
+    def __set__(self, record: BaseModel, value: BaseModel) -> None:
         raise NotImplementedError()
