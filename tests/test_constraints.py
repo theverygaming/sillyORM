@@ -2,14 +2,12 @@ import pytest
 import psycopg2
 import sqlite3
 import sillyorm
-from sillyorm.sql import SqlType
-from sillyorm.dbms.sqlite import SQLiteCursor
-from sillyorm.dbms.postgresql import PostgreSQLCursor
-from .libtest import with_test_env, assert_db_columns
+import sqlalchemy
+from .libtest import with_test_registry, assert_db_columns
 
 
-@with_test_env()
-def test_constraints(env):
+@with_test_registry()
+def test_constraints(registry):
     class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"
 
@@ -28,27 +26,29 @@ def test_constraints(env):
         # FOREIGN KEY, UNIQUE
         sale_order_id = sillyorm.fields.Many2one("sale_order", unique=True)
 
-    env.register_model(SaleOrder)
-    env.register_model(SaleOrderLine)
-    env.init_tables()
+    registry.register_model(SaleOrder)
+    registry.register_model(SaleOrderLine)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
     assert_db_columns(
-        env.cr,
+        registry,
         "sale_order",
         [
-            ("id", SqlType.integer()),
-            ("name", SqlType.varchar(255)),
-            ("boringField", SqlType.varchar(255)),
-            ("some_identifier_1", SqlType.varchar(255)),
-            ("some_identifier_2", SqlType.text()),
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("boringField", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("some_identifier_1", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("some_identifier_2", sqlalchemy.sql.sqltypes.TEXT()),
         ],
     )
     assert_db_columns(
-        env.cr,
+        registry,
         "sale_order_line",
         [
-            ("id", SqlType.integer()),
-            ("name", SqlType.varchar(255)),
-            ("sale_order_id", SqlType.integer()),
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("sale_order_id", sqlalchemy.sql.sqltypes.INTEGER()),
         ],
     )
 
@@ -63,7 +63,7 @@ def test_constraints(env):
     )
 
     # test NOT NULL on SaleOrder
-    env.cr.commit()
+    env.connection.commit()
     for field_name in ["name", "some_identifier_2"]:
         vals = {
             "name": "name: test",
@@ -76,22 +76,17 @@ def test_constraints(env):
             env["sale_order"].create({**vals, field_name: None})
         assert str(e_info.value) == f"attempted to set required field '{field_name}' to 'None'"
         # Actual DB constraint
-        if isinstance(env.cr, PostgreSQLCursor):
-            err_type = psycopg2.errors.NotNullViolation
-            err_txt = (
-                f'null value in column "{field_name}" of relation "sale_order" violates not-null'
-                " constraint"
-            )
-        else:
-            err_type = sqlite3.IntegrityError
-            err_txt = f"NOT NULL constraint failed: sale_order.{field_name}"
-        with pytest.raises(err_type) as e_info:
+        with pytest.raises(sqlalchemy.exc.IntegrityError) as e_info:
             env["sale_order"].create(vals)
-        assert err_txt in str(e_info.value)
-        env.cr.rollback()
+        assert f"NOT NULL constraint failed: sale_order.{field_name}" in str(
+            e_info.value
+        ) or f'(psycopg2.errors.NotNullViolation) null value in column "{field_name}" of relation "sale_order"' in str(
+            e_info.value
+        )
+        env.connection.rollback()
 
     # test UNIQUE on SaleOrder
-    env.cr.commit()
+    env.connection.commit()
     for field_name in ["some_identifier_1", "some_identifier_2"]:
 
         def _get_vals(n):
@@ -106,30 +101,26 @@ def test_constraints(env):
         # first one should be oki
         env["sale_order"].create(_get_vals(0))
         # Actual DB constraint
-        if isinstance(env.cr, PostgreSQLCursor):
-            err_type = psycopg2.errors.UniqueViolation
-            err_txt = "duplicate key value violates unique constraint"
-        else:
-            err_type = sqlite3.IntegrityError
-            err_txt = f"UNIQUE constraint failed: sale_order.{field_name}"
-        with pytest.raises(err_type) as e_info:
+        with pytest.raises(sqlalchemy.exc.IntegrityError) as e_info:
             env["sale_order"].create(_get_vals(1))
-        assert err_txt in str(e_info.value)
-        env.cr.rollback()
+        assert f"UNIQUE constraint failed: sale_order.{field_name}" in str(
+            e_info.value
+        ) or f'(psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "sale_order_{field_name}_key"' in str(
+            e_info.value
+        )
+        env.connection.rollback()
 
     # test UNIQUE on SaleOrderLine with foreign key
-    env.cr.commit()
+    env.connection.commit()
     vals = {"name": "name: test", "sale_order_id": so_1.id}
     # first one should be oki
     env["sale_order_line"].create(vals)
-    env.cr.commit()
-    if isinstance(env.cr, PostgreSQLCursor):
-        err_type = psycopg2.errors.UniqueViolation
-        err_txt = "duplicate key value violates unique constraint"
-    else:
-        err_type = sqlite3.IntegrityError
-        err_txt = f"UNIQUE constraint failed: sale_order_line.sale_order_id"
-    with pytest.raises(err_type) as e_info:
+    env.connection.commit()
+    with pytest.raises(sqlalchemy.exc.IntegrityError) as e_info:
         env["sale_order_line"].create(vals)
-    assert err_txt in str(e_info.value)
-    env.cr.rollback()
+    assert f"UNIQUE constraint failed: sale_order_line.sale_order_id" in str(
+        e_info.value
+    ) or f'(psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "sale_order_line_sale_order_id_key"' in str(
+        e_info.value
+    )
+    env.connection.rollback()

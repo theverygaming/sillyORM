@@ -1,15 +1,15 @@
 import pytest
 import datetime
 import sillyorm
-from sillyorm.sql import SqlType
+import sqlalchemy
 from sillyorm.exceptions import SillyORMException
-from ..libtest import with_test_env, assert_db_columns
+from ..libtest import with_test_registry, assert_db_columns
 
 TZ_EST = datetime.timezone(datetime.timedelta(hours=-5))
 
 
-@with_test_env(True)
-def test_field_datetime(env, is_second, prev_return):
+@with_test_registry(True, with_request=True)
+def test_field_datetime(request, registry, is_second, prev_return):
     class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"
 
@@ -17,19 +17,26 @@ def test_field_datetime(env, is_second, prev_return):
         time_est = sillyorm.fields.Datetime(TZ_EST)
 
     def assert_columns():
+        ts_type = (
+            sqlalchemy.dialects.postgresql.types.TIMESTAMP()
+            if request.node.callspec.id == "PostgreSQL"
+            else sqlalchemy.sql.sqltypes.DATETIME()
+        )
         assert_db_columns(
-            env.cr,
+            registry,
             "sale_order",
             [
-                ("id", SqlType.integer()),
-                ("time", SqlType.timestamp()),
-                ("time_est", SqlType.timestamp()),
+                ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+                ("time", ts_type),
+                ("time_est", ts_type),
             ],
         )
 
     def first():
-        env.register_model(SaleOrder)
-        env.init_tables()
+        registry.register_model(SaleOrder)
+        registry.resolve_tables()
+        registry.init_db_tables()
+        env = registry.get_environment(autocommit=True)
         assert_columns()
 
         so_1 = env["sale_order"].create(
@@ -71,8 +78,10 @@ def test_field_datetime(env, is_second, prev_return):
 
     def second():
         assert_columns()
-        env.register_model(SaleOrder)
-        env.init_tables()
+        registry.register_model(SaleOrder)
+        registry.resolve_tables()
+        registry.init_db_tables()
+        env = registry.get_environment(autocommit=True)
         assert_columns()
         so_1_id, so_2_id = prev_return
         so_1 = env["sale_order"].browse(so_1_id)
@@ -92,15 +101,17 @@ def test_field_datetime(env, is_second, prev_return):
         return first()
 
 
-@with_test_env(False)
-def test_field_datetime_search(env):
+@with_test_registry(False)
+def test_field_datetime_search(registry):
     class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"
 
         time = sillyorm.fields.Datetime(None)
 
-    env.register_model(SaleOrder)
-    env.init_tables()
+    registry.register_model(SaleOrder)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
 
     so_1 = env["sale_order"].create({"time": datetime.datetime(2025, 1, 30, 20, 24, 28)})
     so_2 = env["sale_order"].create({"time": datetime.datetime(2025, 1, 30, 20, 24, 29)})

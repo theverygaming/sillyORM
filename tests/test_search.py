@@ -1,20 +1,21 @@
 import pytest
 import datetime
 import sillyorm
-from sillyorm.sql import SqlType
 from sillyorm.exceptions import SillyORMException
-from .libtest import with_test_env, assert_db_columns
+from .libtest import with_test_registry, assert_db_columns
 
 
-@with_test_env(False)
-def test_search_none(env):
+@with_test_registry(False)
+def test_search_none(registry):
     class Test(sillyorm.model.Model):
         _name = "test"
 
         s = sillyorm.fields.String()
 
-    env.register_model(Test)
-    env.init_tables()
+    registry.register_model(Test)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
 
     so_1 = env["test"].create({"s": "some value 1"})
     so_2 = env["test"].create({})
@@ -32,15 +33,17 @@ def test_search_none(env):
     ]
 
 
-@with_test_env(False)
-def test_search_like(env):
+@with_test_registry(False)
+def test_search_ilike(registry):
     class Test(sillyorm.model.Model):
         _name = "test"
 
         s = sillyorm.fields.String()
 
-    env.register_model(Test)
-    env.init_tables()
+    registry.register_model(Test)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
 
     so_1 = env["test"].create({"s": "bla bla uwu bla bla"})
     so_2 = env["test"].create({})
