@@ -415,7 +415,7 @@ class Datetime(Field):
     sql_type = sql.SqlType.timestamp()
 
     def __init__(
-        self, tzinfo: datetime.tzinfo | None, required: bool = False, unique: bool = False
+        self, tzinfo: datetime.tzinfo = None, required: bool = False, unique: bool = False
     ) -> None:
         super().__init__(required=required, unique=unique)
         self.tzinfo = tzinfo
