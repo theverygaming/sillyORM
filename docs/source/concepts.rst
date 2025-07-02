@@ -7,10 +7,9 @@ Basic concepts
 
    import tempfile
    import sillyorm
-   from sillyorm.dbms import sqlite
 
    tmpfile = tempfile.NamedTemporaryFile()
-   env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+   registry = sillyorm.Registry(f"sqlite:///{tmpfile.name}")
 
 ------
 Models
@@ -27,11 +26,10 @@ and the name of the model in the :ref:`environment <environment>`.
    class ExampleModel(sillyorm.model.Model):
        _name = "example0"
 
-   env.register_model(ExampleModel)
-   env.init_tables()
-
-When a model is registered the ORM ensures the table with all required fields is created.
-If any columns/fields exist in the database but are not specified in the model **they will be removed in the database**.
+   registry.register_model(ExampleModel)
+   registry.resolve_tables()
+   registry.init_db_tables()
+   env = registry.get_environment()
 
 .. warning::
    You should never call the constructor of the model class yourself.
@@ -51,9 +49,11 @@ Standard Python Inheritance:
        _name = "example_inheritance_copy"
        field2 = sillyorm.fields.String()
 
-   env.register_model(ExampleModel)
-   env.register_model(ExampleModelCopy)
-   env.init_tables()
+   registry.register_model(ExampleModel)
+   registry.register_model(ExampleModelCopy)
+   registry.resolve_tables()
+   registry.init_db_tables()
+   env = registry.get_environment()
    env["example_inheritance"].create({}).field1
    env["example_inheritance_copy"].create({}).field1
    env["example_inheritance_copy"].create({}).field2
@@ -79,9 +79,11 @@ Extension:
        # adds a new field to the original model
        field3 = sillyorm.fields.String()
 
-   env.register_model(ExampleModel)
-   env.register_model(ExampleModelExtension)
-   env.init_tables()
+   registry.register_model(ExampleModel)
+   registry.register_model(ExampleModelExtension)
+   registry.resolve_tables()
+   registry.init_db_tables()
+   env = registry.get_environment()
    env["example_extension"].create({}).field1
    env["example_extension"].create({}).field2
    env["example_extension"].create({}).field3
@@ -102,9 +104,11 @@ Inheritance (via ORM):
        _inherits = ["example_orm_inheritance"] # order matters here (later in array has higher priority)
        field2 = sillyorm.fields.String()
 
-   env.register_model(ExampleModel)
-   env.register_model(ExampleModelCopy)
-   env.init_tables()
+   registry.register_model(ExampleModel)
+   registry.register_model(ExampleModelCopy)
+   registry.resolve_tables()
+   registry.init_db_tables()
+   env = registry.get_environment()
    env["example_orm_inheritance"].create({}).field1
    env["example_orm_inheritance_copy"].create({}).field1
    env["example_orm_inheritance_copy"].create({}).field2
@@ -131,13 +135,32 @@ Inheritance (via ORM) and extension may also be combined:
        _inherits = ["example_orm_ext_inheritance_somefield"] # order matters here (later in array has higher priority)
        field2 = sillyorm.fields.String()
 
-   env.register_model(ExampleModelSomefield)
-   env.register_model(ExampleModel)
-   env.register_model(ExampleModelCopy)
-   env.init_tables()
+   registry.register_model(ExampleModelSomefield)
+   registry.register_model(ExampleModel)
+   registry.register_model(ExampleModelCopy)
+   registry.resolve_tables()
+   registry.init_db_tables()
+   env = registry.get_environment()
    env["example_orm_ext_inheritance"].create({}).somefield
    env["example_orm_ext_inheritance"].create({}).field1
    env["example_orm_ext_inheritance"].create({}).field2
+
+
+.. _registry:
+
+--------
+Registry
+--------
+
+The :class:`Registry <sillyorm.registry.Registry>` class keeps track of the database connection pool and Model classes.
+
+You can create :ref:`environments <environment>` (kinda like DB cursors) from the registry.
+
+.. doctest:: models_concept
+
+   >>> new_env = registry.get_environment(autocommit=True)
+   >>> type(new_env)
+   <class 'sillyorm.environment.Environment'>
 
 
 .. _environment:
@@ -163,13 +186,13 @@ The environment can be accessed from each :ref:`recordset <recordsets>`
    >>> type(env["example0"].env)
    <class 'sillyorm.environment.Environment'>
 
-The database cursor can be accessed from the environment
+The database connection can be accessed from the environment
 
 .. doctest:: models_concept
 
-   # the database cursor can be accessed from the environment
-   >>> type(env.cr)
-   <class 'sillyorm.dbms.sqlite.SQLiteCursor'>
+   # the database connection can be accessed from the environment
+   >>> type(env.connection)
+   <class 'sqlalchemy.engine.base.Connection'>
 
 
 ------
@@ -204,8 +227,10 @@ The attribute name specifies the column name in the database.
        name = sillyorm.fields.String()
        test = sillyorm.fields.String()
 
-   env.register_model(ExampleModel)
-   env.init_tables()
+   registry.register_model(ExampleModel)
+   registry.resolve_tables()
+   registry.init_db_tables()
+   env = registry.get_environment()
 
 
 .. _recordsets:
@@ -323,8 +348,10 @@ A model can have functions
            for record in self:
                print(f"it: {self}") 
 
-   env.register_model(ExampleModel)
-   env.init_tables()
+   registry.register_model(ExampleModel)
+   registry.resolve_tables()
+   registry.init_db_tables()
+   env = registry.get_environment()
    record = env["example2"].create({"name": "test"})
    record.somefunc()
 

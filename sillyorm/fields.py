@@ -2,11 +2,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 import logging
 import datetime
-from . import sql
+import sqlalchemy
 from .exceptions import SillyORMException
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .model import Model
+    from .model import BaseModel
 
 _logger = logging.getLogger(__name__)
 
@@ -15,15 +15,15 @@ _logger = logging.getLogger(__name__)
 
 class Field:
     """
-    Base descriptor class for :class:`Model <sillyorm.model.Model>` fields
+    Base descriptor class for :class:`BaseModel <sillyorm.model.BaseModel>` fields
 
     :cvar sql_type: SQL type of the field
-    :vartype sql_type: :class:`sillyorm.sql.SqlType`
+    :vartype sql_type: :class:`sqlalchemy.types.TypeEngine`
     :cvar materialize: Whether the field actually exists as a column in the database table
     :vartype materialize: bool
 
     :ivar constraints: SQL constraints of the field
-    :vartype constraints: list[:class:`sillyorm.sql.SqlConstraint`]
+    :vartype constraints: list[sqlalchemy.schema.Constraint | tuple[str, Any]]
     :ivar name: column name of the field
     :vartype name: str
     :ivar required: If the field must be set (checked via SQL constraints and runtime checks)
@@ -40,7 +40,7 @@ class Field:
     """
 
     # __must__ be set by all fields
-    sql_type: sql.SqlType = cast(sql.SqlType, None)
+    sql_type: sqlalchemy.types.TypeEngine[Any] = cast(sqlalchemy.types.TypeEngine[Any], None)
 
     # default values
     materialize = True  # if the field should actually exist in tables
@@ -49,29 +49,17 @@ class Field:
     name: str = cast(str, None)
 
     def __init__(self, required: bool = False, unique: bool = False) -> None:
-        self.constraints: list[sql.SqlConstraint] = []
+        self.constraints: list[sqlalchemy.schema.SchemaItem | tuple[str, Any]] = []
         self.required = required
         self.unique = unique
         if self.materialize and self.sql_type is None:
             raise SillyORMException("sql_type must be set for all fields that materialize")
         if self.required:
-            self.constraints.append(sql.SqlConstraint.not_null())
+            self.constraints.append(("nullable", False))
         if self.unique:
-            self.constraints.append(sql.SqlConstraint.unique())
+            self.constraints.append(("unique", True))
 
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}(name={self.name}, sql_type={self.sql_type})"
-
-    def model_post_init(self, record: Model) -> None:
-        """
-        Called by the :class:`Model <sillyorm.model.Model>`
-        after the table is initialized
-
-        :param record: The :class:`Model <sillyorm.model.Model>` the field is in
-        :type record: :class:`Model <sillyorm.model.Model>`
-        """
-
-    def __set_name__(self, record: Model, name: str) -> None:
+    def __set_name__(self, record: BaseModel, name: str) -> None:
         self.name = name
 
     def _convert_type_get(self, value: Any) -> Any:
@@ -82,13 +70,13 @@ class Field:
             raise SillyORMException(f"attempted to set required field '{self.name}' to '{value}'")
         return value
 
-    def __get__(self, record: Model, objtype: Any = None) -> Any | list[Any]:
+    def __get__(self, record: BaseModel, objtype: Any = None) -> Any | list[Any]:
         record.ensure_one()
         sql_result = record._read([self.name])
         result = [self._convert_type_get(res[self.name]) for res in sql_result]
         return result[0]
 
-    def __set__(self, record: Model, value: Any) -> None:
+    def __set__(self, record: BaseModel, value: Any) -> None:
         if value is None:
             record._write({self.name: value})
         record._write({self.name: self._convert_type_set(value)})
@@ -103,10 +91,15 @@ class Integer(Field):
 
        import tempfile
        import sillyorm
-       from sillyorm.dbms import sqlite
 
-       tmpfile = tempfile.NamedTemporaryFile()
-       env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+       def reinit_env(m):
+           registry = sillyorm.Registry(f"sqlite:///:memory:")
+           for x in m:
+               registry.register_model(x)
+           registry.resolve_tables()
+           registry.init_db_tables()
+           env = registry.get_environment()
+           return env
 
     .. testcode:: models_fields
 
@@ -114,8 +107,7 @@ class Integer(Field):
            _name = "example0"
            field = sillyorm.fields.Integer()
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example0"].create({"field": 5})
        print(record.field)
@@ -134,14 +126,14 @@ class Integer(Field):
        None
     """
 
-    sql_type = sql.SqlType.integer()
+    sql_type = sqlalchemy.types.Integer()
 
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, int) and value is not None:
             raise SillyORMException("Integer value must be int")
         return super()._convert_type_set(value)
 
-    def __set__(self, record: Model, value: int | None) -> None:
+    def __set__(self, record: BaseModel, value: int | None) -> None:
         super().__set__(record, value)
 
 
@@ -154,10 +146,9 @@ class Float(Field):
 
        import tempfile
        import sillyorm
-       from sillyorm.dbms import sqlite
 
        tmpfile = tempfile.NamedTemporaryFile()
-       env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+       registry = sillyorm.Registry(f"sqlite:///{tmpfile.name}")
 
     .. testcode:: models_fields
 
@@ -165,8 +156,7 @@ class Float(Field):
            _name = "example_float"
            field = sillyorm.fields.Float()
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example_float"].create({"field": 32768.123321})
        print(record.field)
@@ -185,14 +175,14 @@ class Float(Field):
        None
     """
 
-    sql_type = sql.SqlType.float()
+    sql_type = sqlalchemy.types.Float()
 
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, float) and value is not None:
             raise SillyORMException("Float value must be float")
         return super()._convert_type_set(value)
 
-    def __set__(self, record: Model, value: float | None) -> None:
+    def __set__(self, record: BaseModel, value: float | None) -> None:
         super().__set__(record, value)
 
 
@@ -206,8 +196,7 @@ class Id(Integer):
            _name = "example1"
            # Each model automatically has an ID field
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example1"].create({})
        record2 = env["example1"].create({})
@@ -222,13 +211,13 @@ class Id(Integer):
 
     def __init__(self, required: bool = False, unique: bool = False) -> None:
         super().__init__(required=required, unique=unique)
-        self.constraints += [sql.SqlConstraint.primary_key()]
+        self.constraints += [("primary_key", True)]
 
-    def __get__(self, record: Model, objtype: Any = None) -> int:
+    def __get__(self, record: BaseModel, objtype: Any = None) -> int:
         record.ensure_one()
         return record._ids[0]
 
-    def __set__(self, record: Model, value: Any) -> None:
+    def __set__(self, record: BaseModel, value: Any) -> None:
         raise SillyORMException("cannot set id")
 
 
@@ -242,8 +231,7 @@ class String(Field):
            _name = "example2"
            field = sillyorm.fields.String()
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example2"].create({"field": "hello"})
        print(record.field)
@@ -269,7 +257,7 @@ class String(Field):
         required: bool = False,
         unique: bool = False,
     ) -> None:
-        self.sql_type = sql.SqlType.varchar(length)
+        self.sql_type = sqlalchemy.types.String(length)
         super().__init__(required=required, unique=unique)
 
     def _convert_type_set(self, value: Any) -> Any:
@@ -277,7 +265,7 @@ class String(Field):
             raise SillyORMException("String value must be str")
         return super()._convert_type_set(value)
 
-    def __set__(self, record: Model, value: str | None) -> None:
+    def __set__(self, record: BaseModel, value: str | None) -> None:
         super().__set__(record, value)
 
 
@@ -291,8 +279,7 @@ class Text(Field):
            _name = "example_text"
            field = sillyorm.fields.Text()
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example_text"].create({"field": "hello"})
        print(record.field)
@@ -315,7 +302,7 @@ class Text(Field):
     """
 
     def __init__(self, required: bool = False, unique: bool = False) -> None:
-        self.sql_type = sql.SqlType.text()
+        self.sql_type = sqlalchemy.types.Text()
         super().__init__(required=required, unique=unique)
 
     def _convert_type_set(self, value: Any) -> Any:
@@ -323,7 +310,7 @@ class Text(Field):
             raise SillyORMException("Text value must be str")
         return super()._convert_type_set(value)
 
-    def __set__(self, record: Model, value: str | None) -> None:
+    def __set__(self, record: BaseModel, value: str | None) -> None:
         super().__set__(record, value)
 
 
@@ -339,8 +326,7 @@ class Date(Field):
            _name = "example3"
            field = sillyorm.fields.Date()
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example3"].create({"field": datetime.date(1970, 1, 1)})
        print(record.field)
@@ -357,11 +343,9 @@ class Date(Field):
 
     """
 
-    sql_type = sql.SqlType.date()
+    sql_type = sqlalchemy.types.Date()
 
     def _convert_type_get(self, value: Any) -> Any:
-        if isinstance(value, str):
-            return datetime.date.fromisoformat(value)
         return value
 
     def _convert_type_set(self, value: Any) -> Any:
@@ -371,7 +355,7 @@ class Date(Field):
             raise SillyORMException("Date value must be date")
         return super()._convert_type_set(value)
 
-    def __set__(self, record: Model, value: datetime.date | None) -> None:
+    def __set__(self, record: BaseModel, value: datetime.date | None) -> None:
         super().__set__(record, value)
 
 
@@ -379,8 +363,8 @@ class Datetime(Field):
     """
     Datetime field. Represents a python datetime object.
 
-    A timezone (or none at all - which means it's naive) must be provided because in the database
-    this field does not store any timzeone-related information.
+    A timezone (or the value `None` - which means it's naive) must be
+    provided because in the database this field may not store any timzeone-related information.
     Mixing timezones would be fatal so this field takes care of that for you.
 
     :param tzinfo: time zone of the date stored - None means it's a naive datetime object
@@ -394,8 +378,7 @@ class Datetime(Field):
            _name = "example_datetime"
            field = sillyorm.fields.Datetime(None)
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example_datetime"].create({"field": datetime.datetime(1970, 1, 1, 1, 2, 3)})
        print(record.field)
@@ -412,7 +395,7 @@ class Datetime(Field):
 
     """
 
-    sql_type = sql.SqlType.timestamp()
+    sql_type = sqlalchemy.types.DateTime()
 
     def __init__(
         self, tzinfo: datetime.tzinfo | None, required: bool = False, unique: bool = False
@@ -422,8 +405,6 @@ class Datetime(Field):
 
     def _convert_type_get(self, value: Any) -> Any:
         if value is not None:
-            if isinstance(value, str):
-                value = datetime.datetime.fromisoformat(value)
             return value.replace(tzinfo=self.tzinfo)
         return value
 
@@ -438,7 +419,7 @@ class Datetime(Field):
             value = value.replace(tzinfo=None)
         return super()._convert_type_set(value)
 
-    def __set__(self, record: Model, value: datetime.datetime | None) -> None:
+    def __set__(self, record: BaseModel, value: datetime.datetime | None) -> None:
         super().__set__(record, value)
 
 
@@ -450,10 +431,9 @@ class Boolean(Field):
 
        import tempfile
        import sillyorm
-       from sillyorm.dbms import sqlite
 
        tmpfile = tempfile.NamedTemporaryFile()
-       env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+       registry = sillyorm.Registry(f"sqlite:///{tmpfile.name}")
 
     .. testcode:: models_fields
 
@@ -461,8 +441,7 @@ class Boolean(Field):
            _name = "example_bool"
            field = sillyorm.fields.Boolean()
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example_bool"].create({"field": True})
        print(record.field)
@@ -478,7 +457,7 @@ class Boolean(Field):
        None
     """
 
-    sql_type = sql.SqlType.boolean()
+    sql_type = sqlalchemy.types.Boolean()
 
     def _convert_type_get(self, value: Any) -> Any:
         if isinstance(value, int):
@@ -490,7 +469,7 @@ class Boolean(Field):
             raise SillyORMException("Boolean value must be bool")
         return super()._convert_type_set(value)
 
-    def __set__(self, record: Model, value: bool | None) -> None:
+    def __set__(self, record: BaseModel, value: bool | None) -> None:
         super().__set__(record, value)
 
 
@@ -504,10 +483,9 @@ class Selection(String):
 
        import tempfile
        import sillyorm
-       from sillyorm.dbms import sqlite
 
        tmpfile = tempfile.NamedTemporaryFile()
-       env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+       registry = sillyorm.Registry(f"sqlite:///{tmpfile.name}")
 
     .. testcode:: models_fields
 
@@ -515,8 +493,7 @@ class Selection(String):
            _name = "example_selection"
            field = sillyorm.fields.Selection(["option1", "option2"])
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       env = reinit_env([ExampleModel])
 
        record = env["example_selection"].create({"field": "option1"})
        print(record.field)
@@ -567,9 +544,7 @@ class Many2one(Integer):
            _name = "example5"
            many2one_field = sillyorm.fields.Many2one("example4")
 
-       env.register_model(ExampleModel1)
-       env.register_model(ExampleModel2)
-       env.init_tables()
+       env = reinit_env([ExampleModel1, ExampleModel2])
 
        other_record = env["example4"].create({"field": "Hello world!"})
        record = env["example5"].create({"many2one_field": other_record.id})
@@ -598,15 +573,15 @@ class Many2one(Integer):
     def __init__(self, foreign_model: str, required: bool = False, unique: bool = False):
         super().__init__(required=required, unique=unique)
         self._foreign_model = foreign_model
-        self.constraints += [sql.SqlConstraint.foreign_key(foreign_model, "id")]
+        self.constraints += [sqlalchemy.ForeignKey(f"{foreign_model}.id")]
 
-    def __get__(self, record: Model, objtype: Any = None) -> None | Model:
+    def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
         rec = super().__get__(record, objtype)
         if rec is None:
             return None
         return record.env[self._foreign_model].browse(rec)
 
-    def __set__(self, record: Model, value: Model | None) -> None:  # type: ignore[override]
+    def __set__(self, record: BaseModel, value: BaseModel | None) -> None:  # type: ignore[override]
         if value is None:
             super().__set__(record, value)
             return
@@ -635,9 +610,7 @@ class One2many(Field):
            _name = "example7"
            many2one_field = sillyorm.fields.Many2one("example6")
 
-       env.register_model(ExampleModel1)
-       env.register_model(ExampleModel2)
-       env.init_tables()
+       env = reinit_env([ExampleModel1, ExampleModel2])
 
        other_record = env["example6"].create({})
        record = env["example7"].create({"many2one_field": other_record.id})
@@ -669,9 +642,9 @@ class One2many(Field):
         self._foreign_model = foreign_model
         self._foreign_field = foreign_field
 
-    def __get__(self, record: Model, objtype: Any = None) -> None | Model:
+    def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
         record.ensure_one()
         return record.env[self._foreign_model].search([(self._foreign_field, "=", record.id)])
 
-    def __set__(self, record: Model, value: Model) -> None:
+    def __set__(self, record: BaseModel, value: BaseModel) -> None:
         raise NotImplementedError()

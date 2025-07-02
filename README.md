@@ -7,14 +7,13 @@
 
 simple ORM library written in Python
 
-Currently supports
-
+Should work with most DBMS that SQLAlchemy supports as it uses SQLAlchemy core, but it's only tested with
 - SQLite
 - PostgreSQL
 
 > [!CAUTION]
 > :warning: sillyORM is **not ready for use in production environments**.
-> It is still **alpha software** and under development.
+> It is still **beta software** and under development.
 > The API is unstable, and each release may introduce breaking changes.
 > There may even be **security vulnerabilities** present.
 > If you use it anyway, **make sure to pin the version!**
@@ -34,27 +33,26 @@ pip install sillyorm
 
 ```python
 import sillyorm
-from sillyorm.dbms import sqlite
 
 
 # define a model, a model abstracts a table in the database
 class Example(sillyorm.model.Model):
-    _name = "example"  # database table name & name in environment
+    _name = "example"  # database table name (sanitized) & name in environment
 
     # fields
     name = sillyorm.fields.String(length=255)
 
 
-# Create the environment
-env = sillyorm.Environment(
-    sqlite.SQLiteConnection("test.db").cursor()
-)
+# connect to the DB and create a model registry
+registry = sillyorm.Registry("sqlite:///test.db")
 
 # register the model in the environment
-env.register_model(Example)
+registry.register_model(Example)
 
 # create the database tables
-env.init_tables()
+registry.resolve_tables()
+registry.init_db_tables()
+env = registry.get_environment(autocommit=True)
 
 # start using the model
 record = env["example"].create({"name": "Hello world!"})

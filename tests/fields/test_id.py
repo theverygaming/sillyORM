@@ -1,21 +1,23 @@
 import pytest
 import sillyorm
-from sillyorm.sql import SqlType
+import sqlalchemy
 from sillyorm.exceptions import SillyORMException
-from ..libtest import with_test_env, assert_db_columns
+from ..libtest import with_test_registry, assert_db_columns
 
 
-@with_test_env(True)
-def test_field_id(env, is_second, prev_return):
+@with_test_registry(True)
+def test_field_id(registry, is_second, prev_return):
     class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"
 
     def assert_columns():
-        assert_db_columns(env.cr, "sale_order", [("id", SqlType.integer())])
+        assert_db_columns(registry, "sale_order", [("id", sqlalchemy.sql.sqltypes.INTEGER())])
 
     def first():
-        env.register_model(SaleOrder)
-        env.init_tables()
+        registry.register_model(SaleOrder)
+        registry.resolve_tables()
+        registry.init_db_tables()
+        env = registry.get_environment(autocommit=True)
         assert_columns()
 
         so_1 = env["sale_order"].create({})
@@ -31,8 +33,10 @@ def test_field_id(env, is_second, prev_return):
 
     def second():
         assert_columns()
-        env.register_model(SaleOrder)
-        env.init_tables()
+        registry.register_model(SaleOrder)
+        registry.resolve_tables()
+        registry.init_db_tables()
+        env = registry.get_environment(autocommit=True)
         assert_columns()
         so_1_id, so_2_id = prev_return
         so_1 = env["sale_order"].browse(so_1_id)
