@@ -379,8 +379,8 @@ class Datetime(Field):
     """
     Datetime field. Represents a python datetime object.
 
-    A timezone (or none at all - which means it's naive) must be provided because in the database
-    this field does not store any timzeone-related information.
+    A timezone (or the value `None` - which means it's naive) must be provided because in the database
+    this field may not store any timzeone-related information.
     Mixing timezones would be fatal so this field takes care of that for you.
 
     :param tzinfo: time zone of the date stored - None means it's a naive datetime object
