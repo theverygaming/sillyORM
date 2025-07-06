@@ -1,12 +1,12 @@
 import pytest
 import sillyorm
-from sillyorm.sql import SqlType
+import sqlalchemy
 from sillyorm.exceptions import SillyORMException
-from .libtest import with_test_env, assert_db_columns
+from .libtest import with_test_registry, assert_db_columns
 
 
-@with_test_env()
-def test_model_extend(env):
+@with_test_registry()
+def test_model_extend(registry):
     class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"
 
@@ -51,35 +51,37 @@ def test_model_extend(env):
 
     def assert_columns():
         assert_db_columns(
-            env.cr,
+            registry,
             "sale_order",
             [
-                ("id", SqlType.integer()),
-                ("line_count", SqlType.integer()),
-                ("line_count2", SqlType.integer()),
-                ("teststr", SqlType.varchar(123)),
-                ("newfield", SqlType.varchar(255)),
+                ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+                ("line_count", sqlalchemy.sql.sqltypes.INTEGER()),
+                ("line_count2", sqlalchemy.sql.sqltypes.INTEGER()),
+                ("teststr", sqlalchemy.sql.sqltypes.VARCHAR(length=123)),
+                ("newfield", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
             ],
         )
 
         assert_db_columns(
-            env.cr,
+            registry,
             "purchase_order",
             [
-                ("id", SqlType.integer()),
-                ("line_count", SqlType.integer()),
-                ("line_count2", SqlType.integer()),
-                ("teststr", SqlType.varchar(123)),
-                ("newfield", SqlType.varchar(255)),
-                ("purchase_field", SqlType.varchar(255)),
+                ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+                ("line_count", sqlalchemy.sql.sqltypes.INTEGER()),
+                ("line_count2", sqlalchemy.sql.sqltypes.INTEGER()),
+                ("teststr", sqlalchemy.sql.sqltypes.VARCHAR(length=123)),
+                ("newfield", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+                ("purchase_field", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
             ],
         )
 
-    env.register_model(SaleOrder)
-    env.register_model(SaleOrderE1)
-    env.register_model(SaleOrderE2)
-    env.register_model(PurchaseOrder)
-    env.init_tables()
+    registry.register_model(SaleOrder)
+    registry.register_model(SaleOrderE1)
+    registry.register_model(SaleOrderE2)
+    registry.register_model(PurchaseOrder)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
     assert_columns()
 
     assert env["sale_order"]._name == "sale_order"
@@ -154,13 +156,13 @@ def test_model_extend(env):
     assert repr(env["purchase_order"].search([])) == "purchase_order[1, 2]"
 
 
-@with_test_env()
-def test_model_extend_invalid(env):
+@with_test_registry()
+def test_model_extend_invalid(registry):
     class Invalid1(sillyorm.model.Model):
         pass
 
     with pytest.raises(SillyORMException) as e_info:
-        env.register_model(Invalid1)
+        registry.register_model(Invalid1)
     assert (
         str(e_info.value)
         == "cannot register a model without _name set (in case of extension you also need to set"
@@ -171,7 +173,7 @@ def test_model_extend_invalid(env):
         _extends = "b"
 
     with pytest.raises(SillyORMException) as e_info:
-        env.register_model(Invalid2)
+        registry.register_model(Invalid2)
     assert (
         str(e_info.value)
         == "cannot register a model without _name set (in case of extension you also need to set"
@@ -183,7 +185,7 @@ def test_model_extend_invalid(env):
         _extends = "doesnotexist"
 
     with pytest.raises(SillyORMException) as e_info:
-        env.register_model(Invalid3)
+        registry.register_model(Invalid3)
     assert str(e_info.value) == "cannot extend nonexistant model 'doesnotexist'"
 
     class Invalid4(sillyorm.model.Model):
@@ -191,12 +193,12 @@ def test_model_extend_invalid(env):
         _extends = "doesnotexist"
 
     with pytest.raises(SillyORMException) as e_info:
-        env.register_model(Invalid4)
+        registry.register_model(Invalid4)
     assert str(e_info.value) == "_name must be equal to _extends"
 
 
-@with_test_env()
-def test_model_inherit_invalid(env):
+@with_test_registry()
+def test_model_inherit_invalid(registry):
     class CommonModel(sillyorm.model.Model):
         _name = "common_model"
 
@@ -221,13 +223,15 @@ def test_model_inherit_invalid(env):
 
         f4 = sillyorm.fields.String()
 
-    env.register_model(CommonModel)
-    env.register_model(CommonModelExt)
-    env.register_model(SomeOtherModel)
-    env.register_model(CommonModelExt2)
+    registry.register_model(CommonModel)
+    registry.register_model(CommonModelExt)
+    registry.register_model(SomeOtherModel)
+    registry.register_model(CommonModelExt2)
 
     with pytest.raises(SillyORMException) as e_info:
-        env.init_tables()
+        registry.resolve_tables()
+        registry.init_db_tables()
+        env = registry.get_environment()
     assert (
         str(e_info.value)
         == "Circular dependency in model inheritance: 'common_model' - involved models:"
@@ -235,8 +239,8 @@ def test_model_inherit_invalid(env):
     )
 
 
-@with_test_env()
-def test_model_inherit_order(env):
+@with_test_registry()
+def test_model_inherit_order(registry):
     class CommonModel(sillyorm.model.Model):
         _name = "common_model"
 
@@ -281,49 +285,51 @@ def test_model_inherit_order(env):
         _extends = "test_model4"
         _inherits = ["common_model", "other_model"]
 
-    env.register_model(CommonModel)
-    env.register_model(CommonModelExt)
-    env.register_model(SomeOtherModel)
-    env.register_model(TestModel1)
-    env.register_model(TestModel2)
-    env.register_model(TestModel3)
-    env.register_model(TestModel3Ext)
-    env.register_model(TestModel4)
-    env.register_model(TestModel4Ext)
-    env.init_tables()
+    registry.register_model(CommonModel)
+    registry.register_model(CommonModelExt)
+    registry.register_model(SomeOtherModel)
+    registry.register_model(TestModel1)
+    registry.register_model(TestModel2)
+    registry.register_model(TestModel3)
+    registry.register_model(TestModel3Ext)
+    registry.register_model(TestModel4)
+    registry.register_model(TestModel4Ext)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
 
     assert_db_columns(
-        env.cr,
+        registry,
         "test_model1",
         [
-            ("id", SqlType.integer()),
-            ("f1", SqlType.varchar(3)),
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("f1", sqlalchemy.sql.sqltypes.VARCHAR(length=3)),
         ],
     )
 
     assert_db_columns(
-        env.cr,
+        registry,
         "test_model2",
         [
-            ("id", SqlType.integer()),
-            ("f1", SqlType.varchar(2)),
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("f1", sqlalchemy.sql.sqltypes.VARCHAR(length=2)),
         ],
     )
 
     assert_db_columns(
-        env.cr,
+        registry,
         "test_model3",
         [
-            ("id", SqlType.integer()),
-            ("f1", SqlType.varchar(2)),
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("f1", sqlalchemy.sql.sqltypes.VARCHAR(length=2)),
         ],
     )
 
     assert_db_columns(
-        env.cr,
+        registry,
         "test_model4",
         [
-            ("id", SqlType.integer()),
-            ("f1", SqlType.varchar(3)),
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("f1", sqlalchemy.sql.sqltypes.VARCHAR(length=3)),
         ],
     )

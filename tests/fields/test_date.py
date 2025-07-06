@@ -1,31 +1,34 @@
 import datetime
 import sillyorm
-from ..libtest import with_test_env, generic_field_test
+import sqlalchemy
+from ..libtest import with_test_registry, generic_field_test
 
 
-@with_test_env(True)
-def test_field_date(env, is_second, prev_return):
+@with_test_registry(True)
+def test_field_date(registry, is_second, prev_return):
     return generic_field_test(
         sillyorm.fields.Date,
         [([], {})] * 4,
-        [sillyorm.sql.SqlType.date()] * 4,
+        [sqlalchemy.sql.sqltypes.DATE()] * 4,
         [None, datetime.date(2024, 5, 7), datetime.date(2025, 5, 7), datetime.date(2023, 5, 7)],
         ["Test", [], {}, 1.5, datetime.datetime(2026, 5, 7)],
-        env,
+        registry,
         is_second,
         prev_return,
     )
 
 
-@with_test_env(False)
-def test_field_date_search(env):
+@with_test_registry(False)
+def test_field_date_search(registry):
     class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"
 
         date = sillyorm.fields.Date()
 
-    env.register_model(SaleOrder)
-    env.init_tables()
+    registry.register_model(SaleOrder)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
 
     so_1 = env["sale_order"].create({"date": datetime.date(2025, 1, 25)})
     so_2 = env["sale_order"].create({"date": datetime.date(2025, 1, 26)})

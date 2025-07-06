@@ -12,6 +12,7 @@ Welcome to ``sillyORM``'s documentation!
 
    source/getting-started
    source/concepts
+   source/migrations
    source/API reference
 
 

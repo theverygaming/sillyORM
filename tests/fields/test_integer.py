@@ -1,13 +1,14 @@
 import sillyorm
-from ..libtest import with_test_env, generic_field_test
+import sqlalchemy
+from ..libtest import with_test_registry, generic_field_test
 
 
-@with_test_env(True)
-def test_field_integer(env, is_second, prev_return):
+@with_test_registry(True)
+def test_field_integer(registry, is_second, prev_return):
     return generic_field_test(
         sillyorm.fields.Integer,
         [([], {})] * 6,
-        [sillyorm.sql.SqlType.integer()] * 6,
+        [sqlalchemy.sql.sqltypes.INTEGER()] * 6,
         [
             None,
             5,
@@ -17,7 +18,7 @@ def test_field_integer(env, is_second, prev_return):
             6,
         ],
         ["Test", [], {}, 1.5],
-        env,
+        registry,
         is_second,
         prev_return,
     )

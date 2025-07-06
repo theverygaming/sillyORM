@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.0
+
+_a lot of changes, only the most important are listed here_
+- use SQLAlchemy Core as the DB abstraction backend, instead of custom stuff
+- add a `Registry` object, it keeps track of `Environment` objects
+- remove all sillyorm.dbms abstractions
+- support for migrations with alembic
+- no more entirely magic migrations (the old system was kinda dangerous)
+- new `AbstractModel` class that won't create a table
+- update documentation to reflect changes
+
+**diff**: https://github.com/theverygaming/sillyORM/compare/0.11.0...1.0.0
+
 ## 0.11.0
 
 - improved documentation

@@ -1,21 +1,18 @@
 import logging
-from typing import Any, Iterator, Self
-from . import sql, fields
-from .sql import SQL
+import re
+from typing import Any, Iterator, Self, cast
+import sqlalchemy
+from . import fields
 from .environment import Environment
 from .exceptions import SillyORMException
 
 _logger = logging.getLogger(__name__)
 
 
-class Model:
+class BaseModel:
     """
     Each model represents a single table in the database.
     A model can have fields which represent columns in the database table.
-
-    When a model is registered the ORM ensures the table with all required fields is created.
-    If any columns/fields exist in the database
-    but are not specified in the model **they will be removed in the database**.
 
     The `_name` attribute specifies the name
     of the database table the model represents
@@ -33,10 +30,9 @@ class Model:
 
        import tempfile
        import sillyorm
-       from sillyorm.dbms import sqlite
 
        tmpfile = tempfile.NamedTemporaryFile()
-       env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+       registry = sillyorm.Registry(f"sqlite:///{tmpfile.name}")
 
     .. testcode:: models_model
 
@@ -44,8 +40,10 @@ class Model:
            _name = "example0"
            field = sillyorm.fields.String()
 
-       env.register_model(ExampleModel)
-       env.init_tables()
+       registry.register_model(ExampleModel)
+       registry.resolve_tables()
+       registry.init_db_tables()
+       env = registry.get_environment()
 
        record = env["example0"].create({"field": "Hello world!"})
        print(record.field)
@@ -66,30 +64,20 @@ class Model:
     _name = ""
     _extends = ""
     _inherits: list[str] = []
+
+    _has_table: bool = False
+
+    _fields: dict[str, fields.Field] = {}
+    _table: sqlalchemy.Table = cast(sqlalchemy.Table, None)
+
     id = fields.Id()  #: Special :class:`sillyorm.fields.Id` field used as PRIMARY KEY
 
     def __init__(self, env: Environment, ids: list[int]):
-        def get_all_fields() -> dict[str, fields.Field]:
-            all_fields = {}
-            for cls in self.__class__.__mro__:
-                if not issubclass(cls, Model):
-                    break
-                for attr in vars(cls).values():
-                    if not isinstance(attr, fields.Field):
-                        continue
-                    # fields from classes closer to the
-                    # one this function was called on have priority
-                    if attr.name not in all_fields:
-                        all_fields[attr.name] = attr
-            return all_fields
-
         if not self._name and not self._extends:
             raise SillyORMException("_name or _extends must be set")
 
         self._ids = ids
         self.env = env
-        self._tblmngr = sql.TableManager(self._name)
-        self._fields = get_all_fields()
 
     def __repr__(self) -> str:
         ids = self._ids  # [record.id for record in self]
@@ -105,21 +93,51 @@ class Model:
     def __getitem__(self, key: int) -> Self:
         return self.__class__(self.env, ids=[self._ids[key]])
 
-    def _table_init(self) -> None:
-        _logger.debug("initializing table for model: '%s'", self._name)
-        all_fields = list(self._fields.values())
-        _logger.debug("fields for model '%s': %s", self._name, repr(all_fields))
-        self._tblmngr.table_init(
-            self.env.cr,
-            [
-                sql.ColumnInfo(field.name, field.sql_type, field.constraints)
-                for field in all_fields
-                if field.materialize
-            ],
-            not self.env.update_tables,
+    @classmethod
+    def _get_sanitized_table_name(cls, table_name: str) -> str:
+        # first character (special)
+        first = re.sub(r"[^a-zA-Z_]", "_", table_name[0])
+        return first + re.sub(r"[^a-zA-Z0-9_]", "_", table_name[1:])
+
+    @classmethod
+    def _build_fields_list(cls) -> None:
+        def get_all_fields() -> dict[str, fields.Field]:
+            all_fields = {}
+            for clsx in cls.__mro__:
+                if not issubclass(clsx, BaseModel):
+                    break
+                for attr in vars(clsx).values():
+                    if not isinstance(attr, fields.Field):
+                        continue
+                    # fields from classes closer to the
+                    # one this function was called on have priority
+                    if attr.name not in all_fields:
+                        all_fields[attr.name] = attr
+            return all_fields
+
+        cls._fields = get_all_fields()
+
+    @classmethod
+    def _build_sqlalchemy_table(cls, metadata: sqlalchemy.MetaData) -> None:
+        cls._build_fields_list()
+        all_fields = list(cls._fields.values())
+
+        columns = [
+            sqlalchemy.Column(
+                field.name,
+                field.sql_type,
+                *[c for c in field.constraints if not isinstance(c, tuple)],
+                **{c[0]: c[1] for c in field.constraints if isinstance(c, tuple)},
+            )
+            for field in all_fields
+            if field.materialize
+        ]
+
+        cls._table = sqlalchemy.Table(
+            cls._get_sanitized_table_name(cls._name),
+            metadata,
+            *columns,
         )
-        for field in all_fields:
-            field.model_post_init(self)
 
     def ensure_one(self) -> Self:
         """
@@ -161,25 +179,21 @@ class Model:
            The fields read as a list of dictionaries.
         :rtype: list[dict[str, Any]]
         """
-        if len(self._ids) == 0:
+        if not self._ids:
             return []
-        order_fix = SQL("")
-        # no need to do the order mapping if we are just reading one
+
+        columns = [self._table.c[field] for field in field_names]
+        stmt = sqlalchemy.select(*columns).where(self._table.c.id.in_(self._ids))
+
+        # fix the order
         if len(self._ids) > 1:
-            order_fix += SQL("ORDER BY CASE {id} ", id=SQL.identifier("id"))
-            for i, x in enumerate(self._ids):
-                order_fix += SQL("WHEN {id} THEN {n} ", id=x, n=i + 1)
-            order_fix += SQL("END")
-        return self._tblmngr.read_records(
-            self.env.cr,
-            field_names,
-            SQL(
-                "WHERE {id} IN {ids} {order_fix}",
-                id=SQL.identifier("id"),
-                ids=SQL.set(self._ids),
-                order_fix=order_fix,
-            ),
-        )
+            case_ordering = sqlalchemy.case(
+                {id_: index for index, id_ in enumerate(self._ids)}, value=self._table.c.id
+            )
+            stmt = stmt.order_by(case_ordering)
+
+        result = self.env.connection.execute(stmt)
+        return [dict(row) for row in result.mappings()]
 
     def write(self, vals: dict[str, Any]) -> None:
         """
@@ -207,19 +221,21 @@ class Model:
            values for the fields
         :type vals: dict[str, Any]
         """
+        if not self._ids:
+            return
+
         with self.env.managed_transaction():
-            self._tblmngr.update_records(
-                self.env.cr,
-                vals,
-                SQL("WHERE {id} IN {ids}", id=SQL.identifier("id"), ids=SQL.set(self._ids)),
+            stmt = (
+                sqlalchemy.update(self._table).where(self._table.c.id.in_(self._ids)).values(**vals)
             )
+            self.env.connection.execute(stmt)
 
     def browse(self, ids: list[int] | int) -> None | Self:
         """
         Returns a recordset for the ids provided.
 
         .. warning::
-           Order of the ids in the recordset returned may
+           The order of the ids in the recordset returned may
            not be the same as the ids provided as input
 
         :param ids: The ids or id
@@ -232,17 +248,15 @@ class Model:
         """
         if not isinstance(ids, list):
             ids = [ids]
-        res = self.env.cr.execute(
-            SQL(
-                "SELECT {id} FROM {name} WHERE {id} IN {ids};",
-                id=SQL.identifier("id"),
-                name=SQL.identifier(self._name),
-                ids=SQL.set(ids),
-            )
-        ).fetchall()
-        if len(res) == 0:
+
+        stmt = sqlalchemy.select(self._table.c.id).where(self._table.c.id.in_(ids))
+        result = self.env.connection.execute(stmt).fetchall()
+
+        if not result:
             return None
-        return self.__class__(self.env, ids=[id[0] for id in res])
+
+        found_ids = [row[0] for row in result]
+        return self.__class__(self.env, ids=found_ids)
 
     def create(self, vals: dict[str, Any]) -> Self:
         """
@@ -260,20 +274,12 @@ class Model:
         :rtype: Self
         """
         with self.env.managed_transaction():
-            top_id = self.env.cr.execute(
-                SQL(
-                    "SELECT MAX({id}) FROM {table};",
-                    id=SQL.identifier("id"),
-                    table=SQL.identifier(self._name),
-                )
-            ).fetchone()[0]
-            if top_id is None:
-                top_id = 0
-            vals["id"] = top_id + 1
             for f, v in vals.items():
                 vals[f] = self._fields[f]._convert_type_set(v)  # pylint: disable=protected-access
-            self._tblmngr.insert_record(self.env.cr, vals)
-            return self.__class__(self.env, ids=[vals["id"]])
+            new_id = self.env.connection.execute(
+                sqlalchemy.insert(self._table).values(**vals)
+            ).inserted_primary_key[0]
+            return self.__class__(self.env, ids=[new_id])
 
     def _domain_transform_types(
         self,
@@ -297,6 +303,111 @@ class Model:
                     self._fields[d[0]]._convert_type_set(d[2]),  # pylint: disable=protected-access
                 )
         return domain
+
+    def _parse_domain(self, domain: list[str | tuple[str, str, Any]]) -> object | None:
+        def cmp_expr(col: str, op: str, val: Any) -> Any:
+            # pylint: disable=too-many-return-statements
+            clmn = self._table.c[col]
+            match op:
+                case "=":
+                    return clmn.is_(val) if val is None else (clmn == val)
+                case "!=":
+                    return clmn.isnot(val) if val is None else (clmn != val)
+                case ">":
+                    return clmn > val
+                case ">=":
+                    return clmn >= val
+                case "<":
+                    return clmn < val
+                case "<=":
+                    return clmn <= val
+                # we only implement ILIKE for now because SQLite doesn't actually support
+                # case-sensitive LIKE out of the box without fuckery it seems
+                # it appears to be the same with SQLAlchemy??
+                case "=ilike":
+                    return clmn.ilike(val)
+                case "ilike":
+                    return clmn.ilike(f"%{val}%")
+            raise SillyORMException(f"Unsupported operator {op}")
+
+        def infix2normalpolish(
+            domain: list[str | tuple[str, str, Any]],
+        ) -> list[str | tuple[str, str, Any]]:
+            left_associative_operators = ["!"]
+            operator_precedence = {"!": 3, "&": 2, "|": 1}
+
+            paren_exception = SillyORMException(
+                "infix2normalpolish: mismatched parenthesis.. Your domain is broken!"
+            )
+
+            # https://en.wikipedia.org/wiki/Shunting_yard_algorithm
+            # (adapted for polish notaton as specified in the article)
+            output_stack: list[str | tuple[str, str, Any]] = []
+            operator_stack: list[str] = []
+            # rparen and lparen are switched around because we are iterating in reverse!
+            # This is what you do if u want normal polish notation instead of
+            # reverse polish notation
+            for token in reversed(domain):
+                if isinstance(token, tuple):
+                    output_stack.append(token)
+                    continue
+                if token in operator_precedence:
+                    o1 = token
+                    if operator_stack:
+                        o2 = operator_stack[-1]
+                        while o2 in operator_precedence and (
+                            operator_precedence[o2] > operator_precedence[o1]
+                            or (
+                                operator_precedence[o2] == operator_precedence[o1]
+                                and o1 in left_associative_operators
+                            )
+                        ):
+                            output_stack.append(operator_stack.pop())
+                    operator_stack.append(o1)
+                if token == ")":
+                    operator_stack.append(token)
+                if token == "(":
+                    while operator_stack and operator_stack[-1] != ")":
+                        if not operator_stack:
+                            raise paren_exception
+                        output_stack.append(operator_stack.pop())
+                    if not operator_stack:
+                        raise paren_exception
+                    operator_stack.pop()
+            while operator_stack:
+                if operator_stack[-1] == ")":
+                    raise paren_exception
+                output_stack.append(operator_stack.pop())
+
+            return list(reversed(output_stack))
+
+        def pn_parse(parts_iter: Iterator[str | tuple[str, str, Any]]) -> object:
+            try:
+                part = next(parts_iter)
+            except StopIteration as e:
+                raise SillyORMException(
+                    "failed to parse domain, expected at least one further element"
+                ) from e
+            if part == "&":
+                return sqlalchemy.and_(pn_parse(parts_iter), pn_parse(parts_iter))  # type: ignore
+            if part == "|":
+                return sqlalchemy.or_(pn_parse(parts_iter), pn_parse(parts_iter))  # type: ignore
+            if part == "!":
+                return sqlalchemy.not_(pn_parse(parts_iter))  # type: ignore
+            if isinstance(part, tuple):
+                return cmp_expr(*part)
+            raise SillyORMException(f"Invalid domain part: {repr(part)}")
+
+        if not domain:
+            return None
+
+        domain_iter = iter(infix2normalpolish(domain))
+        result = pn_parse(domain_iter)
+        if any(True for _ in domain_iter):
+            raise SillyORMException(
+                "Domain NPN issue!! It did not get fully parsed.. Are you missing an operator?"
+            )
+        return result
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def search(
@@ -324,7 +435,7 @@ class Model:
                ("test2", "=", "2 Hii!!"),
            ]
 
-        This search domain will result in the following SQL:
+        This search domain will result in SQL code that looks something like this:
 
         .. code-block:: SQL
 
@@ -354,8 +465,10 @@ class Model:
                _name = "example1"
                field = sillyorm.fields.String()
 
-           env.register_model(ExampleModel)
-           env.init_tables()
+           registry.register_model(ExampleModel)
+           registry.resolve_tables()
+           registry.init_db_tables()
+           env = registry.get_environment()
 
            record1 = env["example1"].create({"field": "test1"})
            record2 = env["example1"].create({"field": "test2"})
@@ -389,16 +502,29 @@ class Model:
            An empty recordset if nothing could be found
         :rtype: Self
         """
-        res = self._tblmngr.search_records(
-            self.env.cr,
-            ["id"],
-            self._domain_transform_types(domain),
-            order_by,
-            order_asc,
-            offset,
-            limit,
-        )
-        return self.__class__(self.env, ids=[id[0] for id in res])
+        if offset is not None and limit is None:
+            raise SillyORMException("offset can only be used together with limit")
+
+        stmt = sqlalchemy.select(self._table.c.id)
+
+        filter_expr = self._parse_domain(self._domain_transform_types(domain))
+
+        if filter_expr is not None:
+            stmt = stmt.where(filter_expr)  # type: ignore
+
+        if order_by is not None:
+            col = self._table.c[order_by]
+            stmt = stmt.order_by(col.asc() if order_asc else col.desc())
+
+        if limit is not None:
+            stmt = stmt.limit(limit)
+        if offset is not None:
+            stmt = stmt.offset(offset)
+
+        result = self.env.connection.execute(stmt).fetchall()
+        ids = [row[0] for row in result]
+
+        return self.__class__(self.env, ids=ids)
 
     def search_count(
         self,
@@ -417,8 +543,10 @@ class Model:
                _name = "example_msc1"
                field = sillyorm.fields.String()
 
-           env.register_model(ExampleModel)
-           env.init_tables()
+           registry.register_model(ExampleModel)
+           registry.resolve_tables()
+           registry.init_db_tables()
+           env = registry.get_environment()
 
            record1 = env["example_msc1"].create({"field": "test1"})
            record2 = env["example_msc1"].create({"field": "test1"})
@@ -444,14 +572,40 @@ class Model:
            The amount of records that match the provided domain
         :rtype: int
         """
-        return self._tblmngr.search_count_records(self.env.cr, self._domain_transform_types(domain))
+        # pylint: disable=not-callable # https://github.com/sqlalchemy/sqlalchemy/discussions/9202
+        stmt = sqlalchemy.select(sqlalchemy.func.count()).select_from(self._table)
+
+        filter_expr = self._parse_domain(self._domain_transform_types(domain))
+
+        if filter_expr is not None:
+            stmt = stmt.where(filter_expr)  # type: ignore
+
+        result = self.env.connection.execute(stmt).scalar_one()
+        return result
 
     def delete(self) -> None:
         """
         Deletes all records in the recordset
         """
+        if not self._ids:
+            return
+
         with self.env.managed_transaction():
-            self._tblmngr.delete_records(
-                self.env.cr,
-                SQL("WHERE {id} IN {ids}", id=SQL.identifier("id"), ids=SQL.set(self._ids)),
-            )
+            stmt = sqlalchemy.delete(self._table).where(self._table.c.id.in_(self._ids))
+            self.env.connection.execute(stmt)
+
+
+class AbstractModel(BaseModel):
+    """
+    Use this as the base for any Abstract Models.
+    Won't create a database table. See :class:`sillyorm.model.BaseModel` for docs
+    """
+
+
+class Model(BaseModel):
+    """
+    Use this as the base for any normal Models.
+    Will create a database table. See :class:`sillyorm.model.BaseModel` for docs
+    """
+
+    _has_table = True
