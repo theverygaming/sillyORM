@@ -116,7 +116,9 @@ def helper_gen_migrations(
             conn,
             opts={
                 "version_table": _MP_VERSION_TABLE,
-                "include_object": _MP_REGISTRY._table_cmp_should_include,  # pylint: disable=protected-access
+                "include_object": (
+                    _MP_REGISTRY._table_cmp_should_include
+                ),  # pylint: disable=protected-access
             },
         )
         migration_script = alembic.autogenerate.produce_migrations(
