@@ -190,6 +190,7 @@ class Registry:
                 conn,
                 opts={
                     "include_object": self._table_cmp_should_include,
+                    "compare_server_default": True,
                 },
             )
             diffs = alembic.autogenerate.compare_metadata(context, self.metadata)
