@@ -10,7 +10,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 _logger = logging.getLogger(__name__)
 
-# pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods,too-many-arguments,too-many-positional-arguments
 
 
 class Field:
@@ -39,7 +39,8 @@ class Field:
     :param unique: If the field's value should be unique in the column (checked via SQL constraints)
     :type unique: bool
     :default unique: False
-    :param sql_schema_default: The default value for a column in the DB Schema. Will be added to the DB Schema so it must be a constant.
+    :param sql_schema_default: The default value for a column in the DB Schema.
+       Will be added to the DB Schema so it must be a constant.
     :type sql_schema_default: Any
     :default sql_schema_default: None
     """
@@ -67,7 +68,7 @@ class Field:
         if self.unique:
             self.constraints.append(("unique", True))
         if self.sql_schema_default is not None:
-            self.constraints.append(("default", self.sql_schema_default))
+            self.constraints.append(("server_default", self.sql_schema_default))
 
     def __set_name__(self, record: BaseModel, name: str) -> None:
         self.name = name
