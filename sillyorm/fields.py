@@ -68,7 +68,9 @@ class Field:
         if self.unique:
             self.constraints.append(("unique", True))
         if self.sql_schema_default is not None:
-            self.constraints.append(("server_default", self.sql_schema_default))
+            self.constraints.append(
+                ("server_default", sqlalchemy.sql.expression.literal(self.sql_schema_default))
+            )
 
     def __set_name__(self, record: BaseModel, name: str) -> None:
         self.name = name

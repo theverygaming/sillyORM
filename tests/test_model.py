@@ -511,19 +511,25 @@ def test_create_sql_schema_default(tmp_path, db_conn_fn):
         test = sillyorm.fields.String()
         test2 = sillyorm.fields.String()
         test3 = sillyorm.fields.String(sql_schema_default="maow default!")
+        test4 = sillyorm.fields.Boolean(sql_schema_default=False)
+        test5 = sillyorm.fields.Integer(sql_schema_default=23)
 
     registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
     r1 = env["test_model"].create({"test": "hello world!", "test2": "test2", "test3": "Hii!!"})
     r2 = env["test_model"].create(
-        {"test": "2 hello world!", "test2": "2 test2"}  # test3 gets the sql_schema_default here
+        {"test": "2 hello world!", "test2": "2 test2", "test4": True, "test5": 16}
     )
     r3 = env["test_model"].create(
         {"test": "3 hello world!", "test2": "3 test2", "test3": "3 Hii!!"}
     )
     assert r1.read(["test", "test2"]) == [{"test": "hello world!", "test2": "test2"}]
-    assert r2.read(["test", "test3"]) == [{"test": "2 hello world!", "test3": "maow default!"}]
+    assert r2.read(["test", "test3", "test4", "test5"]) == [
+        {"test": "2 hello world!", "test3": "maow default!", "test4": True, "test5": 16}
+    ]
     assert r3.read(["test", "test2"]) == [{"test": "3 hello world!", "test2": "3 test2"}]
-    assert r3.read(["test3"]) == [{"test3": "3 Hii!!"}]
+    assert r3.read(["test3", "test4", "test5"]) == [
+        {"test3": "3 Hii!!", "test4": False, "test5": 23}
+    ]
 
     assert r2.read(["test2"]) == [{"test2": "2 test2"}]
 
