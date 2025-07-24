@@ -56,6 +56,7 @@ def _monkeypatch(
                 target_metadata=_MP_REGISTRY.metadata,
                 version_table=_MP_VERSION_TABLE,
                 include_object=_MP_REGISTRY._table_cmp_should_include,  # pylint: disable=protected-access
+                compare_server_default=True,
             )
 
             with alembic.context.begin_transaction():  # pylint: disable=no-member
@@ -119,6 +120,7 @@ def helper_gen_migrations(
                 "include_object": (
                     _MP_REGISTRY._table_cmp_should_include  # pylint: disable=protected-access
                 ),
+                "compare_server_default": True,
             },
         )
         migration_script = alembic.autogenerate.produce_migrations(
