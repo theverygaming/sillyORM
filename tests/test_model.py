@@ -501,3 +501,40 @@ def test_table_name_sanitize(tmp_path, db_conn_fn):
 
     r12 = env["123!@#$%^&*()_=][]\"'  silly goofball\n test.model"].browse([1, 2])
     assert r12.read(["test"]) == [{"test": "hello world!"}, {"test": "2 hello world!"}]
+
+
+@pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
+def test_create_sql_schema_default(tmp_path, db_conn_fn):
+    class TestModel(sillyorm.model.Model):
+        _name = "test_model"
+
+        test = sillyorm.fields.String()
+        test2 = sillyorm.fields.String()
+        test3 = sillyorm.fields.String(sql_schema_default="maow default!")
+
+    registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
+    r1 = env["test_model"].create({"test": "hello world!", "test2": "test2", "test3": "Hii!!"})
+    r2 = env["test_model"].create(
+        {"test": "2 hello world!", "test2": "2 test2"}  # test3 gets the sql_schema_default here
+    )
+    r3 = env["test_model"].create(
+        {"test": "3 hello world!", "test2": "3 test2", "test3": "3 Hii!!"}
+    )
+    assert r1.read(["test", "test2"]) == [{"test": "hello world!", "test2": "test2"}]
+    assert r2.read(["test", "test3"]) == [{"test": "2 hello world!", "test3": "maow default!"}]
+    assert r3.read(["test", "test2"]) == [{"test": "3 hello world!", "test2": "3 test2"}]
+    assert r3.read(["test3"]) == [{"test3": "3 Hii!!"}]
+
+    assert r2.read(["test2"]) == [{"test2": "2 test2"}]
+
+    assert r1.test == "hello world!"
+    assert r2.test2 == "2 test2"
+
+    registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
+
+    r12 = env["test_model"].browse([1, 2])
+    assert r12.read(["test"]) == [{"test": "hello world!"}, {"test": "2 hello world!"}]
+    assert r12.read(["test", "test3"]) == [
+        {"test": "hello world!", "test3": "Hii!!"},
+        {"test": "2 hello world!", "test3": "maow default!"},
+    ]

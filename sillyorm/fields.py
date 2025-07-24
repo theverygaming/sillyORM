@@ -30,6 +30,8 @@ class Field:
     :vartype required: bool
     :ivar unique: If the field's value should be unique in the column (checked via SQL constraints)
     :vartype unique: bool
+    :ivar sql_schema_default: The constant default value for a column in the DB Schema.
+    :vartype sql_schema_default: Any
 
     :param required: If the field must be set (checked via SQL constraints and runtime checks)
     :type required: bool
@@ -37,6 +39,9 @@ class Field:
     :param unique: If the field's value should be unique in the column (checked via SQL constraints)
     :type unique: bool
     :default unique: False
+    :param sql_schema_default: The default value for a column in the DB Schema. Will be added to the DB Schema so it must be a constant.
+    :type sql_schema_default: Any
+    :default sql_schema_default: None
     """
 
     # __must__ be set by all fields
@@ -48,16 +53,21 @@ class Field:
     # set automatically
     name: str = cast(str, None)
 
-    def __init__(self, required: bool = False, unique: bool = False) -> None:
+    def __init__(
+        self, required: bool = False, unique: bool = False, sql_schema_default: Any = None
+    ) -> None:
         self.constraints: list[sqlalchemy.schema.SchemaItem | tuple[str, Any]] = []
         self.required = required
         self.unique = unique
+        self.sql_schema_default = sql_schema_default
         if self.materialize and self.sql_type is None:
             raise SillyORMException("sql_type must be set for all fields that materialize")
         if self.required:
             self.constraints.append(("nullable", False))
         if self.unique:
             self.constraints.append(("unique", True))
+        if self.sql_schema_default is not None:
+            self.constraints.append(("default", self.sql_schema_default))
 
     def __set_name__(self, record: BaseModel, name: str) -> None:
         self.name = name
@@ -209,8 +219,10 @@ class Id(Integer):
        2
     """
 
-    def __init__(self, required: bool = False, unique: bool = False) -> None:
-        super().__init__(required=required, unique=unique)
+    def __init__(
+        self, required: bool = False, unique: bool = False, sql_schema_default: Any = None
+    ) -> None:
+        super().__init__(required=required, unique=unique, sql_schema_default=sql_schema_default)
         self.constraints += [("primary_key", True)]
 
     def __get__(self, record: BaseModel, objtype: Any = None) -> int:
@@ -256,9 +268,10 @@ class String(Field):
         length: int = 255,
         required: bool = False,
         unique: bool = False,
+        sql_schema_default: Any = None,
     ) -> None:
         self.sql_type = sqlalchemy.types.String(length)
-        super().__init__(required=required, unique=unique)
+        super().__init__(required=required, unique=unique, sql_schema_default=sql_schema_default)
 
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
@@ -301,9 +314,11 @@ class Text(Field):
 
     """
 
-    def __init__(self, required: bool = False, unique: bool = False) -> None:
+    def __init__(
+        self, required: bool = False, unique: bool = False, sql_schema_default: Any = None
+    ) -> None:
         self.sql_type = sqlalchemy.types.Text()
-        super().__init__(required=required, unique=unique)
+        super().__init__(required=required, unique=unique, sql_schema_default=sql_schema_default)
 
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
@@ -398,9 +413,13 @@ class Datetime(Field):
     sql_type = sqlalchemy.types.DateTime()
 
     def __init__(
-        self, tzinfo: datetime.tzinfo | None, required: bool = False, unique: bool = False
+        self,
+        tzinfo: datetime.tzinfo | None,
+        required: bool = False,
+        unique: bool = False,
+        sql_schema_default: Any = None,
     ) -> None:
-        super().__init__(required=required, unique=unique)
+        super().__init__(required=required, unique=unique, sql_schema_default=sql_schema_default)
         self.tzinfo = tzinfo
 
     def _convert_type_get(self, value: Any) -> Any:
@@ -516,9 +535,16 @@ class Selection(String):
     """
 
     def __init__(
-        self, options: list[str], length: int = 255, required: bool = False, unique: bool = False
+        self,
+        options: list[str],
+        length: int = 255,
+        required: bool = False,
+        unique: bool = False,
+        sql_schema_default: Any = None,
     ) -> None:
-        super().__init__(length, required=required, unique=unique)
+        super().__init__(
+            length, required=required, unique=unique, sql_schema_default=sql_schema_default
+        )
         self.options = options
 
     def _convert_type_set(self, value: Any) -> Any:
@@ -570,8 +596,14 @@ class Many2one(Integer):
 
     """
 
-    def __init__(self, foreign_model: str, required: bool = False, unique: bool = False):
-        super().__init__(required=required, unique=unique)
+    def __init__(
+        self,
+        foreign_model: str,
+        required: bool = False,
+        unique: bool = False,
+        sql_schema_default: Any = None,
+    ):
+        super().__init__(required=required, unique=unique, sql_schema_default=sql_schema_default)
         self._foreign_model = foreign_model
         self.constraints += [sqlalchemy.ForeignKey(f"{foreign_model}.id")]
 
@@ -636,9 +668,14 @@ class One2many(Field):
     materialize = False
 
     def __init__(
-        self, foreign_model: str, foreign_field: str, required: bool = False, unique: bool = False
+        self,
+        foreign_model: str,
+        foreign_field: str,
+        required: bool = False,
+        unique: bool = False,
+        sql_schema_default: Any = None,
     ):
-        super().__init__(required=required, unique=unique)
+        super().__init__(required=required, unique=unique, sql_schema_default=sql_schema_default)
         self._foreign_model = foreign_model
         self._foreign_field = foreign_field
 
