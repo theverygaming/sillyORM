@@ -30,7 +30,8 @@ class Field:
     :vartype required: bool
     :ivar unique: If the field's value should be unique in the column (checked via SQL constraints)
     :vartype unique: bool
-    :ivar sql_schema_default: The constant default value for a column in the DB Schema.
+    :ivar sql_schema_default: The constant default value for a column
+       in the DB Schema. SQL String (e.g. sqlalchemy.text)
     :vartype sql_schema_default: Any
 
     :param required: If the field must be set (checked via SQL constraints and runtime checks)
@@ -39,8 +40,8 @@ class Field:
     :param unique: If the field's value should be unique in the column (checked via SQL constraints)
     :type unique: bool
     :default unique: False
-    :param sql_schema_default: The default value for a column in the DB Schema.
-       Will be added to the DB Schema so it must be a constant.
+    :param sql_schema_default: The constant default value for a column
+       in the DB Schema. SQL String (e.g. sqlalchemy.text)
     :type sql_schema_default: Any
     :default sql_schema_default: None
     """
@@ -69,7 +70,7 @@ class Field:
             self.constraints.append(("unique", True))
         if self.sql_schema_default is not None:
             self.constraints.append(
-                ("server_default", sqlalchemy.sql.expression.literal(self.sql_schema_default))
+                ("server_default", self.sql_schema_default)
             )
 
     def __set_name__(self, record: BaseModel, name: str) -> None:

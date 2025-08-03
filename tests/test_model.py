@@ -510,9 +510,9 @@ def test_create_sql_schema_default(tmp_path, db_conn_fn):
 
         test = sillyorm.fields.String()
         test2 = sillyorm.fields.String()
-        test3 = sillyorm.fields.String(sql_schema_default="maow default!")
-        test4 = sillyorm.fields.Boolean(sql_schema_default=False)
-        test5 = sillyorm.fields.Integer(sql_schema_default=23)
+        test3 = sillyorm.fields.String(sql_schema_default=sqlalchemy.text("'maow default!'"))
+        test4 = sillyorm.fields.Boolean(sql_schema_default=sqlalchemy.text("FALSE"))
+        test5 = sillyorm.fields.Integer(sql_schema_default=sqlalchemy.text("23"))
 
     registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
     r1 = env["test_model"].create({"test": "hello world!", "test2": "test2", "test3": "Hii!!"})
