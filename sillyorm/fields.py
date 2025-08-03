@@ -33,6 +33,9 @@ class Field:
     :ivar sql_schema_default: The constant default value for a column
        in the DB Schema. SQL String (e.g. sqlalchemy.text)
     :vartype sql_schema_default: Any
+    :ivar default: The constant default value for a column
+       inserted during record creation - equivalent to SQLAlchemy Column default=
+    :vartype default: Any
 
     :param required: If the field must be set (checked via SQL constraints and runtime checks)
     :type required: bool
@@ -44,6 +47,10 @@ class Field:
        in the DB Schema. SQL String (e.g. sqlalchemy.text)
     :type sql_schema_default: Any
     :default sql_schema_default: None
+    :param default: The constant default value for a column
+       inserted during record creation - equivalent to SQLAlchemy Column default=
+    :type default: Any
+    :default default: None
     """
 
     # __must__ be set by all fields
@@ -56,12 +63,17 @@ class Field:
     name: str = cast(str, None)
 
     def __init__(
-        self, required: bool = False, unique: bool = False, sql_schema_default: Any = None
+        self,
+        required: bool = False,
+        unique: bool = False,
+        sql_schema_default: Any = None,
+        default: Any = None,
     ) -> None:
         self.constraints: list[sqlalchemy.schema.SchemaItem | tuple[str, Any]] = []
         self.required = required
         self.unique = unique
         self.sql_schema_default = sql_schema_default
+        self.default = default
         if self.materialize and self.sql_type is None:
             raise SillyORMException("sql_type must be set for all fields that materialize")
         if self.required:
@@ -69,9 +81,9 @@ class Field:
         if self.unique:
             self.constraints.append(("unique", True))
         if self.sql_schema_default is not None:
-            self.constraints.append(
-                ("server_default", self.sql_schema_default)
-            )
+            self.constraints.append(("server_default", self.sql_schema_default))
+        if self.default is not None:
+            self.constraints.append(("default", self._convert_type_set(self.default)))
 
     def __set_name__(self, record: BaseModel, name: str) -> None:
         self.name = name
@@ -224,9 +236,15 @@ class Id(Integer):
     """
 
     def __init__(
-        self, required: bool = False, unique: bool = False, sql_schema_default: Any = None
+        self,
+        required: bool = False,
+        unique: bool = False,
+        sql_schema_default: Any = None,
+        default: Any = None,
     ) -> None:
-        super().__init__(required=required, unique=unique, sql_schema_default=sql_schema_default)
+        super().__init__(
+            required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
+        )
         self.constraints += [("primary_key", True)]
 
     def __get__(self, record: BaseModel, objtype: Any = None) -> int:
@@ -273,9 +291,12 @@ class String(Field):
         required: bool = False,
         unique: bool = False,
         sql_schema_default: Any = None,
+        default: Any = None,
     ) -> None:
         self.sql_type = sqlalchemy.types.String(length)
-        super().__init__(required=required, unique=unique, sql_schema_default=sql_schema_default)
+        super().__init__(
+            required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
+        )
 
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
@@ -319,10 +340,16 @@ class Text(Field):
     """
 
     def __init__(
-        self, required: bool = False, unique: bool = False, sql_schema_default: Any = None
+        self,
+        required: bool = False,
+        unique: bool = False,
+        sql_schema_default: Any = None,
+        default: Any = None,
     ) -> None:
         self.sql_type = sqlalchemy.types.Text()
-        super().__init__(required=required, unique=unique, sql_schema_default=sql_schema_default)
+        super().__init__(
+            required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
+        )
 
     def _convert_type_set(self, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
@@ -422,9 +449,12 @@ class Datetime(Field):
         required: bool = False,
         unique: bool = False,
         sql_schema_default: Any = None,
+        default: Any = None,
     ) -> None:
-        super().__init__(required=required, unique=unique, sql_schema_default=sql_schema_default)
         self.tzinfo = tzinfo
+        super().__init__(
+            required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
+        )
 
     def _convert_type_get(self, value: Any) -> Any:
         if value is not None:
@@ -545,11 +575,16 @@ class Selection(String):
         required: bool = False,
         unique: bool = False,
         sql_schema_default: Any = None,
+        default: Any = None,
     ) -> None:
-        super().__init__(
-            length, required=required, unique=unique, sql_schema_default=sql_schema_default
-        )
         self.options = options
+        super().__init__(
+            length,
+            required=required,
+            unique=unique,
+            sql_schema_default=sql_schema_default,
+            default=default,
+        )
 
     def _convert_type_set(self, value: Any) -> Any:
         if not (isinstance(value, str) and value in self.options) and value is not None:
@@ -606,8 +641,11 @@ class Many2one(Integer):
         required: bool = False,
         unique: bool = False,
         sql_schema_default: Any = None,
+        default: Any = None,
     ):
-        super().__init__(required=required, unique=unique, sql_schema_default=sql_schema_default)
+        super().__init__(
+            required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
+        )
         self._foreign_model = foreign_model
         self.constraints += [sqlalchemy.ForeignKey(f"{foreign_model}.id")]
 
@@ -678,8 +716,11 @@ class One2many(Field):
         required: bool = False,
         unique: bool = False,
         sql_schema_default: Any = None,
+        default: Any = None,
     ):
-        super().__init__(required=required, unique=unique, sql_schema_default=sql_schema_default)
+        super().__init__(
+            required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
+        )
         self._foreign_model = foreign_model
         self._foreign_field = foreign_field
 

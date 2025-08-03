@@ -1,4 +1,5 @@
 import re
+import datetime
 import pytest
 import sqlalchemy
 import sillyorm
@@ -529,6 +530,61 @@ def test_create_sql_schema_default(tmp_path, db_conn_fn):
     assert r3.read(["test", "test2"]) == [{"test": "3 hello world!", "test2": "3 test2"}]
     assert r3.read(["test3", "test4", "test5"]) == [
         {"test3": "3 Hii!!", "test4": False, "test5": 23}
+    ]
+
+    assert r2.read(["test2"]) == [{"test2": "2 test2"}]
+
+    assert r1.test == "hello world!"
+    assert r2.test2 == "2 test2"
+
+    registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
+
+    r12 = env["test_model"].browse([1, 2])
+    assert r12.read(["test"]) == [{"test": "hello world!"}, {"test": "2 hello world!"}]
+    assert r12.read(["test", "test3"]) == [
+        {"test": "hello world!", "test3": "Hii!!"},
+        {"test": "2 hello world!", "test3": "maow default!"},
+    ]
+
+
+@pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
+def test_create_default(tmp_path, db_conn_fn):
+    class TestModel(sillyorm.model.Model):
+        _name = "test_model"
+
+        test = sillyorm.fields.String()
+        test2 = sillyorm.fields.String()
+        test3 = sillyorm.fields.String(default="maow default!")
+        test4 = sillyorm.fields.Boolean(default=False)
+        test5 = sillyorm.fields.Datetime(
+            default=datetime.datetime(2024, 1, 10, 11, 12, 13), tzinfo=None
+        )
+
+    registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
+    r1 = env["test_model"].create({"test": "hello world!", "test2": "test2", "test3": "Hii!!"})
+    r2 = env["test_model"].create(
+        {
+            "test": "2 hello world!",
+            "test2": "2 test2",
+            "test4": True,
+            "test5": datetime.datetime(2023, 1, 10, 11, 12, 13),
+        }
+    )
+    r3 = env["test_model"].create(
+        {"test": "3 hello world!", "test2": "3 test2", "test3": "3 Hii!!"}
+    )
+    assert r1.read(["test", "test2"]) == [{"test": "hello world!", "test2": "test2"}]
+    assert r2.read(["test", "test3", "test4", "test5"]) == [
+        {
+            "test": "2 hello world!",
+            "test3": "maow default!",
+            "test4": True,
+            "test5": datetime.datetime(2023, 1, 10, 11, 12, 13),
+        }
+    ]
+    assert r3.read(["test", "test2"]) == [{"test": "3 hello world!", "test2": "3 test2"}]
+    assert r3.read(["test3", "test4", "test5"]) == [
+        {"test3": "3 Hii!!", "test4": False, "test5": datetime.datetime(2024, 1, 10, 11, 12, 13)}
     ]
 
     assert r2.read(["test2"]) == [{"test2": "2 test2"}]
