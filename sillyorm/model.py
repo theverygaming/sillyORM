@@ -1,10 +1,10 @@
 import logging
-import re
 from typing import Any, Iterator, Self, cast
 import sqlalchemy
 from . import fields
 from .environment import Environment
 from .exceptions import SillyORMException
+from .helpers import sanitize_table_name
 
 _logger = logging.getLogger(__name__)
 
@@ -94,12 +94,6 @@ class BaseModel:
         return self.__class__(self.env, ids=[self._ids[key]])
 
     @classmethod
-    def _get_sanitized_table_name(cls, table_name: str) -> str:
-        # first character (special)
-        first = re.sub(r"[^a-zA-Z_]", "_", table_name[0])
-        return first + re.sub(r"[^a-zA-Z0-9_]", "_", table_name[1:])
-
-    @classmethod
     def _build_fields_list(cls) -> None:
         def get_all_fields() -> dict[str, fields.Field]:
             all_fields = {}
@@ -134,7 +128,7 @@ class BaseModel:
         ]
 
         cls._table = sqlalchemy.Table(
-            cls._get_sanitized_table_name(cls._name),
+            sanitize_table_name(cls._name),
             metadata,
             *columns,
         )

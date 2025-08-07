@@ -4,6 +4,7 @@ import logging
 import datetime
 import sqlalchemy
 from .exceptions import SillyORMException
+from .helpers import sanitize_table_name
 
 if TYPE_CHECKING:  # pragma: no cover
     from .model import BaseModel
@@ -647,7 +648,7 @@ class Many2one(Integer):
             required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
         )
         self._foreign_model = foreign_model
-        self.constraints += [sqlalchemy.ForeignKey(f"{foreign_model}.id")]
+        self.constraints += [sqlalchemy.ForeignKey(f"{sanitize_table_name(foreign_model)}.id")]
 
     def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
         rec = super().__get__(record, objtype)

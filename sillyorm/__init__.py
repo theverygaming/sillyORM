@@ -1,3 +1,3 @@
-from . import fields, model, migration_helpers
+from . import fields, model, migration_helpers, helpers
 from .environment import Environment
 from .registry import Registry
