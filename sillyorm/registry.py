@@ -196,7 +196,9 @@ class Registry:
             diffs = alembic.autogenerate.compare_metadata(context, self.metadata)
         return diffs
 
-    def init_db_tables(self, automigrate: Literal["ignore", "none", "safe"] = "safe") -> None:
+    def init_db_tables(
+        self, automigrate: Literal["ignore", "none", "safe"] = "safe", auto_create: bool = True
+    ) -> None:
         """
         Initializes database tables.
         """
@@ -213,7 +215,8 @@ class Registry:
                     "The DB does not match the schema, things other than adding tables must be"
                     f" done and automigrate is set to '{automigrate}' - diffs: {diffs}"
                 )
-        self.metadata.create_all(self.engine)
+        if auto_create and automigrate != "none":
+            self.metadata.create_all(self.engine)
 
     def get_environment(self, autocommit: bool = False) -> Environment:
         """
