@@ -8,6 +8,8 @@ import alembic.runtime
 from .exceptions import SillyORMException
 from .registry import Registry
 
+# pylint: disable=invalid-name
+
 _MP = False
 _MP_REGISTRY: Registry = cast(Registry, None)
 _MP_SCRIPY_TEMPLATE_PATH = cast(str, None)
