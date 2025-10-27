@@ -204,6 +204,12 @@ class Registry:
     ) -> None:
         """
         Initializes database tables.
+
+        automigrate modes:
+        - ignore: ignore the state of the DB schema and just do nothing
+        - none: do not run any migrations, error if the DB schema doesn't match
+        - safe: only do safe migrations (generally used together with auto_create)
+        - auto: automatically generate and run do all migrations - **may cause data loss**
         """
         if automigrate == "auto":
             migrate_auto.run(self)
