@@ -2,7 +2,154 @@ import pytest
 import sillyorm
 import sqlalchemy
 from sillyorm.exceptions import SillyORMException
-from .libtest import with_test_registry, assert_db_columns
+from .libtest import with_test_registry, assert_db_columns, assert_db_all_tables
+
+
+@with_test_registry()
+def test_automigrate_auto(registry):
+    class TestModelA(sillyorm.model.Model):
+        _name = "test_model_a"
+
+        name = sillyorm.fields.String()
+        name2 = sillyorm.fields.String()
+
+    class TestModelB(sillyorm.model.Model):
+        _name = "test_model_b"
+
+        name = sillyorm.fields.String()
+        value = sillyorm.fields.Integer()
+
+    class TestModelA2(sillyorm.model.Model):
+        _name = "test_model_a"
+
+        name = sillyorm.fields.String()
+        name3 = sillyorm.fields.String()
+
+    ## valid: add a table
+    # init
+    registry.register_model(TestModelA)
+    registry.resolve_tables()
+    registry.init_db_tables(automigrate="auto")
+    assert_db_columns(
+        registry,
+        "test_model_a",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("name2", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+        ],
+    )
+    assert_db_all_tables(
+        registry,
+        [
+            "test_model_a",
+        ],
+    )
+    # add table
+    registry.register_model(TestModelB)
+    registry.resolve_tables()
+    registry.init_db_tables(automigrate="auto")
+    assert_db_columns(
+        registry,
+        "test_model_a",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("name2", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+        ],
+    )
+    assert_db_columns(
+        registry,
+        "test_model_b",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("value", sqlalchemy.sql.sqltypes.INTEGER()),
+        ],
+    )
+    assert_db_all_tables(
+        registry,
+        [
+            "test_model_a",
+            "test_model_b",
+        ],
+    )
+
+    ## change a table
+    registry.reset_full()
+    registry.register_model(TestModelA2)
+    registry.register_model(TestModelB)
+    registry.resolve_tables()
+    registry.init_db_tables(automigrate="auto")
+    assert_db_columns(
+        registry,
+        "test_model_a",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("name3", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+        ],
+    )
+    assert_db_columns(
+        registry,
+        "test_model_b",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("value", sqlalchemy.sql.sqltypes.INTEGER()),
+        ],
+    )
+    assert_db_all_tables(
+        registry,
+        [
+            "test_model_a",
+            "test_model_b",
+        ],
+    )
+
+    ## remove a table
+    registry.reset_full()
+    registry.register_model(TestModelA)
+    registry.resolve_tables()
+    registry.init_db_tables(automigrate="auto")
+    assert_db_all_tables(
+        registry,
+        [
+            "test_model_a",
+        ],
+    )
+
+    # add table, and modify another table
+    registry.reset_full()
+    registry.register_model(TestModelA)
+    registry.register_model(TestModelB)
+    registry.resolve_tables()
+    registry.init_db_tables(automigrate="auto")
+    assert_db_columns(
+        registry,
+        "test_model_a",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("name2", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+        ],
+    )
+    assert_db_columns(
+        registry,
+        "test_model_b",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("value", sqlalchemy.sql.sqltypes.INTEGER()),
+        ],
+    )
+    assert_db_all_tables(
+        registry,
+        [
+            "test_model_a",
+            "test_model_b",
+        ],
+    )
 
 
 @with_test_registry()

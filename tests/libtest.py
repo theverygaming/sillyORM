@@ -77,6 +77,12 @@ def assert_db_columns(registry, table_name: str, expected_columns: list[tuple[st
         assert col in actual, f"Missing or mismatched column: {col}, found: {actual}"
 
 
+def assert_db_all_tables(registry, tables: list[str]) -> None:
+    inspector = sqlalchemy.inspect(registry.engine)
+    tables_found = inspector.get_table_names()
+    assert set(tables) == set(tables_found)
+
+
 def generic_field_test(
     fieldClass: sillyorm.fields.Field,
     fieldClassArgs: list[tuple[list[Any], dict[str, Any]]],

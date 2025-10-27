@@ -7,6 +7,7 @@ import alembic.migration
 import alembic.autogenerate
 from .environment import Environment
 from .exceptions import SillyORMException
+from . import migrate_auto
 
 if TYPE_CHECKING:  # pragma: no cover
     from .model import Model
@@ -197,11 +198,16 @@ class Registry:
         return diffs
 
     def init_db_tables(
-        self, automigrate: Literal["ignore", "none", "safe"] = "safe", auto_create: bool = True
+        self,
+        automigrate: Literal["ignore", "none", "safe", "auto"] = "safe",
+        auto_create: bool = True,
     ) -> None:
         """
         Initializes database tables.
         """
+        if automigrate == "auto":
+            migrate_auto.run(self)
+            return
         if automigrate != "ignore":
             diffs = self.get_schema_diffs()
             if automigrate == "none" and diffs:
