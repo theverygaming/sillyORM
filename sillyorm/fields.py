@@ -793,9 +793,15 @@ class Many2many(Field):
     def _build_sqlalchemy_table(
         self, model_cls: type[BaseModel], metadata: sqlalchemy.MetaData
     ) -> None:
-        self._joint_table_name = f"_joint_{model_cls._name}_{self.name}_{self._foreign_model}"  # pylint: disable=protected-access
-        self._joint_table_self_name = f"{model_cls._name}_id"  # pylint: disable=protected-access
-        self._joint_table_foreign_name = f"{self._foreign_model}_id"
+        if not self._joint_table_name:
+            self._joint_table_name = f"_joint_{model_cls._name}_{self.name}_{self._foreign_model}"  # pylint: disable=protected-access
+        if not self._joint_table_self_name:
+            self._joint_table_self_name = (
+                f"{sanitize_table_name(model_cls._name)}_id"  # pylint: disable=protected-access
+            )
+        if not self._joint_table_foreign_name:
+            self._joint_table_foreign_name = f"{sanitize_table_name(self._foreign_model)}_id"
+
         _logger.debug(
             "initializing many2many joint table: '%s.%s' -> '%s' named '%s'",
             model_cls._name,  # pylint: disable=protected-access
