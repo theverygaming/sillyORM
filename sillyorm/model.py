@@ -116,6 +116,9 @@ class BaseModel:
         cls._build_fields_list()
         all_fields = list(cls._fields.values())
 
+        for field in all_fields:
+            field._build_sqlalchemy_table(cls, metadata)  # pylint: disable=protected-access
+
         columns = [
             sqlalchemy.Column(
                 field.name,

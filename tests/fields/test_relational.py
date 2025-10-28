@@ -97,8 +97,8 @@ def test_field_many2one_one2many(registry):
         env["sale_order"].browse(so_1_id).line_ids = 1
 
 
-@with_test_env()
-def test_field_many2many(env):
+@with_test_registry()
+def test_field_many2many(registry):
     class Tax(sillyorm.model.Model):
         _name = "tax"
 
@@ -109,14 +109,33 @@ def test_field_many2many(env):
 
         tax_ids = sillyorm.fields.Many2many("tax")
 
-    env.register_model(Tax)
-    env.register_model(Product)
-    assert_db_columns(env.cr, "tax", [("id", SqlType.integer()), ("name", SqlType.varchar(255))])
-    assert_db_columns(env.cr, "product", [("id", SqlType.integer())])
+    registry.register_model(Tax)
+    registry.register_model(Product)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
     assert_db_columns(
-        env.cr,
+        registry,
+        "tax",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+        ],
+    )
+    assert_db_columns(
+        registry,
+        "product",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+        ],
+    )
+    assert_db_columns(
+        registry,
         "_joint_product_tax_ids_tax",
-        [("product_id", SqlType.integer()), ("tax_id", SqlType.integer())],
+        [
+            ("product_id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("tax_id", sqlalchemy.sql.sqltypes.INTEGER()),
+        ],
     )
 
     tax_1 = env["tax"].create({"name": "tax 1"})

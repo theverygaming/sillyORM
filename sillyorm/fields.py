@@ -108,6 +108,13 @@ class Field:
             record._write({self.name: value})
         record._write({self.name: self._convert_type_set(value)})
 
+    def _build_sqlalchemy_table(
+        self,
+        model_cls: type[BaseModel],  # pylint: disable=unused-argument
+        metadata: sqlalchemy.MetaData,  # pylint: disable=unused-argument
+    ) -> None:
+        return
+
 
 class Integer(Field):
     """
@@ -750,77 +757,77 @@ class Many2many(Field):
         self._joint_table_name = cast(str, None)
         self._joint_table_self_name = cast(str, None)
         self._joint_table_foreign_name = cast(str, None)
-        self._tblmngr = cast(sql.TableManager, None)
+        self._table = cast(sqlalchemy.Table, None)
 
-    def model_post_init(self, record: Model) -> None:
-        self._joint_table_name = f"_joint_{record._name}_{self.name}_{self._foreign_model}"  # pylint: disable=protected-access
-        self._joint_table_self_name = f"{record._name}_id"  # pylint: disable=protected-access
+    def _build_sqlalchemy_table(
+        self, model_cls: type[BaseModel], metadata: sqlalchemy.MetaData
+    ) -> None:
+        self._joint_table_name = f"_joint_{model_cls._name}_{self.name}_{self._foreign_model}"  # pylint: disable=protected-access
+        self._joint_table_self_name = f"{model_cls._name}_id"  # pylint: disable=protected-access
         self._joint_table_foreign_name = f"{self._foreign_model}_id"
-        self._tblmngr = sql.TableManager(self._joint_table_name)
         _logger.debug(
             "initializing many2many joint table: '%s.%s' -> '%s' named '%s'",
-            record._name,  # pylint: disable=protected-access
+            model_cls._name,  # pylint: disable=protected-access
             self.name,
             self._foreign_model,
             self._joint_table_name,
         )
-        self._tblmngr.table_init(
-            record.env.cr,
-            [
-                sql.ColumnInfo(
-                    self._joint_table_self_name,
-                    sql.SqlType.integer(),
-                    [
-                        sql.SqlConstraint.foreign_key(
-                            record._name, "id"  # pylint: disable=protected-access
-                        ),
-                    ],
+        columns = [
+            sqlalchemy.Column(
+                self._joint_table_self_name,
+                sqlalchemy.types.Integer(),
+                sqlalchemy.ForeignKey(
+                    f"{sanitize_table_name(model_cls._name)}.id",  # pylint: disable=protected-access
                 ),
-                sql.ColumnInfo(
-                    self._joint_table_foreign_name,
-                    sql.SqlType.integer(),
-                    [
-                        sql.SqlConstraint.foreign_key(self._foreign_model, "id"),
-                    ],
-                ),
-            ],
+            ),
+            sqlalchemy.Column(
+                self._joint_table_foreign_name,
+                sqlalchemy.types.Integer(),
+                sqlalchemy.ForeignKey(f"{sanitize_table_name(self._foreign_model)}.id"),
+            ),
+        ]
+        self._table = sqlalchemy.Table(
+            sanitize_table_name(self._joint_table_name),
+            metadata,
+            *columns,
         )
 
-    def __get__(self, record: Model, objtype: Any = None) -> None | Model:
+    def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
         record.ensure_one()
-        res = self._tblmngr.search_records(
-            record.env.cr,
-            [self._joint_table_foreign_name],
-            [(self._joint_table_self_name, "=", record.id)],
-        )
-        if len(res) == 0:
-            return None
-        return record.env[self._foreign_model].__class__(record.env, ids=[id[0] for id in res])
+        stmt = sqlalchemy.select(self._table.c[self._joint_table_foreign_name])
+        stmt = stmt.where(self._table.c[self._joint_table_self_name] == record.id)
+        result = record.env.connection.execute(stmt).fetchall()
+        ids = [row[0] for row in result]
 
-    def __set__(self, record: Model, value: tuple[int, Model]) -> None:
+        if len(ids) == 0:
+            return None
+        return record.env[self._foreign_model].__class__(record.env, ids=ids)
+
+    def __set__(self, record: BaseModel, value: tuple[int, BaseModel]) -> None:
         record.ensure_one()
         cmd = value[0]
         records_f = value[1]
         match cmd:
             case 1:
                 for record_f in records_f:
-                    res = self._tblmngr.search_records(
-                        record.env.cr,
-                        [self._joint_table_foreign_name],
-                        [
-                            (self._joint_table_self_name, "=", record.id),
-                            "&",
-                            (self._joint_table_foreign_name, "=", record_f.id),
-                        ],
+                    # pylint: disable=not-callable # https://github.com/sqlalchemy/sqlalchemy/discussions/9202
+                    stmt = sqlalchemy.select(sqlalchemy.func.count()).select_from(self._table)
+                    stmt = stmt.where(
+                        sqlalchemy.and_(
+                            self._table.c[self._joint_table_self_name] == record.id,
+                            self._table.c[self._joint_table_foreign_name] == record_f.id,
+                        )
                     )
-                    if len(res) > 0:
+                    count = record.env.connection.execute(stmt).scalar_one()
+                    if count > 0:
                         raise SillyORMException("attempted to insert a record twice into many2many")
-                    self._tblmngr.insert_record(
-                        record.env.cr,
-                        {
-                            self._joint_table_self_name: record.id,
-                            self._joint_table_foreign_name: record_f.id,
-                        },
+                    record.env.connection.execute(
+                        sqlalchemy.insert(self._table).values(
+                            {
+                                self._joint_table_self_name: record.id,
+                                self._joint_table_foreign_name: record_f.id,
+                            }
+                        )
                     )
             case _:
                 raise SillyORMException("unknown many2many command")
