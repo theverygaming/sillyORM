@@ -677,6 +677,7 @@ class Many2xCommand:
     """
 
     LINK = 1
+    UNLINK = 2
 
     @classmethod
     def link(cls, foreign: BaseModel | list[int]) -> tuple[int, list[int]]:
@@ -688,6 +689,17 @@ class Many2xCommand:
         if isinstance(foreign, list):
             return (cls.LINK, foreign)
         return (cls.LINK, foreign.ids)
+
+    @classmethod
+    def unlink(cls, foreign: BaseModel | list[int]) -> tuple[int, list[int]]:
+        """
+        UNLINK command
+
+        removes links of records from the relation
+        """
+        if isinstance(foreign, list):
+            return (cls.UNLINK, foreign)
+        return (cls.UNLINK, foreign.ids)
 
 
 class One2many(Field):
@@ -834,15 +846,17 @@ class Many2many(Field):
                     raise SillyORMException("invalid command tuple")
                 ids_f: list[int] = command[1]
                 for id_f in ids_f:
-                    # pylint: disable=not-callable # https://github.com/sqlalchemy/sqlalchemy/discussions/9202
-                    stmt = sqlalchemy.select(sqlalchemy.func.count()).select_from(self._table)
-                    stmt = stmt.where(
-                        sqlalchemy.and_(
-                            self._table.c[self._joint_table_self_name] == record.id,
-                            self._table.c[self._joint_table_foreign_name] == id_f,
+                    count = record.env.connection.execute(
+                        # pylint: disable=not-callable # https://github.com/sqlalchemy/sqlalchemy/discussions/9202
+                        sqlalchemy.select(sqlalchemy.func.count())
+                        .select_from(self._table)
+                        .where(
+                            sqlalchemy.and_(
+                                self._table.c[self._joint_table_self_name] == record.id,
+                                self._table.c[self._joint_table_foreign_name] == id_f,
+                            )
                         )
-                    )
-                    count = record.env.connection.execute(stmt).scalar_one()
+                    ).scalar_one()
                     if count > 0:
                         # linking an ID twice will be ignored
                         continue
@@ -852,6 +866,19 @@ class Many2many(Field):
                                 self._joint_table_self_name: record.id,
                                 self._joint_table_foreign_name: id_f,
                             }
+                        )
+                    )
+            case Many2xCommand.UNLINK:
+                if len(command) != 2:
+                    raise SillyORMException("invalid command tuple")
+                ids_f: list[int] = command[1]  # type: ignore
+                if ids_f:
+                    record.env.connection.execute(
+                        self._table.delete().where(
+                            sqlalchemy.and_(
+                                self._table.c[self._joint_table_self_name] == record.id,
+                                self._table.c[self._joint_table_foreign_name].in_(ids_f),
+                            )
                         )
                     )
             case _:

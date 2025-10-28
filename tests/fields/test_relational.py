@@ -144,6 +144,7 @@ def test_field_many2many(registry):
     product_1 = env["product"].create({})
     product_2 = env["product"].create({})
 
+    ## LINK
     with pytest.raises(SillyORMException) as e_info:
         product_2.tax_ids = (123, None)
     assert str(e_info.value) == "unknown many2many command"
@@ -165,3 +166,13 @@ def test_field_many2many(registry):
     assert repr(product_1.tax_ids) == "tax[1, 2]"
     product_2.tax_ids = sillyorm.fields.Many2xCommand.link(tax_2)
     assert repr(product_2.tax_ids) == "tax[2]"
+
+    ## UNLINK
+    # do nothing
+    product_1.tax_ids = sillyorm.fields.Many2xCommand.unlink([])
+    assert product_1.tax_ids.ids == [1, 2]
+    product_1.tax_ids = sillyorm.fields.Many2xCommand.unlink(tax_1)
+    assert product_1.tax_ids.ids == [2]
+
+    product_2.tax_ids = sillyorm.fields.Many2xCommand.unlink(tax_2)
+    assert product_2.tax_ids is None
