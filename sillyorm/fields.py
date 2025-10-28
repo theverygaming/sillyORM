@@ -794,7 +794,12 @@ class Many2many(Field):
         self, model_cls: type[BaseModel], metadata: sqlalchemy.MetaData
     ) -> None:
         if not self._joint_table_name:
-            self._joint_table_name = f"_joint_{model_cls._name}_{self.name}_{self._foreign_model}"  # pylint: disable=protected-access
+            # pylint: disable=protected-access
+            self._joint_table_name = (
+                f"_joint_{sanitize_table_name(model_cls._name)}"
+                + f"_{self.name}"
+                + f"_{sanitize_table_name(self._foreign_model)}"
+            )
         if not self._joint_table_self_name:
             self._joint_table_self_name = (
                 f"{sanitize_table_name(model_cls._name)}_id"  # pylint: disable=protected-access
