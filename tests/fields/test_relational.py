@@ -256,3 +256,56 @@ def test_field_many2many_2fields(registry):
     tax_2.product_ids = sillyorm.fields.Many2xCommand.unlink(product_2)
     assert product_2.tax_ids is None
     assert tax_2.product_ids.ids == [1]
+
+
+@with_test_registry()
+def test_field_many2many_selfref(registry):
+    class Tax(sillyorm.model.Model):
+        _name = "tax"
+
+        implied_tax_ids = sillyorm.fields.Many2many("tax", "TaxImplied", "tax_id", "implied_tax_id")
+
+    registry.register_model(Tax)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
+    assert_db_columns(
+        registry,
+        "tax",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+        ],
+    )
+    assert_db_columns(
+        registry,
+        "TaxImplied",
+        [
+            ("tax_id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("implied_tax_id", sqlalchemy.sql.sqltypes.INTEGER()),
+        ],
+    )
+
+    tax_1 = env["tax"].create({})
+    tax_2 = env["tax"].create({})
+    tax_3 = env["tax"].create({})
+
+    ## LINK
+    assert tax_1.implied_tax_ids is None
+    assert tax_2.implied_tax_ids is None
+    assert tax_3.implied_tax_ids is None
+
+    tax_1.implied_tax_ids = sillyorm.fields.Many2xCommand.link(tax_3)
+    assert repr(tax_1.implied_tax_ids) == "tax[3]"
+    assert tax_2.implied_tax_ids is None
+    assert tax_3.implied_tax_ids is None
+
+    tax_1.implied_tax_ids = sillyorm.fields.Many2xCommand.link(tax_1)
+    tax_2.implied_tax_ids = sillyorm.fields.Many2xCommand.link(tax_1)
+    # set because postgres seems to order it differently
+    assert set(tax_1.implied_tax_ids.ids) == {1, 3}
+    assert repr(tax_2.implied_tax_ids) == "tax[1]"
+    assert tax_3.implied_tax_ids is None
+
+    ## UNLINK
+    tax_1.implied_tax_ids = sillyorm.fields.Many2xCommand.unlink(tax_1)
+    assert tax_1.implied_tax_ids.ids == [3]
