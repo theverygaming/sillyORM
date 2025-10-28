@@ -257,7 +257,7 @@ class Id(Integer):
 
     def __get__(self, record: BaseModel, objtype: Any = None) -> int:
         record.ensure_one()
-        return record._ids[0]
+        return record.ids[0]
 
     def __set__(self, record: BaseModel, value: Any) -> None:
         raise SillyORMException("cannot set id")
