@@ -93,6 +93,13 @@ class BaseModel:
     def __getitem__(self, key: int) -> Self:
         return self.__class__(self.env, ids=[self._ids[key]])
 
+    @property
+    def ids(self) -> list[int]:
+        """
+        Get all IDs of records in this recordset
+        """
+        return self._ids
+
     @classmethod
     def _build_fields_list(cls) -> None:
         def get_all_fields() -> dict[str, fields.Field]:
