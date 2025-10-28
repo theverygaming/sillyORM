@@ -782,12 +782,18 @@ class Many2many(Field):
 
     materialize = False
 
-    def __init__(self, foreign_model: str):
+    def __init__(
+        self,
+        foreign_model: str,
+        join_table_name: str = "",
+        join_table_self_name: str = "",
+        join_table_foreign_name: str = "",
+    ):
         super().__init__()
         self._foreign_model = foreign_model
-        self._join_table_name = cast(str, None)
-        self._join_table_self_name = cast(str, None)
-        self._join_table_foreign_name = cast(str, None)
+        self._join_table_name = join_table_name
+        self._join_table_self_name = join_table_self_name
+        self._join_table_foreign_name = join_table_foreign_name
         self._table = cast(sqlalchemy.Table, None)
 
     def _build_sqlalchemy_table(
