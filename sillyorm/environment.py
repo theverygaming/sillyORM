@@ -1,68 +1,109 @@
 from __future__ import annotations
 import logging
-from typing import TYPE_CHECKING
-from . import sql
-from .exceptions import SillyORMException
+import contextlib
+from typing import TYPE_CHECKING, Generator, cast
+import sqlalchemy
 
 if TYPE_CHECKING:  # pragma: no cover
     from .model import Model
+    from .registry import Registry
 
 _logger = logging.getLogger(__name__)
 
 
 class Environment:
-    """This class is meant for keeping track of :class:`models <sillyorm.model.Model>`
-    registered in it, some settings and the database cursor.
-
-    A model can be registered in the environment using the
-    :func:`register_model <sillyorm.environment.Environment.register_model>` function.
+    """
+    This class is meant for keeping track of :class:`models <sillyorm.model.Model>`
+    registered in it, some settings and the database connection (SQLAlchemy Connection object).
 
     Once registered, models in the environment can be accessed using the index operator.
     When a model is accessed this way, it will return an empty recordset.
 
-    >>> import tempfile
-    >>> import sillyorm
-    >>> class TestModel(sillyorm.model.Model):
-    ...     _name = "testmodel"
-    >>> env = sillyorm.Environment(
-    ...     sillyorm.dbms.sqlite.SQLiteConnection(
-    ...         tempfile.NamedTemporaryFile().name
-    ...     ).cursor()
-    ... )
-    >>> env.register_model(TestModel)
-    >>> env["testmodel"]
-    testmodel[]
+    **it is not meant to be initialized directly by the user**
 
-    :ivar cr: The database cursor
-    :vartype cr: :class:`sillyorm.sql.Cursor`
-    :ivar do_commit: Whether to run commit after each database transaction that requires it
-    :vartype do_commit: bool
+    :ivar connection: The database Connection
+    :vartype connection: sqlalchemy.Connection
+    :ivar registry: The registry this environment object was created from
+    :vartype registry: :class:`sillyorm.registry.Registry`
+    :ivar autocommit: Whether to automatically run commit after each
+       database transaction that requires it (and rollback on error)
+    :vartype autocommit: bool
 
-    :param cursor: The database cursor that will be passed to all models
-    :type cursor: :class:`sillyorm.sql.Cursor`
-    :param do_commit: Whether to run commit after each database transaction that requires it
-    :type do_commit: bool, optional
+    :param models: The database cursor that will be passed to all models
+    :param connection: The database connection
+    :type connection: sqlalchemy.Connection
+    :param registry: The registry this environment object was created from
+    :type registry: :class:`sillyorm.registry.Registry`
+    :param autocommit: Whether to automatically run commit after each
+       database transaction that requires it (and rollback on error)
+    :type autocommit: bool, optional
     """
 
-    def __init__(self, cursor: sql.Cursor, do_commit: bool = True):
-        self.cr = cursor
-        self.do_commit = do_commit
-        self._models: dict[str, type[Model]] = {}
+    def __init__(
+        self,
+        models: dict[str, type[Model]],
+        connection: sqlalchemy.Connection,
+        registry: Registry,
+        autocommit: bool = False,
+    ):
+        self._models = models
+        self.connection = connection
+        self.registry = registry
+        self.autocommit = autocommit
 
-    def register_model(self, model: type[Model]) -> None:
+    def close(self) -> None:
         """
-        Registers a model class in the environment
-
-        :param model: The :class:`Model <sillyorm.model.Model>` to register
-        :type model: type[:class:`Model <sillyorm.model.Model>`]
+        Close this environment object, close it's connection
+        If it has an active transaction that will be rolled back.
         """
+        if self.connection is not None:
+            if self.connection.get_transaction() is not None:
+                self.connection.rollback()
+            self.connection = cast(sqlalchemy.Connection, None)
+            if self in self.registry._environments_given_out:  # pylint: disable=protected-access
+                self.registry._environments_given_out.remove(  # pylint: disable=protected-access
+                    self
+                )
+            self._models = {}
+            self.registry = None  # type: ignore
 
-        name = model._name  # pylint: disable=protected-access
-        if name in self._models:
-            raise SillyORMException(f"cannot register model '{name}' twice")
-        _logger.info("registering model '%s'", name)
-        self._models[name] = model
-        model(self, [])._table_init()  # pylint: disable=protected-access
+    def __del__(self) -> None:
+        self.close()
 
     def __getitem__(self, key: str) -> Model:
         return self._models[key](self, [])
+
+    @contextlib.contextmanager
+    def transaction(self) -> Generator[None, None, None]:
+        """
+        Context manager for transactions, this will start a transaction and roll it back on error
+        """
+        if self.connection.get_transaction() is None:
+            self.connection.begin()
+        try:
+            yield
+        except Exception:
+            _logger.debug("transaction contextmanager: rollback")
+            self.connection.rollback()
+            raise
+        _logger.debug("transaction contextmanager: commit")
+        self.connection.commit()
+
+    @contextlib.contextmanager
+    def managed_transaction(self) -> Generator[None, None, None]:
+        """
+        Context manager for transactions, this is mostly for internal use and will do not do
+        _anything_ without autocommit being set!
+        """
+        if self.autocommit and self.connection.get_transaction() is None:
+            self.connection.begin()
+        try:
+            yield
+        except Exception:
+            if self.autocommit:
+                _logger.debug("managed_transaction contextmanager: rollback")
+                self.connection.rollback()
+            raise
+        if self.autocommit:
+            _logger.debug("managed_transaction contextmanager: commit")
+            self.connection.commit()

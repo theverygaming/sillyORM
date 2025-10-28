@@ -1,12 +1,12 @@
 import pytest
 import sillyorm
-from sillyorm.sql import SqlType
+import sqlalchemy
 from sillyorm.exceptions import SillyORMException
-from ..libtest import with_test_env, assert_db_columns
+from ..libtest import with_test_registry, assert_db_columns
 
 
-@with_test_env()
-def test_field_many2one_one2many(env):
+@with_test_registry()
+def test_field_many2one_one2many(registry):
     class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"
 
@@ -19,18 +19,26 @@ def test_field_many2one_one2many(env):
         product = sillyorm.fields.String()
         sale_order_id = sillyorm.fields.Many2one("sale_order")
 
-    env.register_model(SaleOrder)
-    env.register_model(SaleOrderLine)
+    registry.register_model(SaleOrder)
+    registry.register_model(SaleOrderLine)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
     assert_db_columns(
-        env.cr, "sale_order", [("id", SqlType.integer()), ("name", SqlType.varchar(255))]
+        registry,
+        "sale_order",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+        ],
     )
     assert_db_columns(
-        env.cr,
+        registry,
         "sale_order_line",
         [
-            ("id", SqlType.integer()),
-            ("product", SqlType.varchar(255)),
-            ("sale_order_id", SqlType.integer()),
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("product", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("sale_order_id", sqlalchemy.sql.sqltypes.INTEGER()),
         ],
     )
 
@@ -43,36 +51,37 @@ def test_field_many2one_one2many(env):
     o2_l1 = env["sale_order_line"].create({"product": "p1 4 o2", "sale_order_id": so_2_id})
     o2_l2 = env["sale_order_line"].create({"product": "p2 4 o2", "sale_order_id": so_2_id})
     o2_l3 = env["sale_order_line"].create({"product": "p3 4 o2", "sale_order_id": so_2_id})
+    o2_l4 = env["sale_order_line"].create({"product": "p3 4 o2", "sale_order_id": None})
 
     assert isinstance(o1_l1.sale_order_id, SaleOrder)
     assert o1_l1.sale_order_id.id == so_1_id
     assert o1_l2.sale_order_id.id == so_1_id
     assert o2_l1.sale_order_id.id == so_2_id
 
+    assert o2_l4.sale_order_id is None
+    o2_l4.sale_order_id = env["sale_order"].browse(so_1_id)
+    assert o2_l4.sale_order_id.id is so_1_id
+    o2_l4.sale_order_id = None
+    assert o2_l4.sale_order_id is None
+
     abandoned_so_line1 = env["sale_order_line"].create({"product": "p3 4 o2"})
     abandoned_so_line2 = env["sale_order_line"].create({"product": "p3 4 o2"})
     assert abandoned_so_line1.sale_order_id is None
     assert abandoned_so_line2.sale_order_id is None
-    assert (
-        env["sale_order_line"].browse([abandoned_so_line1.id, abandoned_so_line2.id]).sale_order_id
-        is None
-    )
     abandoned_so_line1.sale_order_id = env["sale_order"].browse(so_1_id)
-    assert (
-        env["sale_order_line"]
-        .browse([abandoned_so_line1.id, abandoned_so_line2.id])
-        .sale_order_id.id
-        == so_1_id
-    )
+
+    with pytest.raises(SillyORMException) as e_info:
+        env["sale_order_line"].browse(
+            [abandoned_so_line1.id, abandoned_so_line2.id]
+        ).sale_order_id.id
+    assert str(e_info.value) == "ensure_one found 2 id's"
+
     abandoned_so_line2.sale_order_id = env["sale_order"].browse(so_2_id)
-    assert (
-        repr(
-            env["sale_order_line"]
-            .browse([abandoned_so_line1.id, abandoned_so_line2.id])
-            .sale_order_id
-        )
-        == f"sale_order[{so_1_id}, {so_2_id}]"
-    )
+    with pytest.raises(SillyORMException) as e_info:
+        env["sale_order_line"].browse([abandoned_so_line1.id, abandoned_so_line2.id]).sale_order_id
+    assert str(e_info.value) == "ensure_one found 2 id's"
+
+    assert env["sale_order_line"].browse([abandoned_so_line1.id]).sale_order_id.id == so_1_id
 
     # One2many
     assert (

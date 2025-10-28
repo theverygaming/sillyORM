@@ -1,16 +1,16 @@
 sillyorm package
 ================
 
-Subpackages
------------
-
-.. toctree::
-   :maxdepth: 4
-
-   sillyorm.dbms
-
 Submodules
 ----------
+
+sillyorm.registry module
+---------------------------
+
+.. automodule:: sillyorm.registry
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 sillyorm.environment module
 ---------------------------
@@ -44,10 +44,10 @@ sillyorm.model module
    :undoc-members:
    :show-inheritance:
 
-sillyorm.sql module
--------------------
+sillyorm.migration_helpers module
+---------------------------------
 
-.. automodule:: sillyorm.sql
+.. automodule:: sillyorm.migration_helpers
    :members:
    :undoc-members:
    :show-inheritance:

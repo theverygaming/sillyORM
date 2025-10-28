@@ -7,10 +7,9 @@ Basic concepts
 
    import tempfile
    import sillyorm
-   from sillyorm.dbms import sqlite
 
    tmpfile = tempfile.NamedTemporaryFile()
-   env = sillyorm.Environment(sqlite.SQLiteConnection(tmpfile.name).cursor())
+   registry = sillyorm.Registry(f"sqlite:///{tmpfile.name}")
 
 ------
 Models
@@ -27,14 +26,141 @@ and the name of the model in the :ref:`environment <environment>`.
    class ExampleModel(sillyorm.model.Model):
        _name = "example0"
 
-   env.register_model(ExampleModel)
-
-When a model is registered the ORM ensures the table with all required fields is created.
-If any columns/fields exist in the database but are not specified in the model **they will be removed in the database**.
+   registry.register_model(ExampleModel)
+   registry.resolve_tables()
+   registry.init_db_tables()
+   env = registry.get_environment()
 
 .. warning::
    You should never call the constructor of the model class yourself.
    Get an empty :ref:`recordset <recordsets>` via the :ref:`environment <environment>` and interact with the model from there.
+
+A model can also be inherited and extended
+
+Standard Python Inheritance:
+
+.. testcode:: models_concept
+
+   class ExampleModel(sillyorm.model.Model):
+       _name = "example_inheritance"
+       field1 = sillyorm.fields.Integer()
+
+   class ExampleModelCopy(ExampleModel):
+       _name = "example_inheritance_copy"
+       field2 = sillyorm.fields.String()
+
+   registry.register_model(ExampleModel)
+   registry.register_model(ExampleModelCopy)
+   registry.resolve_tables()
+   registry.init_db_tables()
+   env = registry.get_environment()
+   env["example_inheritance"].create({}).field1
+   env["example_inheritance_copy"].create({}).field1
+   env["example_inheritance_copy"].create({}).field2
+
+This will cause all fields to be copied on the inherited model.
+If a field is defined in both the base class and the inherited one the inherited one will be put into the database.
+**At the moment it is not possible to remove a field from an inherited model**
+
+Extension:
+
+.. testcode:: models_concept
+
+   class ExampleModel(sillyorm.model.Model):
+       _name = "example_extension"
+       field1 = sillyorm.fields.Integer()
+       field2 = sillyorm.fields.Integer()
+
+   class ExampleModelExtension(sillyorm.model.Model):
+       _name = "example_extension"
+       _extends = "example_extension"
+       # overrides field2 on original model, now field2 is a String
+       field2 = sillyorm.fields.String()
+       # adds a new field to the original model
+       field3 = sillyorm.fields.String()
+
+   registry.register_model(ExampleModel)
+   registry.register_model(ExampleModelExtension)
+   registry.resolve_tables()
+   registry.init_db_tables()
+   env = registry.get_environment()
+   env["example_extension"].create({}).field1
+   env["example_extension"].create({}).field2
+   env["example_extension"].create({}).field3
+
+This will add fields/modify fields on the original model.
+**At the moment it is not possible to remove a field from an extended model**
+
+Inheritance (via ORM):
+
+.. testcode:: models_concept
+
+   class ExampleModel(sillyorm.model.Model):
+       _name = "example_orm_inheritance"
+       field1 = sillyorm.fields.Integer()
+
+   class ExampleModelCopy(sillyorm.model.Model):
+       _name = "example_orm_inheritance_copy"
+       _inherits = ["example_orm_inheritance"] # order matters here (later in array has higher priority)
+       field2 = sillyorm.fields.String()
+
+   registry.register_model(ExampleModel)
+   registry.register_model(ExampleModelCopy)
+   registry.resolve_tables()
+   registry.init_db_tables()
+   env = registry.get_environment()
+   env["example_orm_inheritance"].create({}).field1
+   env["example_orm_inheritance_copy"].create({}).field1
+   env["example_orm_inheritance_copy"].create({}).field2
+
+This will cause all fields to be copied on the inherited model.
+If a field is defined in both the base class and the inherited one the inherited one will be put into the database.
+**At the moment it is not possible to remove a field from an inherited model**
+
+Inheritance (via ORM) and extension may also be combined:
+
+.. testcode:: models_concept
+
+   class ExampleModelSomefield(sillyorm.model.Model):
+       _name = "example_orm_ext_inheritance_somefield"
+       somefield = sillyorm.fields.Integer()
+
+   class ExampleModel(sillyorm.model.Model):
+       _name = "example_orm_ext_inheritance"
+       field1 = sillyorm.fields.Integer()
+
+   class ExampleModelCopy(sillyorm.model.Model):
+       _name = "example_orm_ext_inheritance"
+       _extends = "example_orm_ext_inheritance"
+       _inherits = ["example_orm_ext_inheritance_somefield"] # order matters here (later in array has higher priority)
+       field2 = sillyorm.fields.String()
+
+   registry.register_model(ExampleModelSomefield)
+   registry.register_model(ExampleModel)
+   registry.register_model(ExampleModelCopy)
+   registry.resolve_tables()
+   registry.init_db_tables()
+   env = registry.get_environment()
+   env["example_orm_ext_inheritance"].create({}).somefield
+   env["example_orm_ext_inheritance"].create({}).field1
+   env["example_orm_ext_inheritance"].create({}).field2
+
+
+.. _registry:
+
+--------
+Registry
+--------
+
+The :class:`Registry <sillyorm.registry.Registry>` class keeps track of the database connection pool and Model classes.
+
+You can create :ref:`environments <environment>` (kinda like DB cursors) from the registry.
+
+.. doctest:: models_concept
+
+   >>> new_env = registry.get_environment(autocommit=True)
+   >>> type(new_env)
+   <class 'sillyorm.environment.Environment'>
 
 
 .. _environment:
@@ -60,13 +186,13 @@ The environment can be accessed from each :ref:`recordset <recordsets>`
    >>> type(env["example0"].env)
    <class 'sillyorm.environment.Environment'>
 
-The database cursor can be accessed from the environment
+The database connection can be accessed from the environment
 
 .. doctest:: models_concept
 
-   # the database cursor can be accessed from the environment
-   >>> type(env.cr)
-   <class 'sillyorm.dbms.sqlite.SQLiteCursor'>
+   # the database connection can be accessed from the environment
+   >>> type(env.connection)
+   <class 'sqlalchemy.engine.base.Connection'>
 
 
 ------
@@ -78,12 +204,18 @@ There are various kinds of fields. By default each model has a special :class:`i
 Currently sillyORM supports the following fields:
 
 * :class:`Integer <sillyorm.fields.Integer>` represents an integer
+* :class:`Float <sillyorm.fields.Float>` represents a floating point number
 * :class:`String <sillyorm.fields.String>` represents a string
+* :class:`Text <sillyorm.fields.Text>` represents a large string
 * :class:`Date <sillyorm.fields.Date>` represents a Date (as `datetime.date`)
+* :class:`Datetime <sillyorm.fields.Datetime>` represents a Datetime (as `datetime.datetime`)
+* :class:`Boolean <sillyorm.fields.Boolean>` represents a Boolean
+* :class:`Selection <sillyorm.fields.Selection>` represents a Selection
 * :class:`Many2one <sillyorm.fields.Many2one>` represents a many to one relationship
 * :class:`One2many <sillyorm.fields.One2many>` represents a one to many relationship (requires a many to one on the other side)
 * :class:`Many2many <sillyorm.fields.Many2many>` represents a many to many relationship
 
+Most fields support None as a value, and are initialized with None by default.
 
 Fields are specified as class attributes on a child of the :class:`Model <sillyorm.model.Model>` class.
 The attribute name specifies the column name in the database.
@@ -94,8 +226,12 @@ The attribute name specifies the column name in the database.
        _name = "example1"
 
        name = sillyorm.fields.String()
+       test = sillyorm.fields.String()
 
-   env.register_model(ExampleModel)
+   registry.register_model(ExampleModel)
+   registry.resolve_tables()
+   registry.init_db_tables()
+   env = registry.get_environment()
 
 
 .. _recordsets:
@@ -141,8 +277,12 @@ Recordsets can contain multiple records
    >>> rec_12 = env["example1"].browse([1, 2])
    >>> rec_12
    example1[1, 2]
-   >>> rec_12.name
-   ['this is record 1', 'this is record 2']
+   >>> rec_12.name  # reading of a field is only possible if the recordset contains exactly one record
+   Traceback (most recent call last):
+   ...
+   sillyorm.exceptions.SillyORMException: ensure_one found 2 id's
+   >>> rec_12.read(["name"])  # if a recordset with multiple records has to be read use the `read` method
+   [{'name': 'this is record 1'}, {'name': 'this is record 2'}]
 
 
 Recordsets can be iterated over
@@ -154,6 +294,16 @@ Recordsets can be iterated over
    example1[1]
    example1[2]
 
+Recordsets can be subscripted
+
+.. doctest:: models_concept
+
+   >>> rec_12 = env["example1"].browse([1, 2])
+   >>> rec_12[0]
+   example1[1]
+   >>> rec_12[1]
+   example1[2]
+
 There is a :func:`function <sillyorm.model.Model.ensure_one>` to ensure a recordset contains exactly one record. It will raise an exception if that isn't the case
 
 .. doctest:: models_concept
@@ -161,6 +311,25 @@ There is a :func:`function <sillyorm.model.Model.ensure_one>` to ensure a record
    >>> rec_1 = env["example1"].browse(1)
    >>> rec_1.ensure_one()
    example1[1]
+
+
+Fields can have no value
+
+.. doctest:: models_concept
+
+   # recordset with one record
+   >>> rec_3 = env["example1"].create({"name": "this is record 3"})
+   >>> rec_3
+   example1[3]
+   >>> repr(rec_3.test)
+   'None'
+   >>> rec_3.test = "test"
+   >>> rec_3.test
+   'test'
+   >>> rec_3.test = None  # setting a field to None is also possible
+   >>> repr(rec_3.test)
+   'None'
+
 
 ---------------
 Model Functions
@@ -180,7 +349,10 @@ A model can have functions
            for record in self:
                print(f"it: {self}") 
 
-   env.register_model(ExampleModel)
+   registry.register_model(ExampleModel)
+   registry.resolve_tables()
+   registry.init_db_tables()
+   env = registry.get_environment()
    record = env["example2"].create({"name": "test"})
    record.somefunc()
 

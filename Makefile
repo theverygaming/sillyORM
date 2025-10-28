@@ -7,14 +7,14 @@ typecheck:
 
 .PHONY: lint
 lint:
-	pylint ./sillyorm --disable=missing-module-docstring
+	pylint ./sillyorm --disable=missing-module-docstring,unknown-option-value
 
 .PHONY: precommit
 precommit: test typecheck lint
 
 .PHONY: test
 test:
-	coverage run --source sillyorm/ -m pytest -vv --tb=long tests/
+	coverage run --source sillyorm/ -m pytest -vv --tb=long --showlocals --continue-on-collection-errors tests/
 	coverage html --omit="tests/*"
 	coverage report -m --omit="tests/*"
 	cd docs && make doctest
