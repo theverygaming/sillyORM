@@ -28,7 +28,12 @@ class Registry:
     :type create_engine_kwargs: dict[str, Any]
     """
 
-    def __init__(self, create_engine_url: str, create_engine_kwargs: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        create_engine_url: str,
+        create_engine_kwargs: dict[str, Any] | None = None,
+        environment_class: type[Environment] = Environment,
+    ):
         self.engine = sqlalchemy.create_engine(
             create_engine_url, **(create_engine_kwargs if create_engine_kwargs else {})
         )
@@ -38,6 +43,7 @@ class Registry:
         # finished model list (inheritance applied etc.)
         self._models: dict[str, type[Model]] = {}
         self._environments_given_out: list[Environment] = []
+        self._environment_class = environment_class
 
     def reset_full(self) -> None:
         """
@@ -242,7 +248,9 @@ class Registry:
            The new Environment object
         :rtype: :class:`environment <sillyorm.environment.Environment>`
         """
-        new_env = Environment(self._models, self.engine.connect(), self, autocommit=autocommit)
+        new_env = self._environment_class(
+            self._models, self.engine.connect(), self, autocommit=autocommit
+        )
         self._environments_given_out.append(new_env)
         return new_env
 
