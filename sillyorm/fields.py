@@ -671,6 +671,25 @@ class Many2one(Integer):
         super().__set__(record, value.id)
 
 
+class Many2xCommand:
+    """
+    Commands for One2many and Many2many fields
+    """
+
+    LINK = 1
+
+    @classmethod
+    def link(cls, foreign: BaseModel | list[int]) -> tuple[int, list[int]]:
+        """
+        LINK command
+
+        links existing records to the relation
+        """
+        if isinstance(foreign, list):
+            return (cls.LINK, foreign)
+        return (cls.LINK, foreign.ids)
+
+
 class One2many(Field):
     """
     One to many relational field.
@@ -790,6 +809,9 @@ class Many2many(Field):
             sanitize_table_name(self._joint_table_name),
             metadata,
             *columns,
+            sqlalchemy.UniqueConstraint(
+                self._joint_table_self_name, self._joint_table_foreign_name, name="unique_link"
+            ),
         )
 
     def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
@@ -803,29 +825,32 @@ class Many2many(Field):
             return None
         return record.env[self._foreign_model].__class__(record.env, ids=ids)
 
-    def __set__(self, record: BaseModel, value: tuple[int, BaseModel]) -> None:
+    def __set__(self, record: BaseModel, command: tuple[int, *tuple[Any, ...]] | list[Any]) -> None:
         record.ensure_one()
-        cmd = value[0]
-        records_f = value[1]
+        cmd: int = command[0]
         match cmd:
-            case 1:
-                for record_f in records_f:
+            case Many2xCommand.LINK:
+                if len(command) != 2:
+                    raise SillyORMException("invalid command tuple")
+                ids_f: list[int] = command[1]
+                for id_f in ids_f:
                     # pylint: disable=not-callable # https://github.com/sqlalchemy/sqlalchemy/discussions/9202
                     stmt = sqlalchemy.select(sqlalchemy.func.count()).select_from(self._table)
                     stmt = stmt.where(
                         sqlalchemy.and_(
                             self._table.c[self._joint_table_self_name] == record.id,
-                            self._table.c[self._joint_table_foreign_name] == record_f.id,
+                            self._table.c[self._joint_table_foreign_name] == id_f,
                         )
                     )
                     count = record.env.connection.execute(stmt).scalar_one()
                     if count > 0:
-                        raise SillyORMException("attempted to insert a record twice into many2many")
+                        # linking an ID twice will be ignored
+                        continue
                     record.env.connection.execute(
                         sqlalchemy.insert(self._table).values(
                             {
                                 self._joint_table_self_name: record.id,
-                                self._joint_table_foreign_name: record_f.id,
+                                self._joint_table_foreign_name: id_f,
                             }
                         )
                     )

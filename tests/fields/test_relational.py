@@ -145,25 +145,23 @@ def test_field_many2many(registry):
     product_2 = env["product"].create({})
 
     with pytest.raises(SillyORMException) as e_info:
-        product_2.tax_ids = (2, None)
+        product_2.tax_ids = (123, None)
     assert str(e_info.value) == "unknown many2many command"
 
     assert product_1.tax_ids is None
     assert product_2.tax_ids is None
 
-    product_1.tax_ids = (1, tax_1)
+    product_1.tax_ids = sillyorm.fields.Many2xCommand.link(tax_1)
     assert repr(product_1.tax_ids) == "tax[1]"
     assert product_2.tax_ids is None
 
-    product_1.tax_ids = (1, tax_2)
-    product_2.tax_ids = (1, tax_2)
+    product_1.tax_ids = sillyorm.fields.Many2xCommand.link(tax_2)
+    product_2.tax_ids = sillyorm.fields.Many2xCommand.link(tax_2.ids)
     assert repr(product_1.tax_ids) == "tax[1, 2]"
     assert repr(product_2.tax_ids) == "tax[2]"
 
-    with pytest.raises(SillyORMException) as e_info:
-        product_1.tax_ids = (1, tax_1)
-    assert str(e_info.value) == "attempted to insert a record twice into many2many"
-
-    with pytest.raises(SillyORMException) as e_info:
-        product_2.tax_ids = (1, tax_2)
-    assert str(e_info.value) == "attempted to insert a record twice into many2many"
+    # double insert should be ignored
+    product_1.tax_ids = sillyorm.fields.Many2xCommand.link(tax_1)
+    assert repr(product_1.tax_ids) == "tax[1, 2]"
+    product_2.tax_ids = sillyorm.fields.Many2xCommand.link(tax_2)
+    assert repr(product_2.tax_ids) == "tax[2]"
