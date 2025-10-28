@@ -44,40 +44,40 @@ def test_field_date_search(registry):
             "&",
             ("date", "<", datetime.date(2025, 1, 26)),
         ]
-    )._ids == [1, 4]
+    ).ids == [1, 4]
 
     # Equals
-    assert env["sale_order"].search([("date", "=", datetime.date(2025, 1, 25))])._ids == [1]
-    assert env["sale_order"].search([("date", "=", datetime.date(2025, 1, 26))])._ids == [2]
-    assert env["sale_order"].search([("date", "=", datetime.date(2024, 1, 10))])._ids == [4]
-    assert env["sale_order"].search([("date", "=", None)])._ids == [6]
+    assert env["sale_order"].search([("date", "=", datetime.date(2025, 1, 25))]).ids == [1]
+    assert env["sale_order"].search([("date", "=", datetime.date(2025, 1, 26))]).ids == [2]
+    assert env["sale_order"].search([("date", "=", datetime.date(2024, 1, 10))]).ids == [4]
+    assert env["sale_order"].search([("date", "=", None)]).ids == [6]
 
     # Not equals
-    assert env["sale_order"].search([("date", "!=", datetime.date(2025, 1, 26))])._ids == [
+    assert env["sale_order"].search([("date", "!=", datetime.date(2025, 1, 26))]).ids == [
         1,
         3,
         4,
         5,
     ]
-    assert env["sale_order"].search([("date", "!=", datetime.date(2024, 1, 10))])._ids == [
+    assert env["sale_order"].search([("date", "!=", datetime.date(2024, 1, 10))]).ids == [
         1,
         2,
         3,
         5,
     ]
-    assert env["sale_order"].search([("date", "!=", None)])._ids == [1, 2, 3, 4, 5]
+    assert env["sale_order"].search([("date", "!=", None)]).ids == [1, 2, 3, 4, 5]
 
     # Greater than
-    assert env["sale_order"].search([("date", ">", datetime.date(2025, 1, 25))])._ids == [2, 3]
+    assert env["sale_order"].search([("date", ">", datetime.date(2025, 1, 25))]).ids == [2, 3]
 
     # Less than
-    assert env["sale_order"].search([("date", "<", datetime.date(2025, 1, 26))])._ids == [1, 4, 5]
+    assert env["sale_order"].search([("date", "<", datetime.date(2025, 1, 26))]).ids == [1, 4, 5]
 
     # Greater than or equal
-    assert env["sale_order"].search([("date", ">=", datetime.date(2025, 1, 25))])._ids == [1, 2, 3]
+    assert env["sale_order"].search([("date", ">=", datetime.date(2025, 1, 25))]).ids == [1, 2, 3]
 
     # Less than or equal
-    assert env["sale_order"].search([("date", "<=", datetime.date(2025, 1, 26))])._ids == [
+    assert env["sale_order"].search([("date", "<=", datetime.date(2025, 1, 26))]).ids == [
         1,
         2,
         4,

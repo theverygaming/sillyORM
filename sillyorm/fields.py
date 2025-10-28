@@ -108,6 +108,13 @@ class Field:
             record._write({self.name: value})
         record._write({self.name: self._convert_type_set(value)})
 
+    def _build_sqlalchemy_table(
+        self,
+        model_cls: type[BaseModel],  # pylint: disable=unused-argument
+        metadata: sqlalchemy.MetaData,  # pylint: disable=unused-argument
+    ) -> None:
+        return
+
 
 class Integer(Field):
     """
@@ -250,7 +257,7 @@ class Id(Integer):
 
     def __get__(self, record: BaseModel, objtype: Any = None) -> int:
         record.ensure_one()
-        return record._ids[0]
+        return record.ids[0]
 
     def __set__(self, record: BaseModel, value: Any) -> None:
         raise SillyORMException("cannot set id")
@@ -664,6 +671,37 @@ class Many2one(Integer):
         super().__set__(record, value.id)
 
 
+class Many2xCommand:
+    """
+    Commands for One2many and Many2many fields
+    """
+
+    LINK = 1
+    UNLINK = 2
+
+    @classmethod
+    def link(cls, foreign: BaseModel | list[int]) -> tuple[int, list[int]]:
+        """
+        LINK command
+
+        links existing records to the relation
+        """
+        if isinstance(foreign, list):
+            return (cls.LINK, foreign)
+        return (cls.LINK, foreign.ids)
+
+    @classmethod
+    def unlink(cls, foreign: BaseModel | list[int]) -> tuple[int, list[int]]:
+        """
+        UNLINK command
+
+        removes links of records from the relation
+        """
+        if isinstance(foreign, list):
+            return (cls.UNLINK, foreign)
+        return (cls.UNLINK, foreign.ids)
+
+
 class One2many(Field):
     """
     One to many relational field.
@@ -731,3 +769,117 @@ class One2many(Field):
 
     def __set__(self, record: BaseModel, value: BaseModel) -> None:
         raise NotImplementedError()
+
+
+class Many2many(Field):
+    """
+    Many to many relational field.
+
+    .. warning::
+       This field's implementation is currently incomplete
+
+    """
+
+    materialize = False
+
+    def __init__(self, foreign_model: str):
+        super().__init__()
+        self._foreign_model = foreign_model
+        self._joint_table_name = cast(str, None)
+        self._joint_table_self_name = cast(str, None)
+        self._joint_table_foreign_name = cast(str, None)
+        self._table = cast(sqlalchemy.Table, None)
+
+    def _build_sqlalchemy_table(
+        self, model_cls: type[BaseModel], metadata: sqlalchemy.MetaData
+    ) -> None:
+        self._joint_table_name = f"_joint_{model_cls._name}_{self.name}_{self._foreign_model}"  # pylint: disable=protected-access
+        self._joint_table_self_name = f"{model_cls._name}_id"  # pylint: disable=protected-access
+        self._joint_table_foreign_name = f"{self._foreign_model}_id"
+        _logger.debug(
+            "initializing many2many joint table: '%s.%s' -> '%s' named '%s'",
+            model_cls._name,  # pylint: disable=protected-access
+            self.name,
+            self._foreign_model,
+            self._joint_table_name,
+        )
+        columns = [
+            sqlalchemy.Column(
+                self._joint_table_self_name,
+                sqlalchemy.types.Integer(),
+                sqlalchemy.ForeignKey(
+                    f"{sanitize_table_name(model_cls._name)}.id",  # pylint: disable=protected-access
+                ),
+            ),
+            sqlalchemy.Column(
+                self._joint_table_foreign_name,
+                sqlalchemy.types.Integer(),
+                sqlalchemy.ForeignKey(f"{sanitize_table_name(self._foreign_model)}.id"),
+            ),
+        ]
+        self._table = sqlalchemy.Table(
+            sanitize_table_name(self._joint_table_name),
+            metadata,
+            *columns,
+            sqlalchemy.UniqueConstraint(
+                self._joint_table_self_name, self._joint_table_foreign_name, name="unique_link"
+            ),
+        )
+
+    def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
+        record.ensure_one()
+        stmt = sqlalchemy.select(self._table.c[self._joint_table_foreign_name])
+        stmt = stmt.where(self._table.c[self._joint_table_self_name] == record.id)
+        result = record.env.connection.execute(stmt).fetchall()
+        ids = [row[0] for row in result]
+
+        if len(ids) == 0:
+            return None
+        return record.env[self._foreign_model].__class__(record.env, ids=ids)
+
+    def __set__(self, record: BaseModel, command: tuple[int, *tuple[Any, ...]] | list[Any]) -> None:
+        record.ensure_one()
+        cmd: int = command[0]
+        match cmd:
+            case Many2xCommand.LINK:
+                if len(command) != 2:
+                    raise SillyORMException("invalid command tuple")
+                ids_f: list[int] = command[1]
+                for id_f in ids_f:
+                    count = record.env.connection.execute(
+                        # pylint: disable=not-callable # https://github.com/sqlalchemy/sqlalchemy/discussions/9202
+                        sqlalchemy.select(sqlalchemy.func.count())
+                        .select_from(self._table)
+                        .where(
+                            sqlalchemy.and_(
+                                self._table.c[self._joint_table_self_name] == record.id,
+                                self._table.c[self._joint_table_foreign_name] == id_f,
+                            )
+                        )
+                    ).scalar_one()
+                    if count > 0:
+                        # linking an ID twice will be ignored
+                        continue
+                    record.env.connection.execute(
+                        sqlalchemy.insert(self._table).values(
+                            {
+                                self._joint_table_self_name: record.id,
+                                self._joint_table_foreign_name: id_f,
+                            }
+                        )
+                    )
+            case Many2xCommand.UNLINK:
+                if len(command) != 2:
+                    raise SillyORMException("invalid command tuple")
+                ids_f: list[int] = command[1]  # type: ignore
+                if ids_f:
+                    record.env.connection.execute(
+                        self._table.delete().where(
+                            sqlalchemy.and_(
+                                self._table.c[self._joint_table_self_name] == record.id,
+                                self._table.c[self._joint_table_foreign_name].in_(ids_f),
+                            )
+                        )
+                    )
+            case _:
+                raise SillyORMException("unknown many2many command")

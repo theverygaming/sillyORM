@@ -93,6 +93,13 @@ class BaseModel:
     def __getitem__(self, key: int) -> Self:
         return self.__class__(self.env, ids=[self._ids[key]])
 
+    @property
+    def ids(self) -> list[int]:
+        """
+        Get all IDs of records in this recordset
+        """
+        return self._ids
+
     @classmethod
     def _build_fields_list(cls) -> None:
         def get_all_fields() -> dict[str, fields.Field]:
@@ -115,6 +122,9 @@ class BaseModel:
     def _build_sqlalchemy_table(cls, metadata: sqlalchemy.MetaData) -> None:
         cls._build_fields_list()
         all_fields = list(cls._fields.values())
+
+        for field in all_fields:
+            field._build_sqlalchemy_table(cls, metadata)  # pylint: disable=protected-access
 
         columns = [
             sqlalchemy.Column(
