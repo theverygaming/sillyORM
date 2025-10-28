@@ -131,7 +131,7 @@ def test_field_many2many(registry):
     )
     assert_db_columns(
         registry,
-        "_joint_product_tax_ids_tax",
+        "join_product_tax_ids_tax",
         [
             ("product_id", sqlalchemy.sql.sqltypes.INTEGER()),
             ("tax_id", sqlalchemy.sql.sqltypes.INTEGER()),

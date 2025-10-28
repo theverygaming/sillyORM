@@ -785,62 +785,62 @@ class Many2many(Field):
     def __init__(self, foreign_model: str):
         super().__init__()
         self._foreign_model = foreign_model
-        self._joint_table_name = cast(str, None)
-        self._joint_table_self_name = cast(str, None)
-        self._joint_table_foreign_name = cast(str, None)
+        self._join_table_name = cast(str, None)
+        self._join_table_self_name = cast(str, None)
+        self._join_table_foreign_name = cast(str, None)
         self._table = cast(sqlalchemy.Table, None)
 
     def _build_sqlalchemy_table(
         self, model_cls: type[BaseModel], metadata: sqlalchemy.MetaData
     ) -> None:
-        if not self._joint_table_name:
+        if not self._join_table_name:
             # pylint: disable=protected-access
-            self._joint_table_name = (
-                f"_joint_{sanitize_table_name(model_cls._name)}"
+            self._join_table_name = (
+                f"join_{sanitize_table_name(model_cls._name)}"
                 + f"_{self.name}"
                 + f"_{sanitize_table_name(self._foreign_model)}"
             )
-        if not self._joint_table_self_name:
-            self._joint_table_self_name = (
+        if not self._join_table_self_name:
+            self._join_table_self_name = (
                 f"{sanitize_table_name(model_cls._name)}_id"  # pylint: disable=protected-access
             )
-        if not self._joint_table_foreign_name:
-            self._joint_table_foreign_name = f"{sanitize_table_name(self._foreign_model)}_id"
+        if not self._join_table_foreign_name:
+            self._join_table_foreign_name = f"{sanitize_table_name(self._foreign_model)}_id"
 
         _logger.debug(
-            "initializing many2many joint table: '%s.%s' -> '%s' named '%s'",
+            "initializing many2many join table: '%s.%s' -> '%s' named '%s'",
             model_cls._name,  # pylint: disable=protected-access
             self.name,
             self._foreign_model,
-            self._joint_table_name,
+            self._join_table_name,
         )
         columns = [
             sqlalchemy.Column(
-                self._joint_table_self_name,
+                self._join_table_self_name,
                 sqlalchemy.types.Integer(),
                 sqlalchemy.ForeignKey(
                     f"{sanitize_table_name(model_cls._name)}.id",  # pylint: disable=protected-access
                 ),
             ),
             sqlalchemy.Column(
-                self._joint_table_foreign_name,
+                self._join_table_foreign_name,
                 sqlalchemy.types.Integer(),
                 sqlalchemy.ForeignKey(f"{sanitize_table_name(self._foreign_model)}.id"),
             ),
         ]
         self._table = sqlalchemy.Table(
-            sanitize_table_name(self._joint_table_name),
+            sanitize_table_name(self._join_table_name),
             metadata,
             *columns,
             sqlalchemy.UniqueConstraint(
-                self._joint_table_self_name, self._joint_table_foreign_name, name="unique_link"
+                self._join_table_self_name, self._join_table_foreign_name, name="unique_link"
             ),
         )
 
     def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
         record.ensure_one()
-        stmt = sqlalchemy.select(self._table.c[self._joint_table_foreign_name])
-        stmt = stmt.where(self._table.c[self._joint_table_self_name] == record.id)
+        stmt = sqlalchemy.select(self._table.c[self._join_table_foreign_name])
+        stmt = stmt.where(self._table.c[self._join_table_self_name] == record.id)
         result = record.env.connection.execute(stmt).fetchall()
         ids = [row[0] for row in result]
 
@@ -863,8 +863,8 @@ class Many2many(Field):
                         .select_from(self._table)
                         .where(
                             sqlalchemy.and_(
-                                self._table.c[self._joint_table_self_name] == record.id,
-                                self._table.c[self._joint_table_foreign_name] == id_f,
+                                self._table.c[self._join_table_self_name] == record.id,
+                                self._table.c[self._join_table_foreign_name] == id_f,
                             )
                         )
                     ).scalar_one()
@@ -874,8 +874,8 @@ class Many2many(Field):
                     record.env.connection.execute(
                         sqlalchemy.insert(self._table).values(
                             {
-                                self._joint_table_self_name: record.id,
-                                self._joint_table_foreign_name: id_f,
+                                self._join_table_self_name: record.id,
+                                self._join_table_foreign_name: id_f,
                             }
                         )
                     )
@@ -887,8 +887,8 @@ class Many2many(Field):
                     record.env.connection.execute(
                         self._table.delete().where(
                             sqlalchemy.and_(
-                                self._table.c[self._joint_table_self_name] == record.id,
-                                self._table.c[self._joint_table_foreign_name].in_(ids_f),
+                                self._table.c[self._join_table_self_name] == record.id,
+                                self._table.c[self._join_table_foreign_name].in_(ids_f),
                             )
                         )
                     )
