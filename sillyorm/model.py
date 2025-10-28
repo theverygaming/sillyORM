@@ -225,7 +225,7 @@ class BaseModel:
            values for the fields
         :type vals: dict[str, Any]
         """
-        if not self._ids:
+        if not self._ids or not vals:
             return
 
         with self.env.managed_transaction():
