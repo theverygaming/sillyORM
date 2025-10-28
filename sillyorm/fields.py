@@ -834,13 +834,21 @@ class Many2many(Field):
                 sqlalchemy.ForeignKey(f"{sanitize_table_name(self._foreign_model)}.id"),
             ),
         ]
+        # if a table already exists check if it has the correct columns
+        table_name_sanitized = sanitize_table_name(self._join_table_name)
+        if table_name_sanitized in metadata.tables:
+            if set(c.name for c in columns) != set(
+                metadata.tables[table_name_sanitized].columns.keys()
+            ):
+                raise SillyORMException("many2many: column mismatch")
         self._table = sqlalchemy.Table(
-            sanitize_table_name(self._join_table_name),
+            table_name_sanitized,
             metadata,
             *columns,
             sqlalchemy.UniqueConstraint(
                 self._join_table_self_name, self._join_table_foreign_name, name="unique_link"
             ),
+            keep_existing=True,
         )
 
     def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:

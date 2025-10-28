@@ -176,3 +176,83 @@ def test_field_many2many(registry):
 
     product_2.tax_ids = sillyorm.fields.Many2xCommand.unlink(tax_2)
     assert product_2.tax_ids is None
+
+
+@with_test_registry()
+def test_field_many2many_2fields(registry):
+    class Tax(sillyorm.model.Model):
+        _name = "tax"
+
+        product_ids = sillyorm.fields.Many2many("product", "ProductTax", "tax_id", "product_id")
+
+    class Product(sillyorm.model.Model):
+        _name = "product"
+
+        tax_ids = sillyorm.fields.Many2many("tax", "ProductTax", "product_id", "tax_id")
+
+    registry.register_model(Tax)
+    registry.register_model(Product)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
+    assert_db_columns(
+        registry,
+        "tax",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+        ],
+    )
+    assert_db_columns(
+        registry,
+        "product",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+        ],
+    )
+    assert_db_columns(
+        registry,
+        "ProductTax",
+        [
+            ("product_id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("tax_id", sqlalchemy.sql.sqltypes.INTEGER()),
+        ],
+    )
+
+    tax_1 = env["tax"].create({})
+    tax_2 = env["tax"].create({})
+
+    product_1 = env["product"].create({})
+    product_2 = env["product"].create({})
+
+    ## LINK
+    assert product_1.tax_ids is None
+    assert product_2.tax_ids is None
+    assert tax_1.product_ids is None
+    assert tax_2.product_ids is None
+
+    product_1.tax_ids = sillyorm.fields.Many2xCommand.link(tax_1)
+    assert repr(product_1.tax_ids) == "tax[1]"
+    assert repr(tax_1.product_ids) == "product[1]"
+    assert product_2.tax_ids is None
+    assert tax_2.product_ids is None
+
+    product_1.tax_ids = sillyorm.fields.Many2xCommand.link(tax_2)
+    product_2.tax_ids = sillyorm.fields.Many2xCommand.link(tax_2.ids)
+    tax_2.product_ids = sillyorm.fields.Many2xCommand.link(product_2.ids)
+    assert repr(product_1.tax_ids) == "tax[1, 2]"
+    assert repr(tax_1.product_ids) == "product[1]"
+    assert repr(tax_2.product_ids) == "product[1, 2]"
+    assert repr(product_2.tax_ids) == "tax[2]"
+
+    ## UNLINK
+    # do nothing
+    tax_1.product_ids = sillyorm.fields.Many2xCommand.unlink([])
+    assert product_1.tax_ids.ids == [1, 2]
+    assert tax_1.product_ids.ids == [1]
+    tax_1.product_ids = sillyorm.fields.Many2xCommand.unlink(product_1)
+    assert product_1.tax_ids.ids == [2]
+    assert tax_1.product_ids is None
+
+    tax_2.product_ids = sillyorm.fields.Many2xCommand.unlink(product_2)
+    assert product_2.tax_ids is None
+    assert tax_2.product_ids.ids == [1]
