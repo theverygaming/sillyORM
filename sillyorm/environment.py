@@ -1,7 +1,8 @@
 from __future__ import annotations
 import logging
+import copy
 import contextlib
-from typing import TYPE_CHECKING, Generator, cast
+from typing import TYPE_CHECKING, Generator, cast, Self
 import sqlalchemy
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -66,6 +67,14 @@ class Environment:
                 )
             self._models = {}
             self.registry = None  # type: ignore
+
+    def clone(self) -> Self:
+        """
+        Clone the environment - the connection between the two will be shared
+        """
+        new_env = copy.copy(self)  # shallow copy
+        self.registry._environments_given_out.append(new_env)  # pylint: disable=protected-access
+        return new_env
 
     def __del__(self) -> None:
         self.close()
