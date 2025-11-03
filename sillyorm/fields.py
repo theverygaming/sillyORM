@@ -779,9 +779,15 @@ class One2many(Field):
         self._foreign_model = foreign_model
         self._foreign_field = foreign_field
 
+    def _non_materialized_read(self, records: BaseModel) -> list[Any]:
+        return [
+            record.env[self._foreign_model].search([(self._foreign_field, "=", record.id)]).ids
+            for record in records
+        ]
+
     def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
-        record.ensure_one()
-        return record.env[self._foreign_model].search([(self._foreign_field, "=", record.id)])
+        val = super().__get__(record, objtype)
+        return record.env[self._foreign_model].browse(val)
 
     def __set__(self, record: BaseModel, value: BaseModel) -> None:
         raise NotImplementedError()

@@ -88,10 +88,21 @@ def test_field_many2one_one2many(registry):
         repr(env["sale_order"].browse(so_1_id).line_ids)
         == f"sale_order_line[{o1_l1.id}, {o1_l2.id}, {abandoned_so_line1.id}]"
     )
+    assert set(env["sale_order"].browse(so_1_id).read(["line_ids"])[0]["line_ids"]) == {
+        o1_l1.id,
+        o1_l2.id,
+        abandoned_so_line1.id,
+    }
     assert (
         repr(env["sale_order"].browse(so_2_id).line_ids)
         == f"sale_order_line[{o2_l1.id}, {o2_l2.id}, {o2_l3.id}, {abandoned_so_line2.id}]"
     )
+    assert set(env["sale_order"].browse(so_2_id).read(["line_ids"])[0]["line_ids"]) == {
+        o2_l1.id,
+        o2_l2.id,
+        o2_l3.id,
+        abandoned_so_line2.id,
+    }
 
     with pytest.raises(NotImplementedError):
         env["sale_order"].browse(so_1_id).line_ids = 1
