@@ -887,26 +887,28 @@ class Many2many(Field):
                     if count > 0:
                         # linking an ID twice will be ignored
                         continue
-                    record.env.connection.execute(
-                        sqlalchemy.insert(self._table).values(
-                            {
-                                self._join_table_self_name: record.id,
-                                self._join_table_foreign_name: id_f,
-                            }
+                    with record.env.managed_transaction():
+                        record.env.connection.execute(
+                            sqlalchemy.insert(self._table).values(
+                                {
+                                    self._join_table_self_name: record.id,
+                                    self._join_table_foreign_name: id_f,
+                                }
+                            )
                         )
-                    )
             case Many2xCommand.UNLINK:
                 if len(command) != 2:
                     raise SillyORMException("invalid command tuple")
                 ids_f: list[int] = command[1]  # type: ignore
                 if ids_f:
-                    record.env.connection.execute(
-                        self._table.delete().where(
-                            sqlalchemy.and_(
-                                self._table.c[self._join_table_self_name] == record.id,
-                                self._table.c[self._join_table_foreign_name].in_(ids_f),
+                    with record.env.managed_transaction():
+                        record.env.connection.execute(
+                            self._table.delete().where(
+                                sqlalchemy.and_(
+                                    self._table.c[self._join_table_self_name] == record.id,
+                                    self._table.c[self._join_table_foreign_name].in_(ids_f),
+                                )
                             )
                         )
-                    )
             case _:
                 raise SillyORMException("unknown many2many command")
