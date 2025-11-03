@@ -873,16 +873,21 @@ class Many2many(Field):
             keep_existing=True,
         )
 
-    def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
-        record.ensure_one()
-        stmt = sqlalchemy.select(self._table.c[self._join_table_foreign_name])
-        stmt = stmt.where(self._table.c[self._join_table_self_name] == record.id)
-        result = record.env.connection.execute(stmt).fetchall()
-        ids = [row[0] for row in result]
+    def _non_materialized_read(self, records: BaseModel) -> list[Any]:
+        def _read_ids(record: BaseModel):
+            stmt = sqlalchemy.select(self._table.c[self._join_table_foreign_name])
+            stmt = stmt.where(self._table.c[self._join_table_self_name] == record.id)
+            result = record.env.connection.execute(stmt).fetchall()
+            ids = [row[0] for row in result]
+            return ids
 
-        if len(ids) == 0:
+        return [_read_ids(record) for record in records]
+
+    def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
+        val = super().__get__(record, objtype)
+        if len(val) == 0:
             return None
-        return record.env[self._foreign_model].__class__(record.env, ids=ids)
+        return record.env[self._foreign_model].browse(val)
 
     def __set__(self, record: BaseModel, command: tuple[int, *tuple[Any, ...]] | list[Any]) -> None:
         record.ensure_one()
