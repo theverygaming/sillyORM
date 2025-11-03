@@ -87,10 +87,10 @@ class Field:
     def __set_name__(self, record: BaseModel, name: str) -> None:
         self.name = name
 
-    def _convert_type_get(self, value: Any) -> Any:
+    def _convert_type_get(self, record: BaseModel, value: Any) -> Any:
         return value
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if self.required and value is None:
             raise SillyORMException(f"attempted to set required field '{self.name}' to '{value}'")
         return value
@@ -98,7 +98,7 @@ class Field:
     def __get__(self, record: BaseModel, objtype: Any = None) -> Any:
         record.ensure_one()
         sql_result = record._read([self.name])
-        result = [self._convert_type_get(res[self.name]) for res in sql_result]
+        result = [self._convert_type_get(record, res[self.name]) for res in sql_result]
         return result[0]
 
     def __set__(self, record: BaseModel, value: Any) -> None:
@@ -160,10 +160,10 @@ class Integer(Field):
 
     sql_type = sqlalchemy.types.Integer()
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not isinstance(value, int) and value is not None:
             raise SillyORMException("Integer value must be int")
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
     def __set__(self, record: BaseModel, value: int | None) -> None:
         super().__set__(record, value)
@@ -209,10 +209,10 @@ class Float(Field):
 
     sql_type = sqlalchemy.types.Float()
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not isinstance(value, float) and value is not None:
             raise SillyORMException("Float value must be float")
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
     def __set__(self, record: BaseModel, value: float | None) -> None:
         super().__set__(record, value)
@@ -304,10 +304,10 @@ class String(Field):
             required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
         )
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
             raise SillyORMException("String value must be str")
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
     def __set__(self, record: BaseModel, value: str | None) -> None:
         super().__set__(record, value)
@@ -357,10 +357,10 @@ class Text(Field):
             required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
         )
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
             raise SillyORMException("Text value must be str")
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
     def __set__(self, record: BaseModel, value: str | None) -> None:
         super().__set__(record, value)
@@ -397,15 +397,15 @@ class Date(Field):
 
     sql_type = sqlalchemy.types.Date()
 
-    def _convert_type_get(self, value: Any) -> Any:
+    def _convert_type_get(self, record: BaseModel, value: Any) -> Any:
         return value
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if (
             not isinstance(value, datetime.date) or isinstance(value, datetime.datetime)
         ) and value is not None:
             raise SillyORMException("Date value must be date")
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
     def __set__(self, record: BaseModel, value: datetime.date | None) -> None:
         super().__set__(record, value)
@@ -462,12 +462,12 @@ class Datetime(Field):
             required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
         )
 
-    def _convert_type_get(self, value: Any) -> Any:
+    def _convert_type_get(self, record: BaseModel, value: Any) -> Any:
         if value is not None:
             return value.replace(tzinfo=self.tzinfo)
         return value
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if value is not None and not isinstance(value, datetime.datetime):
             raise SillyORMException("Datetime value must be datetime")
         if value is not None:
@@ -476,7 +476,7 @@ class Datetime(Field):
                     f"Datetime field expected tzinfo '{self.tzinfo}' and got '{value.tzinfo}'"
                 )
             value = value.replace(tzinfo=None)
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
     def __set__(self, record: BaseModel, value: datetime.datetime | None) -> None:
         super().__set__(record, value)
@@ -518,15 +518,15 @@ class Boolean(Field):
 
     sql_type = sqlalchemy.types.Boolean()
 
-    def _convert_type_get(self, value: Any) -> Any:
+    def _convert_type_get(self, record: BaseModel, value: Any) -> Any:
         if isinstance(value, int):
             return bool(value)
         return value
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not isinstance(value, bool) and value is not None:
             raise SillyORMException("Boolean value must be bool")
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
     def __set__(self, record: BaseModel, value: bool | None) -> None:
         super().__set__(record, value)
@@ -592,10 +592,10 @@ class Selection(String):
             default=default,
         )
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not (isinstance(value, str) and value in self.options) and value is not None:
             raise SillyORMException("Selection value must be str and in the list of options")
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
 
 class Many2one(Integer):

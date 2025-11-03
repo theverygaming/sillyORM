@@ -168,7 +168,7 @@ class BaseModel:
         rdata = self._read(field_names)
         for i, data in enumerate(rdata):
             for f, v in data.items():
-                val = self._fields[f]._convert_type_get(v)  # pylint: disable=protected-access
+                val = self._fields[f]._convert_type_get(self, v)  # pylint: disable=protected-access
                 rdata[i][f] = val
         return rdata
 
@@ -211,7 +211,7 @@ class BaseModel:
         :type vals: dict[str, Any]
         """
         for f, v in vals.items():
-            vals[f] = self._fields[f]._convert_type_set(v)  # pylint: disable=protected-access
+            vals[f] = self._fields[f]._convert_type_set(self, v)  # pylint: disable=protected-access
         self._write(vals)
 
     def _write(self, vals: dict[str, Any]) -> None:
@@ -279,12 +279,13 @@ class BaseModel:
         """
         with self.env.managed_transaction():
             for f, v in vals.items():
-                vals[f] = self._fields[f]._convert_type_set(v)  # pylint: disable=protected-access
+                # pylint: disable=protected-access
+                vals[f] = self._fields[f]._convert_type_set(self, v)
             # handle default values
             for f, fc in filter(
                 lambda x: x[0] not in vals and x[1].default is not None, self._fields.items()
             ):
-                vals[f] = fc._convert_type_set(fc.default)  # pylint: disable=protected-access
+                vals[f] = fc._convert_type_set(self, fc.default)  # pylint: disable=protected-access
             new_id = self.env.connection.execute(
                 sqlalchemy.insert(self._table).values(**vals)
             ).inserted_primary_key[0]
@@ -309,7 +310,9 @@ class BaseModel:
                 domain[i] = (
                     d[0],
                     d[1],
-                    self._fields[d[0]]._convert_type_set(d[2]),  # pylint: disable=protected-access
+                    self._fields[d[0]]._convert_type_set(
+                        self, d[2]
+                    ),  # pylint: disable=protected-access
                 )
         return domain
 
