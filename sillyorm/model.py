@@ -280,6 +280,11 @@ class BaseModel:
         with self.env.managed_transaction():
             for f, v in vals.items():
                 vals[f] = self._fields[f]._convert_type_set(v)  # pylint: disable=protected-access
+            # handle default values
+            for f, fc in filter(
+                lambda x: x[0] not in vals and x[1].default is not None, self._fields.items()
+            ):
+                vals[f] = fc._convert_type_set(fc.default)  # pylint: disable=protected-access
             new_id = self.env.connection.execute(
                 sqlalchemy.insert(self._table).values(**vals)
             ).inserted_primary_key[0]

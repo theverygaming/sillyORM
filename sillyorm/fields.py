@@ -83,8 +83,6 @@ class Field:
             self.constraints.append(("unique", True))
         if self.sql_schema_default is not None:
             self.constraints.append(("server_default", self.sql_schema_default))
-        if self.default is not None:
-            self.constraints.append(("default", self._convert_type_set(self.default)))
 
     def __set_name__(self, record: BaseModel, name: str) -> None:
         self.name = name
