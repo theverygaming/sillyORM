@@ -116,13 +116,13 @@ class Field:
 
         returns an array of the values for the recordset
         """
-        raise SillyORMException(f"not implemented for field {self.name}")
+        raise SillyORMException(f"field {self.name} cannot be read")
 
     def _non_materialized_write(self, records: BaseModel, value: Any) -> None:
         """
         low-level write method, should be implemented for fields that don't materialize
         """
-        raise SillyORMException(f"not implemented for field {self.name}")
+        raise SillyORMException(f"field {self.name} cannot be written")
 
     def _build_sqlalchemy_table(
         self,
