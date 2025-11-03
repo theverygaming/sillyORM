@@ -874,7 +874,7 @@ class Many2many(Field):
         )
 
     def _non_materialized_read(self, records: BaseModel) -> list[Any]:
-        def _read_ids(record: BaseModel):
+        def _read_ids(record: BaseModel) -> list[int]:
             stmt = sqlalchemy.select(self._table.c[self._join_table_foreign_name])
             stmt = stmt.where(self._table.c[self._join_table_self_name] == record.id)
             result = record.env.connection.execute(stmt).fetchall()
