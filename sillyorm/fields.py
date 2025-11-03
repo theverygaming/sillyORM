@@ -110,6 +110,20 @@ class Field:
             record._write({self.name: value})
         record._write({self.name: self._convert_type_set(record, value)})
 
+    def _non_materialized_read(self, records: BaseModel) -> list[Any]:
+        """
+        low-level read method, should be implemented for fields that don't materialize
+
+        returns an array of the values for the recordset
+        """
+        raise SillyORMException(f"not implemented for field {self.name}")
+
+    def _non_materialized_write(self, records: BaseModel, value: Any) -> None:
+        """
+        low-level write method, should be implemented for fields that don't materialize
+        """
+        raise SillyORMException(f"not implemented for field {self.name}")
+
     def _build_sqlalchemy_table(
         self,
         model_cls: type[BaseModel],  # pylint: disable=unused-argument

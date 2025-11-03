@@ -186,18 +186,31 @@ class BaseModel:
         if not self._ids:
             return []
 
-        columns = [self._table.c[field] for field in field_names]
-        stmt = sqlalchemy.select(*columns).where(self._table.c.id.in_(self._ids))
+        columns = [self._table.c[field] for field in field_names if self._fields[field].materialize]
+        if columns:
+            stmt = sqlalchemy.select(*columns).where(self._table.c.id.in_(self._ids))
 
-        # fix the order
-        if len(self._ids) > 1:
-            case_ordering = sqlalchemy.case(
-                {id_: index for index, id_ in enumerate(self._ids)}, value=self._table.c.id
-            )
-            stmt = stmt.order_by(case_ordering)
+            # fix the order
+            if len(self._ids) > 1:
+                case_ordering = sqlalchemy.case(
+                    {id_: index for index, id_ in enumerate(self._ids)}, value=self._table.c.id
+                )
+                stmt = stmt.order_by(case_ordering)
 
-        result = self.env.connection.execute(stmt)
-        return [dict(row) for row in result.mappings()]
+            result = self.env.connection.execute(stmt)
+
+            mapped_data = [dict(row) for row in result.mappings()]
+        else:
+            mapped_data = [{} for _ in self._ids]
+
+        # handle fields that do not exist in the DB
+        for field in filter(lambda x: not self._fields[x].materialize, field_names):
+            # pylint: disable=protected-access
+            data = self._fields[field]._non_materialized_read(self)
+            for record_dict, value in zip(mapped_data, data):
+                record_dict[field] = value
+
+        return mapped_data
 
     def write(self, vals: dict[str, Any]) -> None:
         """
@@ -228,11 +241,19 @@ class BaseModel:
         if not self._ids or not vals:
             return
 
+        db_vals = dict(filter(lambda x: self._fields[x[0]].materialize, vals.items()))
+
         with self.env.managed_transaction():
             stmt = (
-                sqlalchemy.update(self._table).where(self._table.c.id.in_(self._ids)).values(**vals)
+                sqlalchemy.update(self._table)
+                .where(self._table.c.id.in_(self._ids))
+                .values(**db_vals)
             )
             self.env.connection.execute(stmt)
+
+        # handle fields that do not exist in the DB
+        for k, v in filter(lambda x: not self._fields[x[0]].materialize, vals.items()):
+            self._fields[k]._non_materialized_write(self, v)  # pylint: disable=protected-access
 
     def browse(self, ids: list[int] | int) -> None | Self:
         """
