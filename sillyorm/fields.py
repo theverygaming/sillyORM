@@ -95,7 +95,7 @@ class Field:
             raise SillyORMException(f"attempted to set required field '{self.name}' to '{value}'")
         return value
 
-    def __get__(self, record: BaseModel, objtype: Any = None) -> Any | list[Any]:
+    def __get__(self, record: BaseModel, objtype: Any = None) -> Any:
         record.ensure_one()
         sql_result = record._read([self.name])
         result = [self._convert_type_get(res[self.name]) for res in sql_result]
