@@ -310,9 +310,9 @@ class BaseModel:
                 domain[i] = (
                     d[0],
                     d[1],
-                    self._fields[d[0]]._convert_type_set(
+                    self._fields[d[0]]._convert_type_set(  # pylint: disable=protected-access
                         self, d[2]
-                    ),  # pylint: disable=protected-access
+                    ),
                 )
         return domain
 

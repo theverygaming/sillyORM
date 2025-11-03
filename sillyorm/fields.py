@@ -87,10 +87,14 @@ class Field:
     def __set_name__(self, record: BaseModel, name: str) -> None:
         self.name = name
 
-    def _convert_type_get(self, record: BaseModel, value: Any) -> Any:
+    def _convert_type_get(
+        self, record: BaseModel, value: Any  # pylint: disable=unused-argument
+    ) -> Any:
         return value
 
-    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
+    def _convert_type_set(
+        self, record: BaseModel, value: Any  # pylint: disable=unused-argument
+    ) -> Any:
         if self.required and value is None:
             raise SillyORMException(f"attempted to set required field '{self.name}' to '{value}'")
         return value
@@ -104,7 +108,7 @@ class Field:
     def __set__(self, record: BaseModel, value: Any) -> None:
         if value is None:
             record._write({self.name: value})
-        record._write({self.name: self._convert_type_set(value)})
+        record._write({self.name: self._convert_type_set(record, value)})
 
     def _build_sqlalchemy_table(
         self,
