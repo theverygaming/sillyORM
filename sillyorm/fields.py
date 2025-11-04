@@ -670,8 +670,8 @@ class Many2one(Integer):
             sqlalchemy.ForeignKey(
                 f"{sanitize_table_name(self._foreign_model)}.id",
                 name=sanitize_constraint_name(
-                    f"{sanitize_table_name(record._name)}_{sanitize_table_name(self.name)}"  # pylint: disable=protected-access
-                    + f"_{sanitize_table_name(self._foreign_model)}_fk"
+                    f"fk_{sanitize_table_name(record._name)}_{sanitize_table_name(self.name)}"  # pylint: disable=protected-access
+                    + f"_{sanitize_table_name(self._foreign_model)}"
                 ),
             )
         ]
@@ -852,9 +852,9 @@ class Many2many(Field):
                 sqlalchemy.ForeignKey(
                     f"{sanitize_table_name(model_cls._name)}.id",  # pylint: disable=protected-access
                     name=sanitize_constraint_name(
-                        f"{sanitize_table_name(self._join_table_name)}"
+                        f"fk_{sanitize_table_name(self._join_table_name)}"
                         + f"_{sanitize_table_name(self._join_table_self_name)}"
-                        + f"_{sanitize_table_name(model_cls._name)}_fk"  # pylint: disable=protected-access
+                        + f"_{sanitize_table_name(model_cls._name)}"  # pylint: disable=protected-access
                     ),
                 ),
             ),
@@ -864,9 +864,9 @@ class Many2many(Field):
                 sqlalchemy.ForeignKey(
                     f"{sanitize_table_name(self._foreign_model)}.id",
                     name=sanitize_constraint_name(
-                        f"{sanitize_table_name(self._join_table_name)}_"
+                        f"fk_{sanitize_table_name(self._join_table_name)}_"
                         + f"{sanitize_table_name(self._join_table_foreign_name)}"
-                        + f"_{sanitize_table_name(self._foreign_model)}_fk"
+                        + f"_{sanitize_table_name(self._foreign_model)}"
                     ),
                 ),
             ),
@@ -886,8 +886,8 @@ class Many2many(Field):
                 self._join_table_self_name,
                 self._join_table_foreign_name,
                 name=sanitize_constraint_name(
-                    f"{table_name_sanitized}_{self._join_table_self_name}"
-                    + f"_{self._join_table_foreign_name}_unique"
+                    f"unique_{table_name_sanitized}_{self._join_table_self_name}"
+                    + f"_{self._join_table_foreign_name}"
                 ),
             ),
             keep_existing=True,
