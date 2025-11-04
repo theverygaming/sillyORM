@@ -9,22 +9,19 @@ if TYPE_CHECKING:  # pragma: no cover
 _logger = logging.getLogger(__name__)
 
 
-def _dump_op(op):
+def _dump_op(op: alembic.operations.MigrateOperation) -> str:
     attrs = {}
     for name in dir(op):
         # private
         if name.startswith("_"):
             continue
-        try:
-            value = getattr(op, name)
-        except Exception:
-            continue
+        value = getattr(op, name)
         if not callable(value):
             attrs[name] = value
     return f"{type(op).__name__}({", ".join([f"{k}={v}" for k, v in attrs.items()])})"
 
 
-def _log_op(op):
+def _log_op(op: alembic.operations.MigrateOperation) -> None:
     _logger.debug("running alembic op: %s", _dump_op(op))
 
 
