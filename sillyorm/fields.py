@@ -101,14 +101,11 @@ class Field:
 
     def __get__(self, record: BaseModel, objtype: Any = None) -> Any:
         record.ensure_one()
-        sql_result = record._read([self.name])
-        result = [self._convert_type_get(record, res[self.name]) for res in sql_result]
-        return result[0]
+        result = record.read([self.name])
+        return result[0][self.name]
 
     def __set__(self, record: BaseModel, value: Any) -> None:
-        if value is None:
-            record._write({self.name: value})
-        record._write({self.name: self._convert_type_set(record, value)})
+        record.write({self.name: value})
 
     def _non_materialized_read(self, records: BaseModel) -> list[Any]:
         """
