@@ -870,10 +870,7 @@ class Many2many(Field):
             sqlalchemy.UniqueConstraint(
                 self._join_table_self_name,
                 self._join_table_foreign_name,
-                name=(
-                    f"{table_name_sanitized}_{self._join_table_self_name}"
-                    + f"_{self._join_table_foreign_name}_unique"
-                ),
+                name=f"{table_name_sanitized}_unique",
             ),
             keep_existing=True,
         )
