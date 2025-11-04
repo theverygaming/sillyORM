@@ -1,9 +1,31 @@
+import logging
 from typing import TYPE_CHECKING
 import alembic.autogenerate
 import alembic.operations
 
 if TYPE_CHECKING:  # pragma: no cover
     from .registry import Registry
+
+_logger = logging.getLogger(__name__)
+
+
+def _dump_op(op):
+    attrs = {}
+    for name in dir(op):
+        # private
+        if name.startswith("_"):
+            continue
+        try:
+            value = getattr(op, name)
+        except Exception:
+            continue
+        if not callable(value):
+            attrs[name] = value
+    return f"{type(op).__name__}({", ".join([f"{k}={v}" for k, v in attrs.items()])})"
+
+
+def _log_op(op):
+    _logger.debug("running alembic op: %s", _dump_op(op))
 
 
 def run(registry: "Registry") -> None:
@@ -35,9 +57,12 @@ def run(registry: "Registry") -> None:
                 if render_as_batch:
                     with ops_obj.batch_alter_table(op.table_name, schema=op.schema) as batch_op:
                         for sub_op in op.ops:
+                            _log_op(sub_op)
                             batch_op.invoke(sub_op)
                 else:
                     for sub_op in op.ops:
+                        _log_op(sub_op)
                         ops_obj.invoke(sub_op)
             else:
+                _log_op(op)
                 ops_obj.invoke(op)
