@@ -24,10 +24,19 @@ def test_automigrate_auto(registry):
 
         name = sillyorm.fields.String()
         name3 = sillyorm.fields.String()
+        c_id = sillyorm.fields.Many2one("test_model_c")
+
+    class TestModelC(sillyorm.model.Model):
+        """
+        only exists to test Many2one with automigrations
+        """
+
+        _name = "test_model_c"
 
     ## valid: add a table
     # init
     registry.register_model(TestModelA)
+    registry.register_model(TestModelC)
     registry.resolve_tables()
     registry.init_db_tables(automigrate="auto")
     assert_db_columns(
@@ -43,6 +52,7 @@ def test_automigrate_auto(registry):
         registry,
         [
             "test_model_a",
+            "test_model_c",
         ],
     )
     # add table
@@ -72,6 +82,7 @@ def test_automigrate_auto(registry):
         [
             "test_model_a",
             "test_model_b",
+            "test_model_c",
         ],
     )
 
@@ -79,6 +90,7 @@ def test_automigrate_auto(registry):
     registry.reset_full()
     registry.register_model(TestModelA2)
     registry.register_model(TestModelB)
+    registry.register_model(TestModelC)
     registry.resolve_tables()
     registry.init_db_tables(automigrate="auto")
     assert_db_columns(
@@ -88,6 +100,7 @@ def test_automigrate_auto(registry):
             ("id", sqlalchemy.sql.sqltypes.INTEGER()),
             ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
             ("name3", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("c_id", sqlalchemy.sql.sqltypes.INTEGER()),
         ],
     )
     assert_db_columns(
@@ -104,18 +117,21 @@ def test_automigrate_auto(registry):
         [
             "test_model_a",
             "test_model_b",
+            "test_model_c",
         ],
     )
 
     ## remove a table
     registry.reset_full()
     registry.register_model(TestModelA)
+    registry.register_model(TestModelC)
     registry.resolve_tables()
     registry.init_db_tables(automigrate="auto")
     assert_db_all_tables(
         registry,
         [
             "test_model_a",
+            "test_model_c",
         ],
     )
 
@@ -123,6 +139,7 @@ def test_automigrate_auto(registry):
     registry.reset_full()
     registry.register_model(TestModelA)
     registry.register_model(TestModelB)
+    registry.register_model(TestModelC)
     registry.resolve_tables()
     registry.init_db_tables(automigrate="auto")
     assert_db_columns(
@@ -148,6 +165,7 @@ def test_automigrate_auto(registry):
         [
             "test_model_a",
             "test_model_b",
+            "test_model_c",
         ],
     )
 

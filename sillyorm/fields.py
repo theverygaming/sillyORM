@@ -668,7 +668,12 @@ class Many2one(Integer):
             required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
         )
         self._foreign_model = foreign_model
-        self.constraints += [sqlalchemy.ForeignKey(f"{sanitize_table_name(foreign_model)}.id")]
+        self.constraints += [
+            sqlalchemy.ForeignKey(
+                f"{sanitize_table_name(self._foreign_model)}.id",
+                name=f"{sanitize_table_name(self._foreign_model)}_fkey",
+            )
+        ]
 
     def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
         rec = super().__get__(record, objtype)
