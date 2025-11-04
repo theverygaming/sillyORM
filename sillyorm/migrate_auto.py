@@ -18,7 +18,7 @@ def _dump_op(op: alembic.operations.MigrateOperation) -> str:
         value = getattr(op, name)
         if not callable(value):
             attrs[name] = value
-    return f"{type(op).__name__}({", ".join([f"{k}={v}" for k, v in attrs.items()])})"
+    return f"{type(op).__name__}({', '.join([f'{k}={v}' for k, v in attrs.items()])})"
 
 
 def _log_op(op: alembic.operations.MigrateOperation) -> None:
