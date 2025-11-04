@@ -868,7 +868,9 @@ class Many2many(Field):
             metadata,
             *columns,
             sqlalchemy.UniqueConstraint(
-                self._join_table_self_name, self._join_table_foreign_name, name="unique_link"
+                self._join_table_self_name,
+                self._join_table_foreign_name,
+                name=f"{table_name_sanitized}_{self._join_table_self_name}_{self._join_table_foreign_name}_unique",
             ),
             keep_existing=True,
         )
