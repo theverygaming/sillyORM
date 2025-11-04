@@ -4,7 +4,7 @@ import logging
 import datetime
 import sqlalchemy
 from .exceptions import SillyORMException
-from .helpers import sanitize_table_name
+from .helpers import sanitize_table_name, sanitize_constraint_name
 
 if TYPE_CHECKING:  # pragma: no cover
     from .model import BaseModel
@@ -70,11 +70,14 @@ class Field:
         sql_schema_default: Any = None,
         default: Any = None,
     ) -> None:
-        self.constraints: list[sqlalchemy.schema.SchemaItem | tuple[str, Any]] = []
         self.required = required
         self.unique = unique
         self.sql_schema_default = sql_schema_default
         self.default = default
+        self.constraints: list[sqlalchemy.schema.SchemaItem | tuple[str, Any]] = []
+
+    def _init_field(self, record: type[BaseModel]) -> None:  # pylint: disable=unused-argument
+        self.constraints = []
         if self.materialize and self.sql_type is None:
             raise SillyORMException("sql_type must be set for all fields that materialize")
         if self.required:
@@ -256,16 +259,8 @@ class Id(Integer):
        2
     """
 
-    def __init__(
-        self,
-        required: bool = False,
-        unique: bool = False,
-        sql_schema_default: Any = None,
-        default: Any = None,
-    ) -> None:
-        super().__init__(
-            required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
-        )
+    def _init_field(self, record: type[BaseModel]) -> None:
+        super()._init_field(record)
         self.constraints += [("primary_key", True)]
 
     def __get__(self, record: BaseModel, objtype: Any = None) -> int:
@@ -668,10 +663,16 @@ class Many2one(Integer):
             required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
         )
         self._foreign_model = foreign_model
+
+    def _init_field(self, record: type[BaseModel]) -> None:
+        super()._init_field(record)
         self.constraints += [
             sqlalchemy.ForeignKey(
                 f"{sanitize_table_name(self._foreign_model)}.id",
-                name=f"{sanitize_table_name(self._foreign_model)}_fkey",
+                name=sanitize_constraint_name(
+                    f"{sanitize_table_name(record._name)}_{sanitize_table_name(self.name)}"  # pylint: disable=protected-access
+                    + f"_{sanitize_table_name(self._foreign_model)}_fk"
+                ),
             )
         ]
 
@@ -850,12 +851,24 @@ class Many2many(Field):
                 sqlalchemy.types.Integer(),
                 sqlalchemy.ForeignKey(
                     f"{sanitize_table_name(model_cls._name)}.id",  # pylint: disable=protected-access
+                    name=sanitize_constraint_name(
+                        f"{sanitize_table_name(self._join_table_name)}"
+                        + f"_{sanitize_table_name(self._join_table_self_name)}"
+                        + f"_{sanitize_table_name(model_cls._name)}_fk"  # pylint: disable=protected-access
+                    ),
                 ),
             ),
             sqlalchemy.Column(
                 self._join_table_foreign_name,
                 sqlalchemy.types.Integer(),
-                sqlalchemy.ForeignKey(f"{sanitize_table_name(self._foreign_model)}.id"),
+                sqlalchemy.ForeignKey(
+                    f"{sanitize_table_name(self._foreign_model)}.id",
+                    name=sanitize_constraint_name(
+                        f"{sanitize_table_name(self._join_table_name)}_"
+                        + f"{sanitize_table_name(self._join_table_foreign_name)}"
+                        + f"_{sanitize_table_name(self._foreign_model)}_fk"
+                    ),
+                ),
             ),
         ]
         # if a table already exists check if it has the correct columns
@@ -872,7 +885,10 @@ class Many2many(Field):
             sqlalchemy.UniqueConstraint(
                 self._join_table_self_name,
                 self._join_table_foreign_name,
-                name=f"{table_name_sanitized}_unique",
+                name=sanitize_constraint_name(
+                    f"{table_name_sanitized}_{self._join_table_self_name}"
+                    + f"_{self._join_table_foreign_name}_unique"
+                ),
             ),
             keep_existing=True,
         )

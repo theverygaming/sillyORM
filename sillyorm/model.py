@@ -117,6 +117,8 @@ class BaseModel:
             return all_fields
 
         cls._fields = get_all_fields()
+        for field in cls._fields.values():
+            field._init_field(cls)  # pylint: disable=protected-access
 
     @classmethod
     def _build_sqlalchemy_table(cls, metadata: sqlalchemy.MetaData) -> None:

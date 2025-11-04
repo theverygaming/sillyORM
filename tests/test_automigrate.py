@@ -25,6 +25,7 @@ def test_automigrate_auto(registry):
         name = sillyorm.fields.String()
         name3 = sillyorm.fields.String()
         c_id = sillyorm.fields.Many2one("test_model_c")
+        c2_id = sillyorm.fields.Many2one("test_model_c")
 
     class TestModelC(sillyorm.model.Model):
         """
@@ -101,6 +102,7 @@ def test_automigrate_auto(registry):
             ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
             ("name3", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
             ("c_id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("c2_id", sqlalchemy.sql.sqltypes.INTEGER()),
         ],
     )
     assert_db_columns(
