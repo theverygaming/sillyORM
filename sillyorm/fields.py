@@ -690,6 +690,7 @@ class Many2one(Integer):
                     f"fk_{sanitize_table_name(record._name)}_{sanitize_table_name(self.name)}"  # pylint: disable=protected-access
                     + f"_{sanitize_table_name(self._foreign_model)}"
                 ),
+                ondelete=self.ondelete,
             )
         ]
 

@@ -139,7 +139,7 @@ def test_field_many2one_ondelete(registry):
     registry.register_model(SaleOrderGroup)
     registry.register_model(SaleOrderLine1)
     registry.resolve_tables()
-    registry.init_db_tables()
+    registry.init_db_tables(automigrate="auto")
     env = registry.get_environment()
 
     so = env["sale_order"].create({})
@@ -166,12 +166,11 @@ def test_field_many2one_ondelete(registry):
             "sale_order_id": so.id,
         }
     )
-    with pytest.raises(SillyORMException) as e_info:
+    with pytest.raises(sqlalchemy.exc.IntegrityError) as e_info:
         so.delete()
     assert (
-        str(e_info.value)
-        == f"sale_order[{so.id}] referenced by field 'sale_order_id' sale_order_line[{sol.id}] and"
-        " ondelete is set to restrict"
+        "foreign key constraint" in str(e_info.value).lower()
+        and "sale_order" in str(e_info.value).lower()
     )
 
     ## set null
@@ -180,7 +179,7 @@ def test_field_many2one_ondelete(registry):
     registry.register_model(SaleOrderGroup)
     registry.register_model(SaleOrderLine2)
     registry.resolve_tables()
-    registry.init_db_tables()
+    registry.init_db_tables(automigrate="auto")
     env = registry.get_environment()
 
     so = env["sale_order"].create({})
@@ -217,7 +216,7 @@ def test_field_many2one_ondelete(registry):
     registry.register_model(SaleOrderGroup)
     registry.register_model(SaleOrderLine3)
     registry.resolve_tables()
-    registry.init_db_tables()
+    registry.init_db_tables(automigrate="auto")
     env = registry.get_environment()
 
     so = env["sale_order"].create({})
@@ -251,6 +250,37 @@ def test_field_many2one_ondelete(registry):
     so.delete()
     assert env["sale_order_line"].search([("id", "=", sol_id)]).ids == []
     assert env["sale_order_group"].search([("id", "in", [so_group_id, so_group2_id])]).ids == []
+
+    # circular reference
+    so_group_id = env["sale_order_group"].create({}).id
+    so_group2_id = (
+        env["sale_order_group"]
+        .create(
+            {
+                "parent_id": so_group_id,
+            }
+        )
+        .id
+    )
+    so_group3_id = (
+        env["sale_order_group"]
+        .create(
+            {
+                "parent_id": so_group2_id,
+            }
+        )
+        .id
+    )
+    env["sale_order_group"].browse(so_group_id).parent_id = env["sale_order_group"].browse(
+        so_group3_id
+    )
+    env["sale_order_group"].browse(so_group2_id).delete()
+    assert (
+        env["sale_order_group"]
+        .search([("id", "in", [so_group_id, so_group2_id, so_group3_id])])
+        .ids
+        == []
+    )
 
 
 @with_test_registry()
