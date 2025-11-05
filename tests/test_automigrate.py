@@ -175,6 +175,23 @@ def test_automigrate_auto(registry):
         ],
     )
 
+    # change a table _again_ (we do this to test dropping tables with many2one)
+    registry.reset_full()
+    registry.register_model(TestModelA2)
+    registry.register_model(TestModelB)
+    registry.register_model(TestModelC)
+    registry.resolve_tables()
+    registry.init_db_tables(automigrate="auto")
+
+    # drop all the tables
+    registry.reset_full()
+    registry.resolve_tables()
+    registry.init_db_tables(automigrate="auto")
+    assert_db_all_tables(
+        registry,
+        [],
+    )
+
 
 @with_test_registry()
 def test_automigrate_safe(registry):
