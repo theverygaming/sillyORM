@@ -70,3 +70,39 @@ def test_search_ilike(registry):
     assert env["test"].search(
         [("s", "=ilike", "uwu%"), "|", ("s", "=ilike", "hello_world")]
     ).ids == [5, 6, 7, 8]
+
+
+@with_test_registry(False)
+def test_search_in(registry):
+    class Test(sillyorm.model.Model):
+        _name = "test"
+
+        s = sillyorm.fields.String()
+
+    registry.register_model(Test)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
+
+    so_1 = env["test"].create({"s": "meow"})
+    so_2 = env["test"].create({})
+    so_3 = env["test"].create({"s": "waff"})
+    so_4 = env["test"].create({})
+    so_5 = env["test"].create({"s": "bark"})
+    so_6 = env["test"].create({"s": "awoo!"})
+
+    # normal
+    assert set(env["test"].search([("s", "in", ["meow", "waff"])]).ids) == {so_1.id, so_3.id}
+
+    # with None
+    assert set(env["test"].search([("s", "in", ["meow", "awoo!", None])]).ids) == {
+        so_1.id,
+        so_6.id,
+        so_2.id,
+        so_4.id,
+    }
+
+    # combination with other stuff
+    assert set(
+        env["test"].search([("s", "in", ["meow", "bark"]), "|", ("s", "=", "awoo!")]).ids
+    ) == {so_1.id, so_5.id, so_6.id}

@@ -330,13 +330,22 @@ class BaseModel:
         # comparing things correctly in the DB!
         for i, d in enumerate(domain):
             if isinstance(d, tuple):
-                domain[i] = (
-                    d[0],
-                    d[1],
-                    self._fields[d[0]]._convert_type_set(  # pylint: disable=protected-access
-                        self, d[2]
-                    ),
-                )
+                ref_field = self._fields[d[0]]  # pylint: disable=protected-access
+                if isinstance(d[2], list):
+                    domain[i] = (
+                        d[0],
+                        d[1],
+                        [
+                            ref_field._convert_type_set(self, x)  # pylint: disable=protected-access
+                            for x in d[2]
+                        ],
+                    )
+                else:
+                    domain[i] = (
+                        d[0],
+                        d[1],
+                        ref_field._convert_type_set(self, d[2]),  # pylint: disable=protected-access
+                    )
         return domain
 
     def _parse_domain(self, domain: list[str | tuple[str, str, Any]]) -> object | None:
@@ -346,6 +355,12 @@ class BaseModel:
             match op:
                 case "=":
                     return clmn.is_(val) if val is None else (clmn == val)
+                case "in":
+                    return (
+                        sqlalchemy.or_(clmn.is_(None), clmn.in_(val))
+                        if None in val
+                        else (clmn.in_(val))
+                    )
                 case "!=":
                     return clmn.isnot(val) if val is None else (clmn != val)
                 case ">":
@@ -483,6 +498,7 @@ class BaseModel:
         Search operators:
 
         *  `=` Equals to
+        * `in` similar to `=` but checks if equal to one of the items in the list
         * `!=` not equal
         * `>` greater than
         * `>=` greater than or equal
