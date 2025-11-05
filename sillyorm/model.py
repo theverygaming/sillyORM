@@ -618,12 +618,41 @@ class BaseModel:
         result = self.env.connection.execute(stmt).scalar_one()
         return result
 
+    def _handle_relations(self) -> None:
+        """
+        handle all relationships this model has
+        """
+        for mn, mc in self.env.registry._models.items():  # pylint: disable=protected-access
+            if mc == type(self):
+                continue
+            for fn, fc in mc._fields.items():  # pylint: disable=protected-access
+                if not isinstance(fc, fields.Many2one):
+                    continue
+                referencing_records = self.env[mn].search([(fn, "=", self.id)])
+                match fc.ondelete:
+                    case "set null":
+                        referencing_records.write(
+                            {
+                                fn: None,
+                            }
+                        )
+                    case "restrict":
+                        if referencing_records:
+                            raise SillyORMException(
+                                f"{self} referenced by field '{fn}' {referencing_records} and"
+                                " ondelete is set to restrict"
+                            )
+                    case "cascade":
+                        referencing_records.delete()
+
     def delete(self) -> None:
         """
         Deletes all records in the recordset
         """
         if not self._ids:
             return
+
+        self._handle_relations()
 
         with self.env.managed_transaction():
             stmt = sqlalchemy.delete(self._table).where(self._table.c.id.in_(self._ids))

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, cast, Literal
 import logging
 import datetime
 import sqlalchemy
@@ -656,12 +656,18 @@ class Many2one(Integer):
 
     :param foreign_model: Foreign model name
     :type foreign_model: str
+    :param ondelete: What to do when the related record is deleted
+                     set null: set this relation to null and continue
+                     restrict: prevent the related record from being deleted
+                     cascade: delete this record too
+    :type ondelete: Literal["set null", "restrict", "cascade"]
 
     """
 
     def __init__(
         self,
         foreign_model: str,
+        ondelete: Literal["set null", "restrict", "cascade"] = "restrict",
         required: bool = False,
         unique: bool = False,
         sql_schema_default: Any = None,
@@ -670,7 +676,10 @@ class Many2one(Integer):
         super().__init__(
             required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
         )
+        self.ondelete = ondelete
         self._foreign_model = foreign_model
+        if self.ondelete == "set null" and self.required:
+            raise SillyORMException("'set null' does not make sense on a required Many2one")
 
     def _init_field(self, record: type[BaseModel]) -> None:
         super()._init_field(record)

@@ -109,6 +109,86 @@ def test_field_many2one_one2many(registry):
 
 
 @with_test_registry()
+def test_field_many2one_ondelete(registry):
+    class SaleOrder(sillyorm.model.Model):
+        _name = "sale_order"
+
+    class SaleOrderLine1(sillyorm.model.Model):
+        _name = "sale_order_line"
+
+        sale_order_id = sillyorm.fields.Many2one("sale_order", ondelete="restrict")
+
+    class SaleOrderLine2(sillyorm.model.Model):
+        _name = "sale_order_line"
+
+        sale_order_id = sillyorm.fields.Many2one("sale_order", ondelete="set null")
+
+    class SaleOrderLine3(sillyorm.model.Model):
+        _name = "sale_order_line"
+
+        sale_order_id = sillyorm.fields.Many2one("sale_order", ondelete="cascade")
+
+    ## restrict
+    registry.register_model(SaleOrder)
+    registry.register_model(SaleOrderLine1)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
+
+    so = env["sale_order"].create({})
+    sol = env["sale_order_line"].create(
+        {
+            "sale_order_id": so.id,
+        }
+    )
+    with pytest.raises(SillyORMException) as e_info:
+        so.delete()
+    assert (
+        str(e_info.value)
+        == f"sale_order[{so.id}] referenced by field 'sale_order_id' sale_order_line[{sol.id}] and"
+        " ondelete is set to restrict"
+    )
+
+    ## set null
+    registry.reset_full()
+    registry.register_model(SaleOrder)
+    registry.register_model(SaleOrderLine2)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
+
+    so = env["sale_order"].create({})
+    sol = env["sale_order_line"].create(
+        {
+            "sale_order_id": so.id,
+        }
+    )
+    so.delete()
+    assert sol.sale_order_id is None
+
+    ## cascade
+    registry.reset_full()
+    registry.register_model(SaleOrder)
+    registry.register_model(SaleOrderLine3)
+    registry.resolve_tables()
+    registry.init_db_tables()
+    env = registry.get_environment()
+
+    so = env["sale_order"].create({})
+    sol_id = (
+        env["sale_order_line"]
+        .create(
+            {
+                "sale_order_id": so.id,
+            }
+        )
+        .id
+    )
+    so.delete()
+    assert env["sale_order_line"].search([("id", "=", sol_id)]).ids == []
+
+
+@with_test_registry()
 def test_field_many2many(registry):
     class Tax(sillyorm.model.Model):
         _name = "tax"
