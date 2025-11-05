@@ -639,8 +639,6 @@ class BaseModel:
         handle all relationships this model has
         """
         for mn, mc in self.env.registry._models.items():  # pylint: disable=protected-access
-            if isinstance(self, mc):
-                continue
             for fn, fc in mc._fields.items():  # pylint: disable=protected-access
                 if not isinstance(fc, fields.Many2one):
                     continue

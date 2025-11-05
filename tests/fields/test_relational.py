@@ -113,6 +113,7 @@ def test_field_many2one_ondelete(registry):
     class SaleOrderGroup(sillyorm.model.Model):
         _name = "sale_order_group"
 
+        parent_id = sillyorm.fields.Many2one("sale_order_group", ondelete="cascade")
         sale_order_id = sillyorm.fields.Many2one("sale_order", ondelete="cascade")
 
     class SaleOrder(sillyorm.model.Model):
@@ -142,10 +143,23 @@ def test_field_many2one_ondelete(registry):
     env = registry.get_environment()
 
     so = env["sale_order"].create({})
-    so_group = env["sale_order_group"].create(
-        {
-            "sale_order_id": so.id,
-        }
+    so_group_id = (
+        env["sale_order_group"]
+        .create(
+            {
+                "sale_order_id": so.id,
+            }
+        )
+        .id
+    )
+    so_group2_id = (
+        env["sale_order_group"]
+        .create(
+            {
+                "parent_id": so_group_id,
+            }
+        )
+        .id
     )
     sol = env["sale_order_line"].create(
         {
@@ -170,10 +184,23 @@ def test_field_many2one_ondelete(registry):
     env = registry.get_environment()
 
     so = env["sale_order"].create({})
-    so_group = env["sale_order_group"].create(
-        {
-            "sale_order_id": so.id,
-        }
+    so_group_id = (
+        env["sale_order_group"]
+        .create(
+            {
+                "sale_order_id": so.id,
+            }
+        )
+        .id
+    )
+    so_group2_id = (
+        env["sale_order_group"]
+        .create(
+            {
+                "parent_id": so_group_id,
+            }
+        )
+        .id
     )
     sol = env["sale_order_line"].create(
         {
@@ -182,6 +209,7 @@ def test_field_many2one_ondelete(registry):
     )
     so.delete()
     assert sol.sale_order_id is None
+    assert env["sale_order_group"].search([("id", "in", [so_group_id, so_group2_id])]).ids == []
 
     ## cascade
     registry.reset_full()
@@ -193,10 +221,23 @@ def test_field_many2one_ondelete(registry):
     env = registry.get_environment()
 
     so = env["sale_order"].create({})
-    so_group = env["sale_order_group"].create(
-        {
-            "sale_order_id": so.id,
-        }
+    so_group_id = (
+        env["sale_order_group"]
+        .create(
+            {
+                "sale_order_id": so.id,
+            }
+        )
+        .id
+    )
+    so_group2_id = (
+        env["sale_order_group"]
+        .create(
+            {
+                "parent_id": so_group_id,
+            }
+        )
+        .id
     )
     sol_id = (
         env["sale_order_line"]
@@ -209,6 +250,7 @@ def test_field_many2one_ondelete(registry):
     )
     so.delete()
     assert env["sale_order_line"].search([("id", "=", sol_id)]).ids == []
+    assert env["sale_order_group"].search([("id", "in", [so_group_id, so_group2_id])]).ids == []
 
 
 @with_test_registry()
