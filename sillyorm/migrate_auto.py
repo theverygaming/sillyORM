@@ -1,4 +1,5 @@
 import logging
+import collections
 from typing import TYPE_CHECKING
 import sqlalchemy
 import alembic.autogenerate
@@ -24,6 +25,43 @@ def _dump_op(op: alembic.operations.MigrateOperation) -> str:
 
 def _log_op(op: alembic.operations.MigrateOperation) -> None:
     _logger.debug("running alembic op: %s", _dump_op(op))
+
+
+def _sort_ops(
+    ops: list[alembic.operations.MigrateOperation],
+) -> list[alembic.operations.MigrateOperation]:
+    """
+    sort operations in an order that prevents stuff
+    like a table being deleted while it is still referenced in an FK
+
+    alembic doesn't seem to do this out of the box
+    """
+    ops_ordered = [
+        alembic.operations.ops.ModifyTableOps,
+        alembic.operations.ops.DropConstraintOp,
+        alembic.operations.ops.DropColumnOp,
+        alembic.operations.ops.DropTableOp,
+        alembic.operations.ops.CreateTableOp,
+    ]
+
+    buckets: collections.defaultdict[type | str, list[alembic.operations.MigrateOperation]] = (
+        collections.defaultdict(list)
+    )
+
+    for op in ops:
+        for cls in ops_ordered:
+            if isinstance(op, cls):
+                buckets[cls].append(op)
+                break
+        else:
+            buckets["other"].append(op)
+
+    ordered = []
+    for cls in ops_ordered:
+        ordered.extend(buckets[cls])
+    ordered.extend(buckets["other"])
+
+    return ordered
 
 
 def _run(registry: "Registry") -> None:
@@ -53,7 +91,7 @@ def _run(registry: "Registry") -> None:
         if migration_script.upgrade_ops is None:
             _conn_exit(conn)
             return
-        for op in migration_script.upgrade_ops.ops:
+        for op in _sort_ops(migration_script.upgrade_ops.ops):
             if isinstance(op, alembic.operations.ops.ModifyTableOps):
                 if render_as_batch:
                     with ops_obj.batch_alter_table(op.table_name, schema=op.schema) as batch_op:
