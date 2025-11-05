@@ -874,6 +874,7 @@ class Many2many(Field):
                         + f"_{sanitize_table_name(self._join_table_self_name)}"
                         + f"_{sanitize_table_name(model_cls._name)}"  # pylint: disable=protected-access
                     ),
+                    ondelete="cascade",
                 ),
             ),
             sqlalchemy.Column(
@@ -886,6 +887,7 @@ class Many2many(Field):
                         + f"{sanitize_table_name(self._join_table_foreign_name)}"
                         + f"_{sanitize_table_name(self._foreign_model)}"
                     ),
+                    ondelete="cascade",
                 ),
             ),
         ]
