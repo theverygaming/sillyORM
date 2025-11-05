@@ -48,8 +48,11 @@ class Registry:
         self._environment_class = environment_class
 
     @staticmethod
-    def _sqlalchemy_sqlite_on_connect(dbapi_connection, connection_record):
-        dbapi_connection.execute("PRAGMA foreign_keys=ON")
+    def _sqlalchemy_sqlite_on_connect(
+        dbapi_connection: sqlalchemy.engine.Connection,
+        connection_record: Any,  # pylint: disable=unused-argument
+    ) -> None:
+        dbapi_connection.execute("PRAGMA foreign_keys=ON")  # type: ignore
 
     def reset_full(self) -> None:
         """
