@@ -431,6 +431,10 @@ class Datetime(Field):
 
     :param tzinfo: time zone of the date stored - None means it's a naive datetime object
     :type tzinfo: datetime.tzinfo | None
+    :param convert_tz: if the datetime should be converted to the supplied tzinfo if
+           possible (e.g. tzinfo set to UTC and you can
+           supply tz=EST and it'll be converted using astimezone)
+    :type convert_tz: bool
 
     .. testcode:: models_fields
 
@@ -462,12 +466,14 @@ class Datetime(Field):
     def __init__(
         self,
         tzinfo: datetime.tzinfo | None,
+        convert_tz: bool = False,
         required: bool = False,
         unique: bool = False,
         sql_schema_default: Any = None,
         default: Any = None,
     ) -> None:
         self.tzinfo = tzinfo
+        self.convert_tz = convert_tz
         super().__init__(
             required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
         )
@@ -481,6 +487,8 @@ class Datetime(Field):
         if value is not None and not isinstance(value, datetime.datetime):
             raise SillyORMException("Datetime value must be datetime")
         if value is not None:
+            if self.convert_tz and self.tzinfo is not None and value.tzinfo is not None:
+                value = value.astimezone(self.tzinfo)
             if value.tzinfo != self.tzinfo:
                 raise SillyORMException(
                     f"Datetime field expected tzinfo '{self.tzinfo}' and got '{value.tzinfo}'"

@@ -15,6 +15,7 @@ def test_field_datetime(request, registry, is_second, prev_return):
 
         time = sillyorm.fields.Datetime(None)
         time_est = sillyorm.fields.Datetime(TZ_EST)
+        time_est_conv = sillyorm.fields.Datetime(TZ_EST, convert_tz=True)
 
     def assert_columns():
         ts_type = (
@@ -29,6 +30,7 @@ def test_field_datetime(request, registry, is_second, prev_return):
                 ("id", sqlalchemy.sql.sqltypes.INTEGER()),
                 ("time", ts_type),
                 ("time_est", ts_type),
+                ("time_est_conv", ts_type),
             ],
         )
 
@@ -74,6 +76,8 @@ def test_field_datetime(request, registry, is_second, prev_return):
         with pytest.raises(SillyORMException) as e_info:
             so_1.time_est = datetime.datetime(2026, 5, 7, tzinfo=datetime.UTC)
         assert str(e_info.value) == "Datetime field expected tzinfo 'UTC-05:00' and got 'UTC'"
+        so_1.time_est_conv = datetime.datetime(2026, 5, 7, tzinfo=datetime.UTC)
+        assert so_1.time_est_conv == datetime.datetime(2026, 5, 6, 19, 0, 0, tzinfo=TZ_EST)
         return (so_1.id, so_2.id)
 
     def second():
