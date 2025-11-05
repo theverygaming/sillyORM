@@ -628,6 +628,8 @@ class BaseModel:
             for fn, fc in mc._fields.items():  # pylint: disable=protected-access
                 if not isinstance(fc, fields.Many2one):
                     continue
+                if fc._foreign_model != self._name:  # pylint: disable=protected-access
+                    continue
                 referencing_records = self.env[mn].search([(fn, "=", self.id)])
                 match fc.ondelete:
                     case "set null":

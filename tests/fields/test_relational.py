@@ -110,6 +110,11 @@ def test_field_many2one_one2many(registry):
 
 @with_test_registry()
 def test_field_many2one_ondelete(registry):
+    class SaleOrderGroup(sillyorm.model.Model):
+        _name = "sale_order_group"
+
+        sale_order_id = sillyorm.fields.Many2one("sale_order", ondelete="cascade")
+
     class SaleOrder(sillyorm.model.Model):
         _name = "sale_order"
 
@@ -130,12 +135,18 @@ def test_field_many2one_ondelete(registry):
 
     ## restrict
     registry.register_model(SaleOrder)
+    registry.register_model(SaleOrderGroup)
     registry.register_model(SaleOrderLine1)
     registry.resolve_tables()
     registry.init_db_tables()
     env = registry.get_environment()
 
     so = env["sale_order"].create({})
+    so_group = env["sale_order_group"].create(
+        {
+            "sale_order_id": so.id,
+        }
+    )
     sol = env["sale_order_line"].create(
         {
             "sale_order_id": so.id,
@@ -152,12 +163,18 @@ def test_field_many2one_ondelete(registry):
     ## set null
     registry.reset_full()
     registry.register_model(SaleOrder)
+    registry.register_model(SaleOrderGroup)
     registry.register_model(SaleOrderLine2)
     registry.resolve_tables()
     registry.init_db_tables()
     env = registry.get_environment()
 
     so = env["sale_order"].create({})
+    so_group = env["sale_order_group"].create(
+        {
+            "sale_order_id": so.id,
+        }
+    )
     sol = env["sale_order_line"].create(
         {
             "sale_order_id": so.id,
@@ -169,12 +186,18 @@ def test_field_many2one_ondelete(registry):
     ## cascade
     registry.reset_full()
     registry.register_model(SaleOrder)
+    registry.register_model(SaleOrderGroup)
     registry.register_model(SaleOrderLine3)
     registry.resolve_tables()
     registry.init_db_tables()
     env = registry.get_environment()
 
     so = env["sale_order"].create({})
+    so_group = env["sale_order_group"].create(
+        {
+            "sale_order_id": so.id,
+        }
+    )
     sol_id = (
         env["sale_order_line"]
         .create(
