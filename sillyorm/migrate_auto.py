@@ -34,6 +34,8 @@ def run(registry: "Registry") -> None:
     This may cause data loss
     """
     with registry.engine.begin() as conn:
+        if conn.dialect.name == "sqlite":
+            conn.execute("PRAGMA foreign_keys=OFF")  # type: ignore
         # render_as_batch must be enable to change columns in SQLite
         render_as_batch = conn.dialect.name == "sqlite"
         mc = alembic.migration.MigrationContext.configure(
