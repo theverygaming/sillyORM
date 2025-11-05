@@ -37,6 +37,8 @@ class Registry:
         self.engine = sqlalchemy.create_engine(
             create_engine_url, **(create_engine_kwargs if create_engine_kwargs else {})
         )
+        if self.engine.dialect.name == "sqlite":
+            sqlalchemy.event.listen(self.engine, "connect", self._sqlalchemy_sqlite_on_connect)
         self.metadata = sqlalchemy.MetaData()
         # raw model list, result from register_model calls
         self._raw_models: dict[str, list[type[Model] | str]] = {}
@@ -44,6 +46,10 @@ class Registry:
         self._models: dict[str, type[Model]] = {}
         self._environments_given_out: list[Environment] = []
         self._environment_class = environment_class
+
+    @staticmethod
+    def _sqlalchemy_sqlite_on_connect(dbapi_connection, connection_record):
+        dbapi_connection.execute("PRAGMA foreign_keys=ON")
 
     def reset_full(self) -> None:
         """
