@@ -646,7 +646,7 @@ class BaseModel:
                     continue
                 if fc._foreign_model != self._name:  # pylint: disable=protected-access
                     continue
-                referencing_records = self.env[mn].search([(fn, "=", self.id)])
+                referencing_records = self.env[mn].search([(fn, "in", self.ids)])
                 match fc.ondelete:
                     case "set null":
                         referencing_records.write(
