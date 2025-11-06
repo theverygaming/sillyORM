@@ -36,6 +36,8 @@ def test_automigrate_auto(registry):
 
         _name = "test_model_c"
 
+        a_ids = sillyorm.fields.Many2many("test_model_a")
+
     ## valid: add a table
     # init
     registry.register_model(TestModelA)
@@ -56,6 +58,7 @@ def test_automigrate_auto(registry):
         [
             "test_model_a",
             "test_model_c",
+            "join_test_model_c_a_ids_test_model_a",
         ],
     )
     # add table
@@ -86,6 +89,7 @@ def test_automigrate_auto(registry):
             "test_model_a",
             "test_model_b",
             "test_model_c",
+            "join_test_model_c_a_ids_test_model_a",
         ],
     )
 
@@ -124,6 +128,7 @@ def test_automigrate_auto(registry):
             "test_model_a",
             "test_model_b",
             "test_model_c",
+            "join_test_model_c_a_ids_test_model_a",
         ],
     )
 
@@ -138,6 +143,7 @@ def test_automigrate_auto(registry):
         [
             "test_model_a",
             "test_model_c",
+            "join_test_model_c_a_ids_test_model_a",
         ],
     )
 
@@ -172,6 +178,7 @@ def test_automigrate_auto(registry):
             "test_model_a",
             "test_model_b",
             "test_model_c",
+            "join_test_model_c_a_ids_test_model_a",
         ],
     )
 
