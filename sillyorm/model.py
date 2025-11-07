@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Iterator, Self, cast
+from typing import Any, Iterator, Self, cast, Callable
 import sqlalchemy
 from . import fields
 from .environment import Environment
@@ -7,6 +7,61 @@ from .exceptions import SillyORMException
 from .helpers import sanitize_table_name
 
 _logger = logging.getLogger(__name__)
+
+
+def constraints(
+    *fields_list: str,
+) -> Callable[[Callable[["BaseModel"], None]], Callable[["BaseModel"], None]]:
+    """
+    Decorator for constraints.
+
+    Decorate a function in a model class with this,
+    and that function will be called within create and write on that Model.
+
+    The arguments are the field names it should be
+    called for (it will only be called if those fields change)
+
+    .. testsetup:: models_model
+
+       import tempfile
+       import sillyorm
+
+       tmpfile = tempfile.NamedTemporaryFile()
+       registry = sillyorm.Registry(f"sqlite:///{tmpfile.name}")
+
+    .. testcode:: models_model
+
+       class ExampleModel(sillyorm.model.Model):
+           _name = "example_c"
+           field = sillyorm.fields.String()
+
+           @sillyorm.model.constraints("field")
+           def _verify_field(self):
+               for record in self:
+                   if record.field == "invalid":
+                       raise Exception("invalid data!")
+
+       registry.register_model(ExampleModel)
+       registry.resolve_tables()
+       registry.init_db_tables()
+       env = registry.get_environment()
+
+       record = env["example_c"].create({"field": "Hello world!"})
+       try:
+           record.field = "invalid"
+       except Exception as e:
+           print(repr(e))
+
+    .. testoutput:: models_model
+
+       Exception('invalid data!')
+    """
+
+    def _inner(fn: Callable[["BaseModel"], None]) -> Callable[["BaseModel"], None]:
+        setattr(fn, "_constraints", fields_list)
+        return fn
+
+    return _inner
 
 
 class BaseModel:
@@ -99,6 +154,35 @@ class BaseModel:
         Get all IDs of records in this recordset
         """
         return self._ids
+
+    @property
+    def _constraints(self) -> dict[str, list[Callable[["BaseModel"], None]]]:
+        field_constraints: dict[str, list[Callable[["BaseModel"], None]]] = {}
+        for cls in self.__class__.__mro__:
+            if not issubclass(cls, BaseModel):
+                break
+            for attr in vars(cls).values():
+                if not callable(attr) or not getattr(attr, "_constraints", False):
+                    continue
+                for field in getattr(attr, "_constraints"):
+                    if field not in field_constraints:
+                        field_constraints[field] = []
+                    field_constraints[field].append(attr)
+
+        return field_constraints
+
+    def _call_constraints(self, fields_changed: list[str], call_all: bool = False) -> None:
+        # collect functions
+        fns_to_call = []
+        if call_all:
+            for fns in self._constraints.values():
+                fns_to_call += fns
+        for f in fields_changed:
+            fns_to_call += self._constraints.get(f, [])
+
+        # actually call them
+        for fn in set(fns_to_call):
+            fn(self)
 
     @classmethod
     def _build_fields_list(cls) -> None:
@@ -253,9 +337,12 @@ class BaseModel:
             )
             self.env.connection.execute(stmt)
 
-        # handle fields that do not exist in the DB
-        for k, v in filter(lambda x: not self._fields[x[0]].materialize, vals.items()):
-            self._fields[k]._non_materialized_write(self, v)  # pylint: disable=protected-access
+            # handle fields that do not exist in the DB
+            for k, v in filter(lambda x: not self._fields[x[0]].materialize, vals.items()):
+                self._fields[k]._non_materialized_write(self, v)  # pylint: disable=protected-access
+
+            # handle constraints
+            self._call_constraints(list(vals.keys()))
 
     def browse(self, ids: list[int] | int) -> None | Self:
         """
@@ -312,7 +399,12 @@ class BaseModel:
             new_id = self.env.connection.execute(
                 sqlalchemy.insert(self._table).values(**vals)
             ).inserted_primary_key[0]
-            return self.__class__(self.env, ids=[new_id])
+            created = self.__class__(self.env, ids=[new_id])
+
+            # handle constraints
+            created._call_constraints([], call_all=True)  # pylint: disable=protected-access
+
+        return created
 
     def _domain_transform_types(
         self,
