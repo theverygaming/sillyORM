@@ -31,9 +31,6 @@ class Field:
     :vartype required: bool
     :ivar unique: If the field's value should be unique in the column (checked via SQL constraints)
     :vartype unique: bool
-    :ivar sql_schema_default: The constant default value for a column
-       in the DB Schema. SQL String (e.g. sqlalchemy.text)
-    :vartype sql_schema_default: Any
     :ivar default: The constant default value for a column
        inserted during record creation - equivalent to SQLAlchemy Column default=
     :vartype default: Any
@@ -44,10 +41,6 @@ class Field:
     :param unique: If the field's value should be unique in the column (checked via SQL constraints)
     :type unique: bool
     :default unique: False
-    :param sql_schema_default: The constant default value for a column
-       in the DB Schema. SQL String (e.g. sqlalchemy.text)
-    :type sql_schema_default: Any
-    :default sql_schema_default: None
     :param default: The constant default value for a column
        inserted during record creation - equivalent to SQLAlchemy Column default=
     :type default: Any
@@ -67,12 +60,10 @@ class Field:
         self,
         required: bool = False,
         unique: bool = False,
-        sql_schema_default: Any = None,
         default: Any = None,
     ) -> None:
         self.required = required
         self.unique = unique
-        self.sql_schema_default = sql_schema_default
         self.default = default
         self.constraints: list[sqlalchemy.schema.SchemaItem | tuple[str, Any]] = []
 
@@ -84,8 +75,6 @@ class Field:
             self.constraints.append(("nullable", False))
         if self.unique:
             self.constraints.append(("unique", True))
-        if self.sql_schema_default is not None:
-            self.constraints.append(("server_default", self.sql_schema_default))
 
     def __set_name__(self, record: BaseModel, name: str) -> None:
         self.name = name
@@ -311,13 +300,10 @@ class String(Field):
         length: int = 255,
         required: bool = False,
         unique: bool = False,
-        sql_schema_default: Any = None,
         default: Any = None,
     ) -> None:
         self.sql_type = sqlalchemy.types.String(length)
-        super().__init__(
-            required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
-        )
+        super().__init__(required=required, unique=unique, default=default)
 
     def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
@@ -364,13 +350,10 @@ class Text(Field):
         self,
         required: bool = False,
         unique: bool = False,
-        sql_schema_default: Any = None,
         default: Any = None,
     ) -> None:
         self.sql_type = sqlalchemy.types.Text()
-        super().__init__(
-            required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
-        )
+        super().__init__(required=required, unique=unique, default=default)
 
     def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
@@ -474,14 +457,11 @@ class Datetime(Field):
         convert_tz: bool = False,
         required: bool = False,
         unique: bool = False,
-        sql_schema_default: Any = None,
         default: Any = None,
     ) -> None:
         self.tzinfo = tzinfo
         self.convert_tz = convert_tz
-        super().__init__(
-            required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
-        )
+        super().__init__(required=required, unique=unique, default=default)
 
     def _convert_type_get(self, record: BaseModel, value: Any) -> Any:
         if value is not None:
@@ -603,7 +583,6 @@ class Selection(String):
         length: int = 255,
         required: bool = False,
         unique: bool = False,
-        sql_schema_default: Any = None,
         default: Any = None,
     ) -> None:
         self.options = options
@@ -611,7 +590,6 @@ class Selection(String):
             length,
             required=required,
             unique=unique,
-            sql_schema_default=sql_schema_default,
             default=default,
         )
 
@@ -675,12 +653,9 @@ class Many2one(Integer):
         ondelete: Literal["set null", "restrict", "cascade"] = "restrict",
         required: bool = False,
         unique: bool = False,
-        sql_schema_default: Any = None,
         default: Any = None,
     ):
-        super().__init__(
-            required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
-        )
+        super().__init__(required=required, unique=unique, default=default)
         self.ondelete = ondelete
         self._foreign_model = foreign_model
         if self.ondelete == "set null" and self.required:
@@ -796,12 +771,9 @@ class One2many(Field):
         foreign_field: str,
         required: bool = False,
         unique: bool = False,
-        sql_schema_default: Any = None,
         default: Any = None,
     ):
-        super().__init__(
-            required=required, unique=unique, sql_schema_default=sql_schema_default, default=default
-        )
+        super().__init__(required=required, unique=unique, default=default)
         self._foreign_model = foreign_model
         self._foreign_field = foreign_field
 
