@@ -214,6 +214,8 @@ class Float(Field):
        print(record.field)
        record.field = 340000000000000000000000000000000000000.0
        print(record.field)
+       record.field = 123
+       print(record.field)
        record.field = None
        print(record.field)
 
@@ -222,17 +224,20 @@ class Float(Field):
        32768.123321
        -1.2e-38
        3.4e+38
+       123.0
        None
     """
 
     sql_type = sqlalchemy.types.Float()
 
     def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
+        if isinstance(value, int):
+            value = float(value)
         if not isinstance(value, float) and value is not None:
             raise SillyORMException("Float value must be float")
         return super()._convert_type_set(record, value)
 
-    def __set__(self, record: BaseModel, value: float | None) -> None:
+    def __set__(self, record: BaseModel, value: float | int | None) -> None:
         super().__set__(record, value)
 
 

@@ -7,7 +7,7 @@ from ..libtest import with_test_registry, generic_field_test
 def test_field_float(request, registry, is_second, prev_return):
     return generic_field_test(
         sillyorm.fields.Float,
-        [([], {})] * 6,
+        [([], {})] * 12,
         [
             (
                 sqlalchemy.sql.sqltypes.DOUBLE_PRECISION(precision=53)
@@ -15,7 +15,7 @@ def test_field_float(request, registry, is_second, prev_return):
                 else sqlalchemy.sql.sqltypes.FLOAT()
             )
         ]
-        * 6,
+        * 12,
         [
             None,
             123456.789012,
@@ -23,8 +23,14 @@ def test_field_float(request, registry, is_second, prev_return):
             -0.000000000000000000000000000000000000012,
             0.789012,
             123456.0,
+            0,
+            123,
+            5,
+            123456,
+            -1,
+            -123,
         ],
-        ["Test", [], {}, 3, -1],
+        ["Test", "2", "1.2", [], {}],
         registry,
         is_second,
         prev_return,
