@@ -23,7 +23,7 @@
       rec {
         packages.default = pkgs.python313Packages.buildPythonPackage rec {
           pname = "sillyORM";
-          version = "1.0.0";
+          version = "1.1.0";
           pyproject = true;
 
           build-system = [

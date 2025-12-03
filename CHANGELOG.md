@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.0
+
+_a bunch of changes and bugfixes, only the most important are listed here_
+- new Many2many field
+- it is now possible to provide default values for fields (handled by the ORM, not the DBMS)
+- brought back the dangerous magic migrations (powered by alembic now!)
+- new `ids` property to get a list of all IDs in a recordset
+- the Datetime field now allows automatic timzone conversion
+- support ondelete option for Many2one
+- new search operator `in` that allows checking if a value is any of the values in a provided list
+- SQLite now enforces foreign key constraints
+- allow defining constraint functions that can prevent a record from being created or modified
+- automatically convert integers to float for the float field
+
+**diff**: https://github.com/theverygaming/sillyORM/compare/1.0.0...1.1.0
+
 ## 1.0.0
 
 _a lot of changes, only the most important are listed here_
