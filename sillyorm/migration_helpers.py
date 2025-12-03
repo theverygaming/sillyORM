@@ -8,6 +8,8 @@ import alembic.runtime
 from .exceptions import SillyORMException
 from .registry import Registry
 
+# pylint: disable=invalid-name
+
 _MP = False
 _MP_REGISTRY: Registry = cast(Registry, None)
 _MP_SCRIPY_TEMPLATE_PATH = cast(str, None)
@@ -56,6 +58,7 @@ def _monkeypatch(
                 target_metadata=_MP_REGISTRY.metadata,
                 version_table=_MP_VERSION_TABLE,
                 include_object=_MP_REGISTRY._table_cmp_should_include,  # pylint: disable=protected-access
+                compare_server_default=True,
             )
 
             with alembic.context.begin_transaction():  # pylint: disable=no-member
@@ -116,7 +119,10 @@ def helper_gen_migrations(
             conn,
             opts={
                 "version_table": _MP_VERSION_TABLE,
-                "include_object": _MP_REGISTRY._table_cmp_should_include,  # pylint: disable=protected-access
+                "include_object": (
+                    _MP_REGISTRY._table_cmp_should_include  # pylint: disable=protected-access
+                ),
+                "compare_server_default": True,
             },
         )
         migration_script = alembic.autogenerate.produce_migrations(

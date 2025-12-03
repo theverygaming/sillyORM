@@ -1,12 +1,67 @@
 import logging
-import re
-from typing import Any, Iterator, Self, cast
+from typing import Any, Iterator, Self, cast, Callable
 import sqlalchemy
 from . import fields
 from .environment import Environment
 from .exceptions import SillyORMException
+from .helpers import sanitize_table_name
 
 _logger = logging.getLogger(__name__)
+
+
+def constraints(
+    *fields_list: str,
+) -> Callable[[Callable[["BaseModel"], None]], Callable[["BaseModel"], None]]:
+    """
+    Decorator for constraints.
+
+    Decorate a function in a model class with this,
+    and that function will be called within create and write on that Model.
+
+    The arguments are the field names it should be
+    called for (it will only be called if those fields change)
+
+    .. testsetup:: models_model
+
+       import tempfile
+       import sillyorm
+
+       tmpfile = tempfile.NamedTemporaryFile()
+       registry = sillyorm.Registry(f"sqlite:///{tmpfile.name}")
+
+    .. testcode:: models_model
+
+       class ExampleModel(sillyorm.model.Model):
+           _name = "example_c"
+           field = sillyorm.fields.String()
+
+           @sillyorm.model.constraints("field")
+           def _verify_field(self):
+               for record in self:
+                   if record.field == "invalid":
+                       raise Exception("invalid data!")
+
+       registry.register_model(ExampleModel)
+       registry.resolve_tables()
+       registry.init_db_tables()
+       env = registry.get_environment()
+
+       record = env["example_c"].create({"field": "Hello world!"})
+       try:
+           record.field = "invalid"
+       except Exception as e:
+           print(repr(e))
+
+    .. testoutput:: models_model
+
+       Exception('invalid data!')
+    """
+
+    def _inner(fn: Callable[["BaseModel"], None]) -> Callable[["BaseModel"], None]:
+        setattr(fn, "_constraints", fields_list)
+        return fn
+
+    return _inner
 
 
 class BaseModel:
@@ -93,11 +148,41 @@ class BaseModel:
     def __getitem__(self, key: int) -> Self:
         return self.__class__(self.env, ids=[self._ids[key]])
 
-    @classmethod
-    def _get_sanitized_table_name(cls, table_name: str) -> str:
-        # first character (special)
-        first = re.sub(r"[^a-zA-Z_]", "_", table_name[0])
-        return first + re.sub(r"[^a-zA-Z0-9_]", "_", table_name[1:])
+    @property
+    def ids(self) -> list[int]:
+        """
+        Get all IDs of records in this recordset
+        """
+        return self._ids
+
+    @property
+    def _constraints(self) -> dict[str, list[Callable[["BaseModel"], None]]]:
+        field_constraints: dict[str, list[Callable[["BaseModel"], None]]] = {}
+        for cls in self.__class__.__mro__:
+            if not issubclass(cls, BaseModel):
+                break
+            for attr in vars(cls).values():
+                if not callable(attr) or not getattr(attr, "_constraints", False):
+                    continue
+                for field in getattr(attr, "_constraints"):
+                    if field not in field_constraints:
+                        field_constraints[field] = []
+                    field_constraints[field].append(attr)
+
+        return field_constraints
+
+    def _call_constraints(self, fields_changed: list[str], call_all: bool = False) -> None:
+        # collect functions
+        fns_to_call = []
+        if call_all:
+            for fns in self._constraints.values():
+                fns_to_call += fns
+        for f in fields_changed:
+            fns_to_call += self._constraints.get(f, [])
+
+        # actually call them
+        for fn in set(fns_to_call):
+            fn(self)
 
     @classmethod
     def _build_fields_list(cls) -> None:
@@ -116,11 +201,16 @@ class BaseModel:
             return all_fields
 
         cls._fields = get_all_fields()
+        for field in cls._fields.values():
+            field._init_field(cls)  # pylint: disable=protected-access
 
     @classmethod
     def _build_sqlalchemy_table(cls, metadata: sqlalchemy.MetaData) -> None:
         cls._build_fields_list()
         all_fields = list(cls._fields.values())
+
+        for field in all_fields:
+            field._build_sqlalchemy_table(cls, metadata)  # pylint: disable=protected-access
 
         columns = [
             sqlalchemy.Column(
@@ -134,7 +224,7 @@ class BaseModel:
         ]
 
         cls._table = sqlalchemy.Table(
-            cls._get_sanitized_table_name(cls._name),
+            sanitize_table_name(cls._name),
             metadata,
             *columns,
         )
@@ -164,7 +254,7 @@ class BaseModel:
         rdata = self._read(field_names)
         for i, data in enumerate(rdata):
             for f, v in data.items():
-                val = self._fields[f]._convert_type_get(v)  # pylint: disable=protected-access
+                val = self._fields[f]._convert_type_get(self, v)  # pylint: disable=protected-access
                 rdata[i][f] = val
         return rdata
 
@@ -182,18 +272,31 @@ class BaseModel:
         if not self._ids:
             return []
 
-        columns = [self._table.c[field] for field in field_names]
-        stmt = sqlalchemy.select(*columns).where(self._table.c.id.in_(self._ids))
+        columns = [self._table.c[field] for field in field_names if self._fields[field].materialize]
+        if columns:
+            stmt = sqlalchemy.select(*columns).where(self._table.c.id.in_(self._ids))
 
-        # fix the order
-        if len(self._ids) > 1:
-            case_ordering = sqlalchemy.case(
-                {id_: index for index, id_ in enumerate(self._ids)}, value=self._table.c.id
-            )
-            stmt = stmt.order_by(case_ordering)
+            # fix the order
+            if len(self._ids) > 1:
+                case_ordering = sqlalchemy.case(
+                    {id_: index for index, id_ in enumerate(self._ids)}, value=self._table.c.id
+                )
+                stmt = stmt.order_by(case_ordering)
 
-        result = self.env.connection.execute(stmt)
-        return [dict(row) for row in result.mappings()]
+            result = self.env.connection.execute(stmt)
+
+            mapped_data = [dict(row) for row in result.mappings()]
+        else:
+            mapped_data = [{} for _ in self._ids]
+
+        # handle fields that do not exist in the DB
+        for field in filter(lambda x: not self._fields[x].materialize, field_names):
+            # pylint: disable=protected-access
+            data = self._fields[field]._non_materialized_read(self)
+            for record_dict, value in zip(mapped_data, data):
+                record_dict[field] = value
+
+        return mapped_data
 
     def write(self, vals: dict[str, Any]) -> None:
         """
@@ -207,7 +310,7 @@ class BaseModel:
         :type vals: dict[str, Any]
         """
         for f, v in vals.items():
-            vals[f] = self._fields[f]._convert_type_set(v)  # pylint: disable=protected-access
+            vals[f] = self._fields[f]._convert_type_set(self, v)  # pylint: disable=protected-access
         self._write(vals)
 
     def _write(self, vals: dict[str, Any]) -> None:
@@ -221,14 +324,25 @@ class BaseModel:
            values for the fields
         :type vals: dict[str, Any]
         """
-        if not self._ids:
+        if not self._ids or not vals:
             return
+
+        db_vals = dict(filter(lambda x: self._fields[x[0]].materialize, vals.items()))
 
         with self.env.managed_transaction():
             stmt = (
-                sqlalchemy.update(self._table).where(self._table.c.id.in_(self._ids)).values(**vals)
+                sqlalchemy.update(self._table)
+                .where(self._table.c.id.in_(self._ids))
+                .values(**db_vals)
             )
             self.env.connection.execute(stmt)
+
+            # handle fields that do not exist in the DB
+            for k, v in filter(lambda x: not self._fields[x[0]].materialize, vals.items()):
+                self._fields[k]._non_materialized_write(self, v)  # pylint: disable=protected-access
+
+            # handle constraints
+            self._call_constraints(list(vals.keys()))
 
     def browse(self, ids: list[int] | int) -> None | Self:
         """
@@ -275,11 +389,22 @@ class BaseModel:
         """
         with self.env.managed_transaction():
             for f, v in vals.items():
-                vals[f] = self._fields[f]._convert_type_set(v)  # pylint: disable=protected-access
+                # pylint: disable=protected-access
+                vals[f] = self._fields[f]._convert_type_set(self, v)
+            # handle default values
+            for f, fc in filter(
+                lambda x: x[0] not in vals and x[1].default is not None, self._fields.items()
+            ):
+                vals[f] = fc._convert_type_set(self, fc.default)  # pylint: disable=protected-access
             new_id = self.env.connection.execute(
                 sqlalchemy.insert(self._table).values(**vals)
             ).inserted_primary_key[0]
-            return self.__class__(self.env, ids=[new_id])
+            created = self.__class__(self.env, ids=[new_id])
+
+            # handle constraints
+            created._call_constraints([], call_all=True)  # pylint: disable=protected-access
+
+        return created
 
     def _domain_transform_types(
         self,
@@ -297,11 +422,22 @@ class BaseModel:
         # comparing things correctly in the DB!
         for i, d in enumerate(domain):
             if isinstance(d, tuple):
-                domain[i] = (
-                    d[0],
-                    d[1],
-                    self._fields[d[0]]._convert_type_set(d[2]),  # pylint: disable=protected-access
-                )
+                ref_field = self._fields[d[0]]  # pylint: disable=protected-access
+                if isinstance(d[2], list):
+                    domain[i] = (
+                        d[0],
+                        d[1],
+                        [
+                            ref_field._convert_type_set(self, x)  # pylint: disable=protected-access
+                            for x in d[2]
+                        ],
+                    )
+                else:
+                    domain[i] = (
+                        d[0],
+                        d[1],
+                        ref_field._convert_type_set(self, d[2]),  # pylint: disable=protected-access
+                    )
         return domain
 
     def _parse_domain(self, domain: list[str | tuple[str, str, Any]]) -> object | None:
@@ -311,6 +447,12 @@ class BaseModel:
             match op:
                 case "=":
                     return clmn.is_(val) if val is None else (clmn == val)
+                case "in":
+                    return (
+                        sqlalchemy.or_(clmn.is_(None), clmn.in_(val))
+                        if None in val
+                        else (clmn.in_(val))
+                    )
                 case "!=":
                     return clmn.isnot(val) if val is None else (clmn != val)
                 case ">":
@@ -448,6 +590,7 @@ class BaseModel:
         Search operators:
 
         *  `=` Equals to
+        * `in` similar to `=` but checks if equal to one of the items in the list
         * `!=` not equal
         * `>` greater than
         * `>=` greater than or equal

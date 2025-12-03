@@ -1,16 +1,17 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, cast, Literal
 import logging
 import datetime
 import sqlalchemy
 from .exceptions import SillyORMException
+from .helpers import sanitize_table_name, sanitize_constraint_name
 
 if TYPE_CHECKING:  # pragma: no cover
     from .model import BaseModel
 
 _logger = logging.getLogger(__name__)
 
-# pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods,too-many-arguments,too-many-positional-arguments
 
 
 class Field:
@@ -30,6 +31,9 @@ class Field:
     :vartype required: bool
     :ivar unique: If the field's value should be unique in the column (checked via SQL constraints)
     :vartype unique: bool
+    :ivar default: The constant default value for a column
+       inserted during record creation - equivalent to SQLAlchemy Column default=
+    :vartype default: Any
 
     :param required: If the field must be set (checked via SQL constraints and runtime checks)
     :type required: bool
@@ -37,6 +41,10 @@ class Field:
     :param unique: If the field's value should be unique in the column (checked via SQL constraints)
     :type unique: bool
     :default unique: False
+    :param default: The constant default value for a column
+       inserted during record creation - equivalent to SQLAlchemy Column default=
+    :type default: Any
+    :default default: None
     """
 
     # __must__ be set by all fields
@@ -48,10 +56,19 @@ class Field:
     # set automatically
     name: str = cast(str, None)
 
-    def __init__(self, required: bool = False, unique: bool = False) -> None:
-        self.constraints: list[sqlalchemy.schema.SchemaItem | tuple[str, Any]] = []
+    def __init__(
+        self,
+        required: bool = False,
+        unique: bool = False,
+        default: Any = None,
+    ) -> None:
         self.required = required
         self.unique = unique
+        self.default = default
+        self.constraints: list[sqlalchemy.schema.SchemaItem | tuple[str, Any]] = []
+
+    def _init_field(self, record: type[BaseModel]) -> None:  # pylint: disable=unused-argument
+        self.constraints = []
         if self.materialize and self.sql_type is None:
             raise SillyORMException("sql_type must be set for all fields that materialize")
         if self.required:
@@ -62,24 +79,46 @@ class Field:
     def __set_name__(self, record: BaseModel, name: str) -> None:
         self.name = name
 
-    def _convert_type_get(self, value: Any) -> Any:
+    def _convert_type_get(
+        self, record: BaseModel, value: Any  # pylint: disable=unused-argument
+    ) -> Any:
         return value
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(
+        self, record: BaseModel, value: Any  # pylint: disable=unused-argument
+    ) -> Any:
         if self.required and value is None:
             raise SillyORMException(f"attempted to set required field '{self.name}' to '{value}'")
         return value
 
-    def __get__(self, record: BaseModel, objtype: Any = None) -> Any | list[Any]:
+    def __get__(self, record: BaseModel, objtype: Any = None) -> Any:
         record.ensure_one()
-        sql_result = record._read([self.name])
-        result = [self._convert_type_get(res[self.name]) for res in sql_result]
-        return result[0]
+        result = record.read([self.name])
+        return result[0][self.name]
 
     def __set__(self, record: BaseModel, value: Any) -> None:
-        if value is None:
-            record._write({self.name: value})
-        record._write({self.name: self._convert_type_set(value)})
+        record.write({self.name: value})
+
+    def _non_materialized_read(self, records: BaseModel) -> list[Any]:
+        """
+        low-level read method, should be implemented for fields that don't materialize
+
+        returns an array of the values for the recordset
+        """
+        raise SillyORMException(f"field {self.name} cannot be read")
+
+    def _non_materialized_write(self, records: BaseModel, value: Any) -> None:
+        """
+        low-level write method, should be implemented for fields that don't materialize
+        """
+        raise SillyORMException(f"field {self.name} cannot be written")
+
+    def _build_sqlalchemy_table(
+        self,
+        model_cls: type[BaseModel],  # pylint: disable=unused-argument
+        metadata: sqlalchemy.MetaData,  # pylint: disable=unused-argument
+    ) -> None:
+        return
 
 
 class Integer(Field):
@@ -128,10 +167,10 @@ class Integer(Field):
 
     sql_type = sqlalchemy.types.Integer()
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not isinstance(value, int) and value is not None:
             raise SillyORMException("Integer value must be int")
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
     def __set__(self, record: BaseModel, value: int | None) -> None:
         super().__set__(record, value)
@@ -164,6 +203,8 @@ class Float(Field):
        print(record.field)
        record.field = 340000000000000000000000000000000000000.0
        print(record.field)
+       record.field = 123
+       print(record.field)
        record.field = None
        print(record.field)
 
@@ -172,17 +213,20 @@ class Float(Field):
        32768.123321
        -1.2e-38
        3.4e+38
+       123.0
        None
     """
 
     sql_type = sqlalchemy.types.Float()
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
+        if isinstance(value, int):
+            value = float(value)
         if not isinstance(value, float) and value is not None:
             raise SillyORMException("Float value must be float")
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
-    def __set__(self, record: BaseModel, value: float | None) -> None:
+    def __set__(self, record: BaseModel, value: float | int | None) -> None:
         super().__set__(record, value)
 
 
@@ -209,13 +253,13 @@ class Id(Integer):
        2
     """
 
-    def __init__(self, required: bool = False, unique: bool = False) -> None:
-        super().__init__(required=required, unique=unique)
+    def _init_field(self, record: type[BaseModel]) -> None:
+        super()._init_field(record)
         self.constraints += [("primary_key", True)]
 
     def __get__(self, record: BaseModel, objtype: Any = None) -> int:
         record.ensure_one()
-        return record._ids[0]
+        return record.ids[0]
 
     def __set__(self, record: BaseModel, value: Any) -> None:
         raise SillyORMException("cannot set id")
@@ -256,14 +300,15 @@ class String(Field):
         length: int = 255,
         required: bool = False,
         unique: bool = False,
+        default: Any = None,
     ) -> None:
         self.sql_type = sqlalchemy.types.String(length)
-        super().__init__(required=required, unique=unique)
+        super().__init__(required=required, unique=unique, default=default)
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
             raise SillyORMException("String value must be str")
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
     def __set__(self, record: BaseModel, value: str | None) -> None:
         super().__set__(record, value)
@@ -301,14 +346,19 @@ class Text(Field):
 
     """
 
-    def __init__(self, required: bool = False, unique: bool = False) -> None:
+    def __init__(
+        self,
+        required: bool = False,
+        unique: bool = False,
+        default: Any = None,
+    ) -> None:
         self.sql_type = sqlalchemy.types.Text()
-        super().__init__(required=required, unique=unique)
+        super().__init__(required=required, unique=unique, default=default)
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
             raise SillyORMException("Text value must be str")
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
     def __set__(self, record: BaseModel, value: str | None) -> None:
         super().__set__(record, value)
@@ -345,15 +395,15 @@ class Date(Field):
 
     sql_type = sqlalchemy.types.Date()
 
-    def _convert_type_get(self, value: Any) -> Any:
+    def _convert_type_get(self, record: BaseModel, value: Any) -> Any:
         return value
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if (
             not isinstance(value, datetime.date) or isinstance(value, datetime.datetime)
         ) and value is not None:
             raise SillyORMException("Date value must be date")
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
     def __set__(self, record: BaseModel, value: datetime.date | None) -> None:
         super().__set__(record, value)
@@ -369,6 +419,10 @@ class Datetime(Field):
 
     :param tzinfo: time zone of the date stored - None means it's a naive datetime object
     :type tzinfo: datetime.tzinfo | None
+    :param convert_tz: if the datetime should be converted to the supplied tzinfo if
+           possible (e.g. tzinfo set to UTC and you can
+           supply tz=EST and it'll be converted using astimezone)
+    :type convert_tz: bool
 
     .. testcode:: models_fields
 
@@ -398,26 +452,34 @@ class Datetime(Field):
     sql_type = sqlalchemy.types.DateTime()
 
     def __init__(
-        self, tzinfo: datetime.tzinfo | None, required: bool = False, unique: bool = False
+        self,
+        tzinfo: datetime.tzinfo | None,
+        convert_tz: bool = False,
+        required: bool = False,
+        unique: bool = False,
+        default: Any = None,
     ) -> None:
-        super().__init__(required=required, unique=unique)
         self.tzinfo = tzinfo
+        self.convert_tz = convert_tz
+        super().__init__(required=required, unique=unique, default=default)
 
-    def _convert_type_get(self, value: Any) -> Any:
+    def _convert_type_get(self, record: BaseModel, value: Any) -> Any:
         if value is not None:
             return value.replace(tzinfo=self.tzinfo)
         return value
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if value is not None and not isinstance(value, datetime.datetime):
             raise SillyORMException("Datetime value must be datetime")
         if value is not None:
+            if self.convert_tz and self.tzinfo is not None and value.tzinfo is not None:
+                value = value.astimezone(self.tzinfo)
             if value.tzinfo != self.tzinfo:
                 raise SillyORMException(
                     f"Datetime field expected tzinfo '{self.tzinfo}' and got '{value.tzinfo}'"
                 )
             value = value.replace(tzinfo=None)
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
     def __set__(self, record: BaseModel, value: datetime.datetime | None) -> None:
         super().__set__(record, value)
@@ -459,15 +521,15 @@ class Boolean(Field):
 
     sql_type = sqlalchemy.types.Boolean()
 
-    def _convert_type_get(self, value: Any) -> Any:
+    def _convert_type_get(self, record: BaseModel, value: Any) -> Any:
         if isinstance(value, int):
             return bool(value)
         return value
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not isinstance(value, bool) and value is not None:
             raise SillyORMException("Boolean value must be bool")
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
     def __set__(self, record: BaseModel, value: bool | None) -> None:
         super().__set__(record, value)
@@ -516,15 +578,25 @@ class Selection(String):
     """
 
     def __init__(
-        self, options: list[str], length: int = 255, required: bool = False, unique: bool = False
+        self,
+        options: list[str],
+        length: int = 255,
+        required: bool = False,
+        unique: bool = False,
+        default: Any = None,
     ) -> None:
-        super().__init__(length, required=required, unique=unique)
         self.options = options
+        super().__init__(
+            length,
+            required=required,
+            unique=unique,
+            default=default,
+        )
 
-    def _convert_type_set(self, value: Any) -> Any:
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not (isinstance(value, str) and value in self.options) and value is not None:
             raise SillyORMException("Selection value must be str and in the list of options")
-        return super()._convert_type_set(value)
+        return super()._convert_type_set(record, value)
 
 
 class Many2one(Integer):
@@ -567,13 +639,40 @@ class Many2one(Integer):
 
     :param foreign_model: Foreign model name
     :type foreign_model: str
+    :param ondelete: What to do when the related record is deleted
+                     set null: set this relation to null and continue
+                     restrict: prevent the related record from being deleted
+                     cascade: delete this record too
+    :type ondelete: Literal["set null", "restrict", "cascade"]
 
     """
 
-    def __init__(self, foreign_model: str, required: bool = False, unique: bool = False):
-        super().__init__(required=required, unique=unique)
+    def __init__(
+        self,
+        foreign_model: str,
+        ondelete: Literal["set null", "restrict", "cascade"] = "restrict",
+        required: bool = False,
+        unique: bool = False,
+        default: Any = None,
+    ):
+        super().__init__(required=required, unique=unique, default=default)
+        self.ondelete = ondelete
         self._foreign_model = foreign_model
-        self.constraints += [sqlalchemy.ForeignKey(f"{foreign_model}.id")]
+        if self.ondelete == "set null" and self.required:
+            raise SillyORMException("'set null' does not make sense on a required Many2one")
+
+    def _init_field(self, record: type[BaseModel]) -> None:
+        super()._init_field(record)
+        self.constraints += [
+            sqlalchemy.ForeignKey(
+                f"{sanitize_table_name(self._foreign_model)}.id",
+                name=sanitize_constraint_name(
+                    f"fk_{sanitize_table_name(record._name)}_{sanitize_table_name(self.name)}"  # pylint: disable=protected-access
+                    + f"_{sanitize_table_name(self._foreign_model)}"
+                ),
+                ondelete=self.ondelete,
+            )
+        ]
 
     def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
         rec = super().__get__(record, objtype)
@@ -587,6 +686,37 @@ class Many2one(Integer):
             return
         value.ensure_one()
         super().__set__(record, value.id)
+
+
+class Many2xCommand:
+    """
+    Commands for One2many and Many2many fields
+    """
+
+    LINK = 1
+    UNLINK = 2
+
+    @classmethod
+    def link(cls, foreign: BaseModel | list[int]) -> tuple[int, list[int]]:
+        """
+        LINK command
+
+        links existing records to the relation
+        """
+        if isinstance(foreign, list):
+            return (cls.LINK, foreign)
+        return (cls.LINK, foreign.ids)
+
+    @classmethod
+    def unlink(cls, foreign: BaseModel | list[int]) -> tuple[int, list[int]]:
+        """
+        UNLINK command
+
+        removes links of records from the relation
+        """
+        if isinstance(foreign, list):
+            return (cls.UNLINK, foreign)
+        return (cls.UNLINK, foreign.ids)
 
 
 class One2many(Field):
@@ -636,15 +766,191 @@ class One2many(Field):
     materialize = False
 
     def __init__(
-        self, foreign_model: str, foreign_field: str, required: bool = False, unique: bool = False
+        self,
+        foreign_model: str,
+        foreign_field: str,
+        required: bool = False,
+        unique: bool = False,
+        default: Any = None,
     ):
-        super().__init__(required=required, unique=unique)
+        super().__init__(required=required, unique=unique, default=default)
         self._foreign_model = foreign_model
         self._foreign_field = foreign_field
 
+    def _non_materialized_read(self, records: BaseModel) -> list[Any]:
+        return [
+            record.env[self._foreign_model].search([(self._foreign_field, "=", record.id)]).ids
+            for record in records
+        ]
+
     def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
-        record.ensure_one()
-        return record.env[self._foreign_model].search([(self._foreign_field, "=", record.id)])
+        val = super().__get__(record, objtype)
+        return record.env[self._foreign_model].browse(val)
 
     def __set__(self, record: BaseModel, value: BaseModel) -> None:
         raise NotImplementedError()
+
+
+class Many2many(Field):
+    """
+    Many to many relational field.
+
+    .. warning::
+       This field's implementation is currently incomplete
+
+    """
+
+    materialize = False
+
+    def __init__(
+        self,
+        foreign_model: str,
+        join_table_name: str = "",
+        join_table_self_name: str = "",
+        join_table_foreign_name: str = "",
+    ):
+        super().__init__()
+        self._foreign_model = foreign_model
+        self._join_table_name = join_table_name
+        self._join_table_self_name = join_table_self_name
+        self._join_table_foreign_name = join_table_foreign_name
+        self._table = cast(sqlalchemy.Table, None)
+
+    def _build_sqlalchemy_table(
+        self, model_cls: type[BaseModel], metadata: sqlalchemy.MetaData
+    ) -> None:
+        if not self._join_table_name:
+            # pylint: disable=protected-access
+            self._join_table_name = (
+                f"join_{sanitize_table_name(model_cls._name)}"
+                + f"_{self.name}"
+                + f"_{sanitize_table_name(self._foreign_model)}"
+            )
+        if not self._join_table_self_name:
+            self._join_table_self_name = (
+                f"{sanitize_table_name(model_cls._name)}_id"  # pylint: disable=protected-access
+            )
+        if not self._join_table_foreign_name:
+            self._join_table_foreign_name = f"{sanitize_table_name(self._foreign_model)}_id"
+
+        _logger.debug(
+            "initializing many2many join table: '%s.%s' -> '%s' named '%s'",
+            model_cls._name,  # pylint: disable=protected-access
+            self.name,
+            self._foreign_model,
+            self._join_table_name,
+        )
+        columns = [
+            sqlalchemy.Column(
+                self._join_table_self_name,
+                sqlalchemy.types.Integer(),
+                sqlalchemy.ForeignKey(
+                    f"{sanitize_table_name(model_cls._name)}.id",  # pylint: disable=protected-access
+                    name=sanitize_constraint_name(
+                        f"fk_{sanitize_table_name(self._join_table_name)}"
+                        + f"_{sanitize_table_name(self._join_table_self_name)}"
+                        + f"_{sanitize_table_name(model_cls._name)}"  # pylint: disable=protected-access
+                    ),
+                    ondelete="cascade",
+                ),
+            ),
+            sqlalchemy.Column(
+                self._join_table_foreign_name,
+                sqlalchemy.types.Integer(),
+                sqlalchemy.ForeignKey(
+                    f"{sanitize_table_name(self._foreign_model)}.id",
+                    name=sanitize_constraint_name(
+                        f"fk_{sanitize_table_name(self._join_table_name)}_"
+                        + f"{sanitize_table_name(self._join_table_foreign_name)}"
+                        + f"_{sanitize_table_name(self._foreign_model)}"
+                    ),
+                    ondelete="cascade",
+                ),
+            ),
+        ]
+        # if a table already exists check if it has the correct columns
+        table_name_sanitized = sanitize_table_name(self._join_table_name)
+        if table_name_sanitized in metadata.tables:
+            if set(c.name for c in columns) != set(
+                metadata.tables[table_name_sanitized].columns.keys()
+            ):
+                raise SillyORMException("many2many: column mismatch")
+        self._table = sqlalchemy.Table(
+            table_name_sanitized,
+            metadata,
+            *columns,
+            sqlalchemy.UniqueConstraint(
+                self._join_table_self_name,
+                self._join_table_foreign_name,
+                name=sanitize_constraint_name(
+                    f"unique_{table_name_sanitized}_{self._join_table_self_name}"
+                    + f"_{self._join_table_foreign_name}"
+                ),
+            ),
+            keep_existing=True,
+        )
+
+    def _non_materialized_read(self, records: BaseModel) -> list[Any]:
+        def _read_ids(record: BaseModel) -> list[int]:
+            stmt = sqlalchemy.select(self._table.c[self._join_table_foreign_name])
+            stmt = stmt.where(self._table.c[self._join_table_self_name] == record.id)
+            result = record.env.connection.execute(stmt).fetchall()
+            ids = [row[0] for row in result]
+            return ids
+
+        return [_read_ids(record) for record in records]
+
+    def __get__(self, record: BaseModel, objtype: Any = None) -> None | BaseModel:
+        val = super().__get__(record, objtype)
+        if len(val) == 0:
+            return None
+        return record.env[self._foreign_model].browse(val)
+
+    def __set__(self, record: BaseModel, command: tuple[int, *tuple[Any, ...]] | list[Any]) -> None:
+        record.ensure_one()
+        cmd: int = command[0]
+        match cmd:
+            case Many2xCommand.LINK:
+                if len(command) != 2:
+                    raise SillyORMException("invalid command tuple")
+                ids_f: list[int] = command[1]
+                for id_f in ids_f:
+                    count = record.env.connection.execute(
+                        # pylint: disable=not-callable # https://github.com/sqlalchemy/sqlalchemy/discussions/9202
+                        sqlalchemy.select(sqlalchemy.func.count())
+                        .select_from(self._table)
+                        .where(
+                            sqlalchemy.and_(
+                                self._table.c[self._join_table_self_name] == record.id,
+                                self._table.c[self._join_table_foreign_name] == id_f,
+                            )
+                        )
+                    ).scalar_one()
+                    if count > 0:
+                        # linking an ID twice will be ignored
+                        continue
+                    with record.env.managed_transaction():
+                        record.env.connection.execute(
+                            sqlalchemy.insert(self._table).values(
+                                {
+                                    self._join_table_self_name: record.id,
+                                    self._join_table_foreign_name: id_f,
+                                }
+                            )
+                        )
+            case Many2xCommand.UNLINK:
+                if len(command) != 2:
+                    raise SillyORMException("invalid command tuple")
+                ids_f: list[int] = command[1]  # type: ignore
+                if ids_f:
+                    with record.env.managed_transaction():
+                        record.env.connection.execute(
+                            self._table.delete().where(
+                                sqlalchemy.and_(
+                                    self._table.c[self._join_table_self_name] == record.id,
+                                    self._table.c[self._join_table_foreign_name].in_(ids_f),
+                                )
+                            )
+                        )
+            case _:
+                raise SillyORMException("unknown many2many command")

@@ -15,6 +15,7 @@ def test_field_datetime(request, registry, is_second, prev_return):
 
         time = sillyorm.fields.Datetime(None)
         time_est = sillyorm.fields.Datetime(TZ_EST)
+        time_est_conv = sillyorm.fields.Datetime(TZ_EST, convert_tz=True)
 
     def assert_columns():
         ts_type = (
@@ -29,6 +30,7 @@ def test_field_datetime(request, registry, is_second, prev_return):
                 ("id", sqlalchemy.sql.sqltypes.INTEGER()),
                 ("time", ts_type),
                 ("time_est", ts_type),
+                ("time_est_conv", ts_type),
             ],
         )
 
@@ -74,6 +76,8 @@ def test_field_datetime(request, registry, is_second, prev_return):
         with pytest.raises(SillyORMException) as e_info:
             so_1.time_est = datetime.datetime(2026, 5, 7, tzinfo=datetime.UTC)
         assert str(e_info.value) == "Datetime field expected tzinfo 'UTC-05:00' and got 'UTC'"
+        so_1.time_est_conv = datetime.datetime(2026, 5, 7, tzinfo=datetime.UTC)
+        assert so_1.time_est_conv == datetime.datetime(2026, 5, 6, 19, 0, 0, tzinfo=TZ_EST)
         return (so_1.id, so_2.id)
 
     def second():
@@ -127,45 +131,45 @@ def test_field_datetime_search(registry):
             "&",
             ("time", "<", datetime.datetime(2025, 1, 30, 20, 24, 29)),
         ]
-    )._ids == [1, 4]
+    ).ids == [1, 4]
 
     # Equals
     assert env["sale_order"].search(
         [("time", "=", datetime.datetime(2025, 1, 30, 20, 24, 28))]
-    )._ids == [1]
+    ).ids == [1]
     assert env["sale_order"].search(
         [("time", "=", datetime.datetime(2025, 1, 30, 20, 24, 29))]
-    )._ids == [2]
+    ).ids == [2]
     assert env["sale_order"].search(
         [("time", "=", datetime.datetime(2024, 1, 10, 11, 12, 13))]
-    )._ids == [4]
-    assert env["sale_order"].search([("time", "=", None)])._ids == [6]
+    ).ids == [4]
+    assert env["sale_order"].search([("time", "=", None)]).ids == [6]
 
     # Not equals
     assert env["sale_order"].search(
         [("time", "!=", datetime.datetime(2025, 1, 30, 20, 24, 29))]
-    )._ids == [1, 3, 4, 5]
+    ).ids == [1, 3, 4, 5]
     assert env["sale_order"].search(
         [("time", "!=", datetime.datetime(2024, 1, 10, 11, 12, 13))]
-    )._ids == [1, 2, 3, 5]
-    assert env["sale_order"].search([("time", "!=", None)])._ids == [1, 2, 3, 4, 5]
+    ).ids == [1, 2, 3, 5]
+    assert env["sale_order"].search([("time", "!=", None)]).ids == [1, 2, 3, 4, 5]
 
     # Greater than
     assert env["sale_order"].search(
         [("time", ">", datetime.datetime(2025, 1, 30, 20, 24, 28))]
-    )._ids == [2, 3]
+    ).ids == [2, 3]
 
     # Less than
     assert env["sale_order"].search(
         [("time", "<", datetime.datetime(2025, 1, 30, 20, 24, 29))]
-    )._ids == [1, 4, 5]
+    ).ids == [1, 4, 5]
 
     # Greater than or equal
     assert env["sale_order"].search(
         [("time", ">=", datetime.datetime(2025, 1, 30, 20, 24, 28))]
-    )._ids == [1, 2, 3]
+    ).ids == [1, 2, 3]
 
     # Less than or equal
     assert env["sale_order"].search(
         [("time", "<=", datetime.datetime(2025, 1, 30, 20, 24, 29))]
-    )._ids == [1, 2, 4, 5]
+    ).ids == [1, 2, 4, 5]

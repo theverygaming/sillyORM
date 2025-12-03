@@ -7,6 +7,7 @@ import alembic.migration
 import alembic.autogenerate
 from .environment import Environment
 from .exceptions import SillyORMException
+from . import migrate_auto
 
 if TYPE_CHECKING:  # pragma: no cover
     from .model import Model
@@ -27,16 +28,31 @@ class Registry:
     :type create_engine_kwargs: dict[str, Any]
     """
 
-    def __init__(self, create_engine_url: str, create_engine_kwargs: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        create_engine_url: str,
+        create_engine_kwargs: dict[str, Any] | None = None,
+        environment_class: type[Environment] = Environment,
+    ):
         self.engine = sqlalchemy.create_engine(
             create_engine_url, **(create_engine_kwargs if create_engine_kwargs else {})
         )
+        if self.engine.dialect.name == "sqlite":
+            sqlalchemy.event.listen(self.engine, "connect", self._sqlalchemy_sqlite_on_connect)
         self.metadata = sqlalchemy.MetaData()
         # raw model list, result from register_model calls
         self._raw_models: dict[str, list[type[Model] | str]] = {}
         # finished model list (inheritance applied etc.)
         self._models: dict[str, type[Model]] = {}
         self._environments_given_out: list[Environment] = []
+        self._environment_class = environment_class
+
+    @staticmethod
+    def _sqlalchemy_sqlite_on_connect(
+        dbapi_connection: sqlalchemy.engine.Connection,
+        connection_record: Any,  # pylint: disable=unused-argument
+    ) -> None:
+        dbapi_connection.execute("PRAGMA foreign_keys=ON")  # type: ignore
 
     def reset_full(self) -> None:
         """
@@ -159,7 +175,6 @@ class Registry:
             _build_model_inheritance(model_name)
 
         for model in self._models.values():
-            model._build_fields_list()  # pylint: disable=protected-access
             if not model._has_table:  # pylint: disable=protected-access
                 continue
             model._build_sqlalchemy_table(self.metadata)  # pylint: disable=protected-access
@@ -190,15 +205,29 @@ class Registry:
                 conn,
                 opts={
                     "include_object": self._table_cmp_should_include,
+                    "compare_server_default": True,
                 },
             )
             diffs = alembic.autogenerate.compare_metadata(context, self.metadata)
         return diffs
 
-    def init_db_tables(self, automigrate: Literal["ignore", "none", "safe"] = "safe") -> None:
+    def init_db_tables(
+        self,
+        automigrate: Literal["ignore", "none", "safe", "auto"] = "safe",
+        auto_create: bool = True,
+    ) -> None:
         """
         Initializes database tables.
+
+        automigrate modes:
+        - ignore: ignore the state of the DB schema and just do nothing
+        - none: do not run any migrations, error if the DB schema doesn't match
+        - safe: only do safe migrations (generally used together with auto_create)
+        - auto: automatically generate and run do all migrations - **may cause data loss**
         """
+        if automigrate == "auto":
+            migrate_auto.run(self)
+            return
         if automigrate != "ignore":
             diffs = self.get_schema_diffs()
             if automigrate == "none" and diffs:
@@ -212,7 +241,8 @@ class Registry:
                     "The DB does not match the schema, things other than adding tables must be"
                     f" done and automigrate is set to '{automigrate}' - diffs: {diffs}"
                 )
-        self.metadata.create_all(self.engine)
+        if auto_create and automigrate != "none":
+            self.metadata.create_all(self.engine)
 
     def get_environment(self, autocommit: bool = False) -> Environment:
         """
@@ -226,7 +256,9 @@ class Registry:
            The new Environment object
         :rtype: :class:`environment <sillyorm.environment.Environment>`
         """
-        new_env = Environment(self._models, self.engine.connect(), self, autocommit=autocommit)
+        new_env = self._environment_class(
+            self._models, self.engine.connect(), self, autocommit=autocommit
+        )
         self._environments_given_out.append(new_env)
         return new_env
 

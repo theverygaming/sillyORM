@@ -64,5 +64,5 @@ print(record.name)
 Read the docs [here](https://theverygaming.github.io/sillyORM/)
 
 > [!NOTE]
-> The docs are always for the _newest_ version.
+> The docs are always for the _latest_ release.
 > If you need docs for another version you must build them yourself

@@ -2,7 +2,202 @@ import pytest
 import sillyorm
 import sqlalchemy
 from sillyorm.exceptions import SillyORMException
-from .libtest import with_test_registry, assert_db_columns
+from .libtest import with_test_registry, assert_db_columns, assert_db_all_tables
+
+
+@with_test_registry()
+def test_automigrate_auto(registry):
+    class TestModelA(sillyorm.model.Model):
+        _name = "test_model_a"
+
+        name = sillyorm.fields.String()
+        name2 = sillyorm.fields.String()
+
+    class TestModelB(sillyorm.model.Model):
+        _name = "test_model_b"
+
+        name = sillyorm.fields.String()
+        value = sillyorm.fields.Integer()
+
+    class TestModelA2(sillyorm.model.Model):
+        _name = "test_model_a"
+
+        name = sillyorm.fields.String()
+        name3 = sillyorm.fields.String()
+        a_id = sillyorm.fields.Many2one("test_model_a")
+        b_id = sillyorm.fields.Many2one("test_model_b")
+        c_id = sillyorm.fields.Many2one("test_model_c")
+        c2_id = sillyorm.fields.Many2one("test_model_c")
+
+    class TestModelC(sillyorm.model.Model):
+        """
+        only exists to test Many2one with automigrations
+        """
+
+        _name = "test_model_c"
+
+        a_ids = sillyorm.fields.Many2many("test_model_a")
+
+    ## valid: add a table
+    # init
+    registry.register_model(TestModelA)
+    registry.register_model(TestModelC)
+    registry.resolve_tables()
+    registry.init_db_tables(automigrate="auto")
+    assert_db_columns(
+        registry,
+        "test_model_a",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("name2", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+        ],
+    )
+    assert_db_all_tables(
+        registry,
+        [
+            "test_model_a",
+            "test_model_c",
+            "join_test_model_c_a_ids_test_model_a",
+        ],
+    )
+    # add table
+    registry.register_model(TestModelB)
+    registry.resolve_tables()
+    registry.init_db_tables(automigrate="auto")
+    assert_db_columns(
+        registry,
+        "test_model_a",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("name2", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+        ],
+    )
+    assert_db_columns(
+        registry,
+        "test_model_b",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("value", sqlalchemy.sql.sqltypes.INTEGER()),
+        ],
+    )
+    assert_db_all_tables(
+        registry,
+        [
+            "test_model_a",
+            "test_model_b",
+            "test_model_c",
+            "join_test_model_c_a_ids_test_model_a",
+        ],
+    )
+
+    ## change a table
+    registry.reset_full()
+    registry.register_model(TestModelA2)
+    registry.register_model(TestModelB)
+    registry.register_model(TestModelC)
+    registry.resolve_tables()
+    registry.init_db_tables(automigrate="auto")
+    assert_db_columns(
+        registry,
+        "test_model_a",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("name3", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("a_id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("b_id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("c_id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("c2_id", sqlalchemy.sql.sqltypes.INTEGER()),
+        ],
+    )
+    assert_db_columns(
+        registry,
+        "test_model_b",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("value", sqlalchemy.sql.sqltypes.INTEGER()),
+        ],
+    )
+    assert_db_all_tables(
+        registry,
+        [
+            "test_model_a",
+            "test_model_b",
+            "test_model_c",
+            "join_test_model_c_a_ids_test_model_a",
+        ],
+    )
+
+    ## remove a table
+    registry.reset_full()
+    registry.register_model(TestModelA)
+    registry.register_model(TestModelC)
+    registry.resolve_tables()
+    registry.init_db_tables(automigrate="auto")
+    assert_db_all_tables(
+        registry,
+        [
+            "test_model_a",
+            "test_model_c",
+            "join_test_model_c_a_ids_test_model_a",
+        ],
+    )
+
+    # add table, and modify another table
+    registry.reset_full()
+    registry.register_model(TestModelA)
+    registry.register_model(TestModelB)
+    registry.register_model(TestModelC)
+    registry.resolve_tables()
+    registry.init_db_tables(automigrate="auto")
+    assert_db_columns(
+        registry,
+        "test_model_a",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("name2", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+        ],
+    )
+    assert_db_columns(
+        registry,
+        "test_model_b",
+        [
+            ("id", sqlalchemy.sql.sqltypes.INTEGER()),
+            ("name", sqlalchemy.sql.sqltypes.VARCHAR(length=255)),
+            ("value", sqlalchemy.sql.sqltypes.INTEGER()),
+        ],
+    )
+    assert_db_all_tables(
+        registry,
+        [
+            "test_model_a",
+            "test_model_b",
+            "test_model_c",
+            "join_test_model_c_a_ids_test_model_a",
+        ],
+    )
+
+    # change a table _again_ (we do this to test dropping tables with many2one)
+    registry.reset_full()
+    registry.register_model(TestModelA2)
+    registry.register_model(TestModelB)
+    registry.register_model(TestModelC)
+    registry.resolve_tables()
+    registry.init_db_tables(automigrate="auto")
+
+    # drop all the tables
+    registry.reset_full()
+    registry.resolve_tables()
+    registry.init_db_tables(automigrate="auto")
+    assert_db_all_tables(
+        registry,
+        [],
+    )
 
 
 @with_test_registry()

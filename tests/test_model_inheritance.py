@@ -102,7 +102,7 @@ def test_inheritance_copy(registry):
     env["sale_order"].create({"line_count": 5})
     env["sale_order"].create({})
 
-    assert env["sale_order"].search([])._ids == [1, 2]
+    assert env["sale_order"].search([]).ids == [1, 2]
     assert len(env["sale_order_copy"].search([])) == 0
     assert len(env["sale_order_extra_field"].search([])) == 0
     assert len(env["sale_order_extra_extra_field"].search([])) == 0
@@ -110,9 +110,9 @@ def test_inheritance_copy(registry):
 
     env["sale_order_extra_field"].create({"line_count": 5, "extrafield": "test extra field"})
 
-    assert env["sale_order"].search([])._ids == [1, 2]
+    assert env["sale_order"].search([]).ids == [1, 2]
     assert len(env["sale_order_copy"].search([])) == 0
-    assert env["sale_order_extra_field"].search([])._ids == [1]
+    assert env["sale_order_extra_field"].search([]).ids == [1]
     assert len(env["sale_order_extra_extra_field"].search([])) == 0
     assert len(env["sale_order_extra_field_override"].search([])) == 0
 
@@ -176,13 +176,13 @@ def test_inheritance_abstract(registry):
     env["sale_order"].create({"line_count": 5})
     env["sale_order"].create({})
 
-    assert env["sale_order"].search([])._ids == [1, 2]
+    assert env["sale_order"].search([]).ids == [1, 2]
     assert len(env["sale_order_extra_field"].search([])) == 0
 
     env["sale_order_extra_field"].create({"line_count": 5, "extrafield": "test extra field"})
 
-    assert env["sale_order"].search([])._ids == [1, 2]
-    assert env["sale_order_extra_field"].search([])._ids == [1]
+    assert env["sale_order"].search([]).ids == [1, 2]
+    assert env["sale_order_extra_field"].search([]).ids == [1]
 
     assert env["sale_order"].testfn() == "SaleOrderAbstract SaleOrder"
     assert (
@@ -257,13 +257,13 @@ def test_inheritance_abstract_via_registry(registry):
     env["sale_order"].create({"line_count": 5})
     env["sale_order"].create({})
 
-    assert env["sale_order"].search([])._ids == [1, 2]
+    assert env["sale_order"].search([]).ids == [1, 2]
     assert len(env["sale_order_extra_field"].search([])) == 0
 
     env["sale_order_extra_field"].create({"line_count": 5, "extrafield": "test extra field"})
 
-    assert env["sale_order"].search([])._ids == [1, 2]
-    assert env["sale_order_extra_field"].search([])._ids == [1]
+    assert env["sale_order"].search([]).ids == [1, 2]
+    assert env["sale_order_extra_field"].search([]).ids == [1]
 
     assert env["sale_order"].testfn() == "SaleOrderAbstract SaleOrder"
     assert (

@@ -1,4 +1,5 @@
 import re
+import datetime
 import pytest
 import sqlalchemy
 import sillyorm
@@ -238,42 +239,42 @@ def test_search(tmp_path, db_conn_fn):
     r13_domain = [("test2", "=", "test2"), "|", ("test3", "=", "3 Hii!!")]
     assert env["test_model"].search_count(r13_domain) == 2
     r13 = env["test_model"].search(r13_domain)
-    assert sorted(r13._ids) == [1, 3]
+    assert sorted(r13.ids) == [1, 3]
 
     registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
 
     assert env["test_model"].search_count([]) == 3
-    assert env["test_model"].search([])._ids == [1, 2, 3]
+    assert env["test_model"].search([]).ids == [1, 2, 3]
 
     # test limit & offset
-    assert env["test_model"].search([], limit=1)._ids == [1]
-    assert env["test_model"].search([], limit=2)._ids == [1, 2]
-    assert env["test_model"].search([], limit=2, offset=1)._ids == [2, 3]
-    assert env["test_model"].search([], limit=10, offset=2)._ids == [3]
-    assert env["test_model"].search([], limit=1, offset=3)._ids == []
+    assert env["test_model"].search([], limit=1).ids == [1]
+    assert env["test_model"].search([], limit=2).ids == [1, 2]
+    assert env["test_model"].search([], limit=2, offset=1).ids == [2, 3]
+    assert env["test_model"].search([], limit=10, offset=2).ids == [3]
+    assert env["test_model"].search([], limit=1, offset=3).ids == []
 
     # test order by
-    assert env["test_model"].search([], order_by="id")._ids == [1, 2, 3]
-    assert env["test_model"].search([], order_by="id", order_asc=False)._ids == [3, 2, 1]
-    assert env["test_model"].search([], order_by="id", order_asc=True)._ids == [1, 2, 3]
-    assert env["test_model"].search([], order_by="test", order_asc=True)._ids == [2, 3, 1]
-    assert env["test_model"].search([], order_by="test", order_asc=False)._ids == [1, 3, 2]
+    assert env["test_model"].search([], order_by="id").ids == [1, 2, 3]
+    assert env["test_model"].search([], order_by="id", order_asc=False).ids == [3, 2, 1]
+    assert env["test_model"].search([], order_by="id", order_asc=True).ids == [1, 2, 3]
+    assert env["test_model"].search([], order_by="test", order_asc=True).ids == [2, 3, 1]
+    assert env["test_model"].search([], order_by="test", order_asc=False).ids == [1, 3, 2]
 
     # test order by, together with limit & offset AND a domain
-    assert env["test_model"].search([("id", "<", 3)], order_by="test", order_asc=True)._ids == [
+    assert env["test_model"].search([("id", "<", 3)], order_by="test", order_asc=True).ids == [
         2,
         1,
     ]
     assert env["test_model"].search(
         [("id", "<", 3)], order_by="test", order_asc=True, limit=1, offset=1
-    )._ids == [1]
-    assert env["test_model"].search([("id", "<", 3)], order_by="test", order_asc=False)._ids == [
+    ).ids == [1]
+    assert env["test_model"].search([("id", "<", 3)], order_by="test", order_asc=False).ids == [
         1,
         2,
     ]
     assert env["test_model"].search(
         [("id", "<", 3)], order_by="test", order_asc=False, limit=1, offset=1
-    )._ids == [2]
+    ).ids == [2]
 
     domain_r2 = [
         "(",
@@ -286,7 +287,7 @@ def test_search(tmp_path, db_conn_fn):
     ]
     assert env["test_model"].search_count(domain_r2) == 1
     r2 = env["test_model"].search(domain_r2)
-    assert r2._ids == [1]
+    assert r2.ids == [1]
 
     registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
 
@@ -339,30 +340,30 @@ def test_search_2(tmp_path, db_conn_fn):
 
     registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
 
-    assert env["test_model"].search([])._ids == [1, 2, 3, 4, 5]
+    assert env["test_model"].search([]).ids == [1, 2, 3, 4, 5]
 
     env["test_model"].browse([1, 2]).delete()
 
-    assert env["test_model"].search([])._ids == [3, 4, 5]
+    assert env["test_model"].search([]).ids == [3, 4, 5]
 
     env["test_model"].browse(3).delete()
 
-    assert env["test_model"].search([])._ids == [4, 5]
+    assert env["test_model"].search([]).ids == [4, 5]
 
     registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
 
-    assert env["test_model"].search([])._ids == [4, 5]
+    assert env["test_model"].search([]).ids == [4, 5]
 
     r6 = env["test_model"].create(
         {"test": "6 hello world!", "test2": "6 test2", "test3": "6 Hii!!"}
     )
     assert r6.id == 6
 
-    assert env["test_model"].search([])._ids == [4, 5, 6]
+    assert env["test_model"].search([]).ids == [4, 5, 6]
 
     registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
 
-    assert env["test_model"].search([])._ids == [4, 5, 6]
+    assert env["test_model"].search([]).ids == [4, 5, 6]
 
     env["test_model"].search([]).delete()
 
@@ -391,9 +392,9 @@ def test_read_order(tmp_path, db_conn_fn):
     assert r3.id == 3
 
     # Check if id orders returned by search are as expected
-    assert env["test_model"].search([], order_by="id")._ids == [1, 2, 3]
-    assert env["test_model"].search([], order_by="test")._ids == [1, 2, 3]
-    assert env["test_model"].search([], order_by="test2")._ids == [3, 2, 1]
+    assert env["test_model"].search([], order_by="id").ids == [1, 2, 3]
+    assert env["test_model"].search([], order_by="test").ids == [1, 2, 3]
+    assert env["test_model"].search([], order_by="test2").ids == [3, 2, 1]
 
     # Check for the actual problem
     assert env["test_model"].search([], order_by="test").read(["test"]) == [
@@ -455,25 +456,25 @@ def test_model_subscript(tmp_path, db_conn_fn):
 
     registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
 
-    assert env["test_model"].search([])._ids == []
+    assert env["test_model"].search([]).ids == []
     with pytest.raises(IndexError):
         env["test_model"].search([])[0]
 
     env["test_model"].create({"test": "a"})
 
-    assert env["test_model"].search([])._ids == [1]
-    assert env["test_model"].search([])[0]._ids == [1]
+    assert env["test_model"].search([]).ids == [1]
+    assert env["test_model"].search([])[0].ids == [1]
 
     env["test_model"].create({"test": "b"})
-    assert env["test_model"].search([])._ids == [1, 2]
-    assert env["test_model"].search([])[0]._ids == [1]
-    assert env["test_model"].search([])[1]._ids == [2]
+    assert env["test_model"].search([]).ids == [1, 2]
+    assert env["test_model"].search([])[0].ids == [1]
+    assert env["test_model"].search([])[1].ids == [2]
 
     env["test_model"].create({"test": "c"})
-    assert env["test_model"].search([])._ids == [1, 2, 3]
-    assert env["test_model"].search([])[0]._ids == [1]
-    assert env["test_model"].search([])[1]._ids == [2]
-    assert env["test_model"].search([])[2]._ids == [3]
+    assert env["test_model"].search([]).ids == [1, 2, 3]
+    assert env["test_model"].search([])[0].ids == [1]
+    assert env["test_model"].search([])[1].ids == [2]
+    assert env["test_model"].search([])[2].ids == [3]
 
 
 @pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
@@ -501,3 +502,58 @@ def test_table_name_sanitize(tmp_path, db_conn_fn):
 
     r12 = env["123!@#$%^&*()_=][]\"'  silly goofball\n test.model"].browse([1, 2])
     assert r12.read(["test"]) == [{"test": "hello world!"}, {"test": "2 hello world!"}]
+
+
+@pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
+def test_create_default(tmp_path, db_conn_fn):
+    class TestModel(sillyorm.model.Model):
+        _name = "test_model"
+
+        test = sillyorm.fields.String()
+        test2 = sillyorm.fields.String()
+        test3 = sillyorm.fields.String(default="maow default!")
+        test4 = sillyorm.fields.Boolean(default=False)
+        test5 = sillyorm.fields.Datetime(
+            default=datetime.datetime(2024, 1, 10, 11, 12, 13), tzinfo=None
+        )
+
+    registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
+    r1 = env["test_model"].create({"test": "hello world!", "test2": "test2", "test3": "Hii!!"})
+    r2 = env["test_model"].create(
+        {
+            "test": "2 hello world!",
+            "test2": "2 test2",
+            "test4": True,
+            "test5": datetime.datetime(2023, 1, 10, 11, 12, 13),
+        }
+    )
+    r3 = env["test_model"].create(
+        {"test": "3 hello world!", "test2": "3 test2", "test3": "3 Hii!!"}
+    )
+    assert r1.read(["test", "test2"]) == [{"test": "hello world!", "test2": "test2"}]
+    assert r2.read(["test", "test3", "test4", "test5"]) == [
+        {
+            "test": "2 hello world!",
+            "test3": "maow default!",
+            "test4": True,
+            "test5": datetime.datetime(2023, 1, 10, 11, 12, 13),
+        }
+    ]
+    assert r3.read(["test", "test2"]) == [{"test": "3 hello world!", "test2": "3 test2"}]
+    assert r3.read(["test3", "test4", "test5"]) == [
+        {"test3": "3 Hii!!", "test4": False, "test5": datetime.datetime(2024, 1, 10, 11, 12, 13)}
+    ]
+
+    assert r2.read(["test2"]) == [{"test2": "2 test2"}]
+
+    assert r1.test == "hello world!"
+    assert r2.test2 == "2 test2"
+
+    registry, env = _new_env(db_conn_fn, tmp_path, [TestModel])
+
+    r12 = env["test_model"].browse([1, 2])
+    assert r12.read(["test"]) == [{"test": "hello world!"}, {"test": "2 hello world!"}]
+    assert r12.read(["test", "test3"]) == [
+        {"test": "hello world!", "test3": "Hii!!"},
+        {"test": "2 hello world!", "test3": "maow default!"},
+    ]
