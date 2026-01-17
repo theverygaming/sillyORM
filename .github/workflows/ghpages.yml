@@ -33,7 +33,7 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Install dependencies
-        run: pip install alembic sqlalchemy Sphinx
+        run: pip install ".[dev]"
       - name: Build docs
         run: |
           cd docs
