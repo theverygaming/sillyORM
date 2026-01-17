@@ -19,7 +19,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest", "coverage", "pylint", "mypy", "black", "Sphinx",
+    "psycopg2", "pytest", "coverage", "pylint", "mypy", "black", "Sphinx",
 ]
 
 [tool.setuptools]
