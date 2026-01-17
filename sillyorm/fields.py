@@ -664,6 +664,44 @@ class Selection(String):
         return super()._convert_type_set(record, value)
 
 
+class JSON(Field):
+    """
+    JSON field. Will work with most simple python types (dict, list, integer...).
+
+    Note that setting this field to None will result in
+    SQL NULL in the DB (.. as in JSON null at the top level is not
+    supported by this field and will result in the field not having any
+    value at all (same behavior as most other fields when set to None))
+
+    .. testcode:: models_fields
+
+       class ExampleModel(sillyorm.model.Model):
+           _name = "example_json"
+           field = sillyorm.fields.JSON()
+
+       env = reinit_env([ExampleModel])
+
+       record = env["example_json"].create({"field": [1, 2.5, 3.456, "four"]})
+       print(record.field)
+       record.field = {"1": [1, 2, 3], "2": {"3": 1, "4": None}}
+       print(record.field)
+       record.field = None
+       print(record.field)
+
+    .. testoutput:: models_fields
+
+       [1, 2.5, 3.456, 'four']
+       {'1': [1, 2, 3], '2': {'3': 1, '4': None}}
+       None
+
+    """
+
+    sql_type = sqlalchemy.types.JSON(none_as_null=True)
+
+    def __set__(self, record: BaseModel, value: dict[Any, Any] | None) -> None:
+        super().__set__(record, value)
+
+
 class Many2one(Integer):
     """
     Many to one relational field. Represents a single record of another model.

@@ -92,6 +92,7 @@ def generic_field_test(
     registry: sillyorm.Registry,
     is_second: bool,
     prev_return: Any,
+    invalid_write_vals_exc_type=sillyorm.exceptions.SillyORMException,
 ) -> Any:
     # some sanity checks on the input
     assert len(fieldClassArgs) == len(valid_write_vals)
@@ -135,7 +136,7 @@ def generic_field_test(
 
         # invalid values test
         for i, val in enumerate(invalid_write_vals):
-            with pytest.raises(sillyorm.exceptions.SillyORMException):
+            with pytest.raises(invalid_write_vals_exc_type):
                 setattr(records[i % len(records)], f"field_n_{i % len(valid_write_vals)}", val)
 
         for i, record in enumerate(records):
