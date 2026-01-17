@@ -11,7 +11,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 _logger = logging.getLogger(__name__)
 
-# pylint: disable=too-few-public-methods,too-many-arguments,too-many-positional-arguments
+# pylint: disable=too-few-public-methods,too-many-arguments,too-many-positional-arguments,too-many-lines,too-many-instance-attributes
 
 
 class Field:
@@ -34,6 +34,11 @@ class Field:
     :ivar default: The constant default value for a column
        inserted during record creation - equivalent to SQLAlchemy Column default=
     :vartype default: Any
+    :ivar compute_fn: compute function for the field, returns a list of values (in recordset order)
+    :vartype compute_fn: str
+    :ivar compute_inverse_fn: inverse compute function for the field, gets a value as an
+       argument and does the reverse of the computation (e.g. setting other fields)
+    :vartype compute_inverse_fn: str
 
     :param required: If the field must be set (checked via SQL constraints and runtime checks)
     :type required: bool
@@ -45,6 +50,11 @@ class Field:
        inserted during record creation - equivalent to SQLAlchemy Column default=
     :type default: Any
     :default default: None
+    :param compute_fn: compute function for the field, returns a list of values (in recordset order)
+    :type compute_fn: str
+    :param compute_inverse_fn: inverse compute function for the field, gets a value as an
+       argument and does the reverse of the computation (e.g. setting other fields)
+    :type compute_inverse_fn: str
     """
 
     # __must__ be set by all fields
@@ -52,6 +62,7 @@ class Field:
 
     # default values
     materialize = True  # if the field should actually exist in tables
+    computed = False  # if the field is computed
 
     # set automatically
     name: str = cast(str, None)
@@ -61,13 +72,20 @@ class Field:
         required: bool = False,
         unique: bool = False,
         default: Any = None,
+        compute_fn: str | None = None,
+        compute_inverse_fn: str | None = None,
     ) -> None:
+        self.compute_fn = compute_fn
+        self.compute_inverse_fn = compute_inverse_fn
         self.required = required
         self.unique = unique
         self.default = default
         self.constraints: list[sqlalchemy.schema.SchemaItem | tuple[str, Any]] = []
 
     def _init_field(self, record: type[BaseModel]) -> None:  # pylint: disable=unused-argument
+        if self.compute_fn is not None or self.compute_inverse_fn is not None:
+            self.materialize = False
+            self.computed = True
         self.constraints = []
         if self.materialize and self.sql_type is None:
             raise SillyORMException("sql_type must be set for all fields that materialize")
@@ -105,12 +123,31 @@ class Field:
 
         returns an array of the values for the recordset
         """
+        if self.computed:
+            if self.compute_fn is None:
+                raise SillyORMException(
+                    f"field {self.name} cannot be read as it has no compute_fn method"
+                )
+            ret = getattr(records, self.compute_fn)()
+            if not isinstance(ret, list) or len(ret) != len(records):
+                raise SillyORMException(
+                    f"{self.compute_fn} for field {self.name} did not return a list, or not a list"
+                    " with the correct parameters"
+                )
+            return ret
         raise SillyORMException(f"field {self.name} cannot be read")
 
     def _non_materialized_write(self, records: BaseModel, value: Any) -> None:
         """
         low-level write method, should be implemented for fields that don't materialize
         """
+        if self.computed:
+            if self.compute_inverse_fn is None:
+                raise SillyORMException(
+                    f"field {self.name} cannot be written as it has no compute_inverse_fn method"
+                )
+            getattr(records, self.compute_inverse_fn)(value)
+            return
         raise SillyORMException(f"field {self.name} cannot be written")
 
     def _build_sqlalchemy_table(
@@ -301,9 +338,17 @@ class String(Field):
         required: bool = False,
         unique: bool = False,
         default: Any = None,
+        compute_fn: str | None = None,
+        compute_inverse_fn: str | None = None,
     ) -> None:
         self.sql_type = sqlalchemy.types.String(length)
-        super().__init__(required=required, unique=unique, default=default)
+        super().__init__(
+            required=required,
+            unique=unique,
+            default=default,
+            compute_fn=compute_fn,
+            compute_inverse_fn=compute_inverse_fn,
+        )
 
     def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
@@ -351,9 +396,17 @@ class Text(Field):
         required: bool = False,
         unique: bool = False,
         default: Any = None,
+        compute_fn: str | None = None,
+        compute_inverse_fn: str | None = None,
     ) -> None:
         self.sql_type = sqlalchemy.types.Text()
-        super().__init__(required=required, unique=unique, default=default)
+        super().__init__(
+            required=required,
+            unique=unique,
+            default=default,
+            compute_fn=compute_fn,
+            compute_inverse_fn=compute_inverse_fn,
+        )
 
     def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
         if not isinstance(value, str) and value is not None:
@@ -458,10 +511,18 @@ class Datetime(Field):
         required: bool = False,
         unique: bool = False,
         default: Any = None,
+        compute_fn: str | None = None,
+        compute_inverse_fn: str | None = None,
     ) -> None:
         self.tzinfo = tzinfo
         self.convert_tz = convert_tz
-        super().__init__(required=required, unique=unique, default=default)
+        super().__init__(
+            required=required,
+            unique=unique,
+            default=default,
+            compute_fn=compute_fn,
+            compute_inverse_fn=compute_inverse_fn,
+        )
 
     def _convert_type_get(self, record: BaseModel, value: Any) -> Any:
         if value is not None:
@@ -584,6 +645,8 @@ class Selection(String):
         required: bool = False,
         unique: bool = False,
         default: Any = None,
+        compute_fn: str | None = None,
+        compute_inverse_fn: str | None = None,
     ) -> None:
         self.options = options
         super().__init__(
@@ -591,6 +654,8 @@ class Selection(String):
             required=required,
             unique=unique,
             default=default,
+            compute_fn=compute_fn,
+            compute_inverse_fn=compute_inverse_fn,
         )
 
     def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
@@ -654,8 +719,16 @@ class Many2one(Integer):
         required: bool = False,
         unique: bool = False,
         default: Any = None,
+        compute_fn: str | None = None,
+        compute_inverse_fn: str | None = None,
     ):
-        super().__init__(required=required, unique=unique, default=default)
+        super().__init__(
+            required=required,
+            unique=unique,
+            default=default,
+            compute_fn=compute_fn,
+            compute_inverse_fn=compute_inverse_fn,
+        )
         self.ondelete = ondelete
         self._foreign_model = foreign_model
         if self.ondelete == "set null" and self.required:
@@ -772,8 +845,16 @@ class One2many(Field):
         required: bool = False,
         unique: bool = False,
         default: Any = None,
+        compute_fn: str | None = None,
+        compute_inverse_fn: str | None = None,
     ):
-        super().__init__(required=required, unique=unique, default=default)
+        super().__init__(
+            required=required,
+            unique=unique,
+            default=default,
+            compute_fn=compute_fn,
+            compute_inverse_fn=compute_inverse_fn,
+        )
         self._foreign_model = foreign_model
         self._foreign_field = foreign_field
 
