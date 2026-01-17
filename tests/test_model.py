@@ -165,6 +165,9 @@ def test_read(tmp_path, db_conn_fn):
         {"test": "2 hello world!", "test3": "2 Hii!!"},
     ]
 
+    # empty read
+    assert r2.read([]) == [{}]
+
 
 @pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])
 def test_write(tmp_path, db_conn_fn):
@@ -211,6 +214,9 @@ def test_write(tmp_path, db_conn_fn):
     ]
 
     assert r2_read_prev == r2.read(["test", "test2", "test3"])
+
+    # empty write
+    r2.write({})
 
 
 @pytest.mark.parametrize("db_conn_fn", [(sqlite_conn), (pg_conn)])

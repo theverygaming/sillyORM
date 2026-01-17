@@ -330,12 +330,13 @@ class BaseModel:
         db_vals = dict(filter(lambda x: self._fields[x[0]].materialize, vals.items()))
 
         with self.env.managed_transaction():
-            stmt = (
-                sqlalchemy.update(self._table)
-                .where(self._table.c.id.in_(self._ids))
-                .values(**db_vals)
-            )
-            self.env.connection.execute(stmt)
+            if db_vals:
+                stmt = (
+                    sqlalchemy.update(self._table)
+                    .where(self._table.c.id.in_(self._ids))
+                    .values(**db_vals)
+                )
+                self.env.connection.execute(stmt)
 
             # handle fields that do not exist in the DB
             for k, v in filter(lambda x: not self._fields[x[0]].materialize, vals.items()):
