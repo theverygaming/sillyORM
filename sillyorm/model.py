@@ -398,7 +398,7 @@ class BaseModel:
                 vals[f] = fc._convert_type_set(self, fc.default)  # pylint: disable=protected-access
             new_id = self.env.connection.execute(
                 sqlalchemy.insert(self._table).values(**vals)
-            ).inserted_primary_key[0]
+            ).inserted_primary_key[0]  # type: ignore
             created = self.__class__(self.env, ids=[new_id])
 
             # handle constraints
