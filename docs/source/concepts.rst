@@ -212,6 +212,7 @@ Currently sillyORM supports the following fields:
 * :class:`Boolean <sillyorm.fields.Boolean>` represents a Boolean
 * :class:`Selection <sillyorm.fields.Selection>` represents a Selection
 * :class:`JSON <sillyorm.fields.JSON>` represents a JSON value
+* :class:`LargeBinary <sillyorm.fields.LargeBinary>` represents a Binary value
 * :class:`Many2one <sillyorm.fields.Many2one>` represents a many to one relationship
 * :class:`One2many <sillyorm.fields.One2many>` represents a one to many relationship (requires a many to one on the other side)
 * :class:`Many2many <sillyorm.fields.Many2many>` represents a many to many relationship (with a join table)

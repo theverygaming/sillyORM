@@ -702,6 +702,44 @@ class JSON(Field):
         super().__set__(record, value)
 
 
+class LargeBinary(Field):
+    """
+    Binary field. Represents bytes of variable length (generally uses the SQL BLOB type).
+
+    .. testcode:: models_fields
+
+       class ExampleModel(sillyorm.model.Model):
+           _name = "example2"
+           field = sillyorm.fields.LargeBinary()
+
+       env = reinit_env([ExampleModel])
+
+       record = env["example2"].create({"field": b"hello"})
+       print(record.field)
+       record.field += b" world!"
+       print(record.field)
+       record.field = None
+       print(record.field)
+
+    .. testoutput:: models_fields
+
+       b'hello'
+       b'hello world!'
+       None
+
+    """
+
+    sql_type = sqlalchemy.types.LargeBinary()
+
+    def _convert_type_set(self, record: BaseModel, value: Any) -> Any:
+        if not isinstance(value, bytes) and value is not None:
+            raise SillyORMException("Binary value must be bytes")
+        return super()._convert_type_set(record, value)
+
+    def __set__(self, record: BaseModel, value: bytes | None) -> None:
+        super().__set__(record, value)
+
+
 class Many2one(Integer):
     """
     Many to one relational field. Represents a single record of another model.
